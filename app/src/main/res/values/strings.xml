@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PagoFlex</string>
+
+    <string name="marca_titular">Todos tus pagos, en un solo lugar</string>
+    <string name="marca_bajada">Revisa lo que vence, paga en un minuto y guarda tus comprobantes.</string>
+    <string name="titulo_ingreso">Iniciar sesión</string>
+    <string name="campo_correo">Correo electrónico</string>
+    <string name="ayuda_correo">Ej: nombre@gmail.com</string>
+    <string name="campo_clave">Contraseña</string>
+    <string name="ayuda_clave">5 dígitos</string>
+    <string name="btn_ingresar">Ingresar</string>
+    <string name="btn_cuentas_prueba">Usar una cuenta de prueba</string>
+    <string name="titulo_cuentas_prueba">Cuentas de prueba</string>
+    <string name="texto_cuentas_prueba">Toca una cuenta para completar el correo y la contraseña. Todas usan la contraseña %1$s.</string>
+    <string name="aviso_confianza">Tu contraseña se guarda cifrada y de tus tarjetas solo guardamos los 4 últimos números.</string>
+    <string name="texto_sin_cuenta">¿No tienes cuenta?</string>
+    <string name="btn_crear_cuenta">Crear cuenta</string>
+
+    <string name="titulo_registro">Crear cuenta</string>
+    <string name="btn_ya_tengo_cuenta">Ya tengo cuenta: iniciar sesión</string>
+    <string name="aviso_demo">Versión de demostración con datos ficticios.</string>
+
+    <string name="btn_restablecer_datos">Restablecer datos de demostración</string>
+    <string name="dialogo_restablecer_titulo">¿Restablecer los datos?</string>
+    <string name="dialogo_restablecer_mensaje">Se borrarán los pagos, tarjetas, cuentas nuevas y cambios hechos en este teléfono y se volverá a los datos de ejemplo del Anexo 9.</string>
+    <string name="btn_restablecer">Restablecer</string>
+    <string name="snackbar_datos_restablecidos">Datos de demostración restablecidos</string>
+
+    <string name="campo_buscar">Buscar por nombre, RUT, concepto o empresa</string>
+    <string name="campo_buscar_cliente">Buscar por nombre, RUT o correo</string>
+
+    <string name="saludo">Hola, %1$s</string>
+    <string name="titulo_historial">Historial de pagos</string>
+    <string name="titulo_avance">Mi avance</string>
+    <string name="titulo_avisos">Avisos</string>
+    <string name="titulo_detalle">Detalle del compromiso</string>
+    <string name="titulo_pagar">Pagar</string>
+    <string name="titulo_reportar">Reportar un problema</string>
+    <string name="titulo_comprobante">Comprobante de pago</string>
+    <string name="titulo_recomendar">Recomendar una organización</string>
+    <string name="titulo_reportes">Reportes de problemas</string>
+    <string name="titulo_detalle_reporte">Atender reporte</string>
+    <string name="titulo_recomendaciones">Recomendaciones</string>
+    <string name="titulo_detalle_recomendacion">Recomendación</string>
+    <string name="titulo_compromisos">Compromisos</string>
+    <string name="titulo_registrar">Registrar compromiso</string>
+    <string name="titulo_editar_compromiso">Modificar compromiso</string>
+    <string name="titulo_cobranza">Resumen de cobranza</string>
+    <string name="titulo_tarjetas">Mis tarjetas</string>
+    <string name="titulo_agregar_tarjeta">Agregar tarjeta</string>
+    <string name="titulo_clientes">Clientes</string>
+    <string name="titulo_cliente">Ficha del cliente</string>
+    <string name="titulo_nuevo_cliente">Nuevo cliente</string>
+    <string name="titulo_editar_cliente">Editar cliente</string>
+
+    <string name="menu_inicio">Inicio</string>
+    <string name="menu_historial">Historial de pagos</string>
+    <string name="menu_avance">Mi avance</string>
+    <string name="menu_tarjetas">Mis tarjetas</string>
+    <string name="menu_avisos">Avisos</string>
+    <string name="menu_reportes">Reportes</string>
+    <string name="menu_recomendaciones">Recomendaciones</string>
+    <string name="menu_compromisos">Compromisos</string>
+    <string name="menu_clientes">Clientes</string>
+    <string name="menu_cobranza">Cobranza</string>
+    <string name="menu_modo_oscuro">Modo oscuro</string>
+    <string name="menu_cerrar_sesion">Cerrar sesión</string>
+
+    <string name="dialogo_titulo">¿Cerrar sesión?</string>
+    <string name="dialogo_mensaje">Volverás a la pantalla de ingreso y tendrás que escribir tu correo y contraseña otra vez.</string>
+    <string name="dialogo_cancelar">Cancelar</string>
+    <string name="snackbar_sesion_cerrada">Sesión cerrada</string>
+
+    <string name="dialogo_anular_titulo">¿Anular este compromiso?</string>
+    <string name="dialogo_anular_mensaje">La persona dejará de verlo como deuda. Esta acción no se puede deshacer.</string>
+    <string name="btn_anular">Anular compromiso</string>
+
+    <string name="dialogo_quitar_tarjeta_titulo">¿Quitar esta tarjeta?</string>
+    <string name="dialogo_clave_titulo">¿Restablecer la contraseña?</string>
+
+    <string name="btn_cancelar">Cancelar</string>
+    <string name="btn_limpiar">Limpiar</string>
+    <string name="btn_reportar">Reportar un problema</string>
+    <string name="btn_ver_comprobante">Ver comprobante</string>
+    <string name="btn_compartir">Compartir</string>
+    <string name="btn_cerrar">Cerrar</string>
+    <string name="btn_actualizar">Actualizar</string>
+    <string name="btn_recomendar">Recomendar</string>
+    <string name="btn_registrar">Registrar</string>
+    <string name="btn_enviar_reporte">Enviar reporte</string>
+    <string name="btn_guardar_preferencias">Guardar preferencias</string>
+    <string name="btn_tomar_reporte">Tomar reporte</string>
+    <string name="btn_resolver">Dar por resuelto</string>
+    <string name="btn_descartar">Descartar</string>
+    <string name="btn_confirmar_descarte">Confirmar descarte</string>
+    <string name="btn_agregar_tarjeta">Agregar tarjeta</string>
+    <string name="btn_guardar_tarjeta">Guardar tarjeta</string>
+    <string name="btn_quitar">Quitar</string>
+    <string name="btn_nuevo_cliente">Nuevo cliente</string>
+    <string name="btn_crear_cliente">Crear cliente</string>
+    <string name="btn_guardar_cambios">Guardar cambios</string>
+
+    <string name="cd_logo">Logo de PagoFlex</string>
+    <string name="cd_banner">Ilustración de tarjetas de pago y un calendario</string>
+    <string name="cd_avatar">Foto de perfil</string>
+    <string name="cd_mostrar_contrasena">Mostrar código</string>
+    <string name="cd_ocultar_contrasena">Ocultar código</string>
+    <string name="cd_volver">Volver</string>
+    <string name="cd_menu">Abrir menú</string>
+    <string name="cd_modo_claro">Cambiar a modo claro</string>
+    <string name="cd_modo_oscuro">Cambiar a modo oscuro</string>
+</resources>

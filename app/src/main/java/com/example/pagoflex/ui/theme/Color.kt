@@ -50,6 +50,9 @@ val InformacionFondo = Color(0xFF13241C)
 val Advertencia = Color(0xFFF5B942)
 val AdvertenciaFondo = Color(0xFF2B2211)
 
+val Rojo = Color(0xFFFF6B6B)
+val RojoIntenso = Color(0xFFC62828)
+
 val EstadoPendienteClaro = Color(0xFF3F4A44)
 val EstadoVencidoClaro = Color(0xFF865400)
 val EstadoPagadoClaro = VerdeProfundo

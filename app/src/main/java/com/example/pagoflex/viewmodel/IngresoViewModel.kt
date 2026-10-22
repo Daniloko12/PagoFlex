@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import com.example.pagoflex.model.CLAVE_DE_PRUEBA
 import com.example.pagoflex.model.Credenciales
 import com.example.pagoflex.model.IngresoUiState
-import com.example.pagoflex.model.Rol
 import com.example.pagoflex.model.claveValida
 import com.example.pagoflex.model.correoValido
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,10 +14,6 @@ import kotlinx.coroutines.flow.update
 class IngresoViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(IngresoUiState())
     val uiState: StateFlow<IngresoUiState> = _uiState.asStateFlow()
-
-    fun onRolSeleccionado(rol: Rol) {
-        _uiState.update { it.copy(rol = rol, errorIngreso = null) }
-    }
 
     fun onCorreoCambia(valor: String) {
         _uiState.update { it.copy(correo = valor.trim(), errorCorreo = null, errorIngreso = null) }
@@ -32,8 +27,8 @@ class IngresoViewModel : ViewModel() {
         _uiState.update { it.copy(claveVisible = !it.claveVisible) }
     }
 
-    fun onUsarCuentaDePrueba(correo: String, rol: Rol) {
-        _uiState.value = IngresoUiState(rol = rol, correo = correo, clave = CLAVE_DE_PRUEBA)
+    fun onUsarCuentaDePrueba(correo: String) {
+        _uiState.value = IngresoUiState(correo = correo, clave = CLAVE_DE_PRUEBA)
     }
 
     fun onErrorIngreso(mensaje: String) {
@@ -56,7 +51,7 @@ class IngresoViewModel : ViewModel() {
         val hayErrores = errorCorreo != null || errorClave != null
 
         _uiState.update { it.copy(errorCorreo = errorCorreo, errorClave = errorClave, errorIngreso = null) }
-        return if (hayErrores) null else Credenciales(estado.correo, estado.clave, estado.rol)
+        return if (hayErrores) null else Credenciales(estado.correo, estado.clave)
     }
 
     fun onLimpiar() {

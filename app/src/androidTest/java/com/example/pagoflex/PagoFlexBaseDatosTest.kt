@@ -9,16 +9,20 @@ import com.example.pagoflex.data.ConvertidorImagen
 import com.example.pagoflex.data.PagoFlexDbHelper
 import com.example.pagoflex.data.SesionPreferencias
 import com.example.pagoflex.model.CLAVE_DE_PRUEBA
+import com.example.pagoflex.model.CambioClave
 import com.example.pagoflex.model.CambiosCompromiso
+import com.example.pagoflex.model.ClaveRecuperada
 import com.example.pagoflex.model.Credenciales
 import com.example.pagoflex.model.DatosAnexo9
 import com.example.pagoflex.model.DatosCliente
+import com.example.pagoflex.model.DatosRecuperacion
 import com.example.pagoflex.model.DiasAnticipacion
 import com.example.pagoflex.model.EstadoCompromiso
 import com.example.pagoflex.model.EstadoRecomendacion
 import com.example.pagoflex.model.EstadoReporte
 import com.example.pagoflex.model.MarcaTarjeta
 import com.example.pagoflex.model.MedioPago
+import com.example.pagoflex.model.MisDatos
 import com.example.pagoflex.model.MotivoAnulacion
 import com.example.pagoflex.model.MotivoReporte
 import com.example.pagoflex.model.NuevaCuenta
@@ -26,7 +30,9 @@ import com.example.pagoflex.model.Rol
 import com.example.pagoflex.model.SolicitudPago
 import com.example.pagoflex.model.SolicitudReporte
 import com.example.pagoflex.model.TarjetaNueva
+import com.example.pagoflex.model.avancePorEmpresa
 import com.example.pagoflex.model.compromisoPorId
+import com.example.pagoflex.model.resumenPanel
 import com.example.pagoflex.model.tarjetaPorId
 import com.example.pagoflex.model.tarjetasGuardadas
 import com.example.pagoflex.model.usuarioPorId
@@ -56,8 +62,8 @@ class PagoFlexBaseDatosTest {
 
     private fun nuevaApp() = PagoFlexViewModel(contexto.applicationContext as Application)
 
-    private fun entrar(app: PagoFlexViewModel, correo: String, rol: Rol, clave: String = CLAVE_DE_PRUEBA) {
-        assertNull(app.iniciarSesion(Credenciales(correo, clave, rol)))
+    private fun entrar(app: PagoFlexViewModel, correo: String, clave: String = CLAVE_DE_PRUEBA) {
+        assertNull(app.iniciarSesion(Credenciales(correo, clave)))
     }
 
     @Test
@@ -79,11 +85,14 @@ class PagoFlexBaseDatosTest {
     @Test
     fun inicioDeSesion_correoYContrasena() {
         val app = nuevaApp()
-        assertNotNull(app.iniciarSesion(Credenciales("crojas@correo.ejemplo", "99999", Rol.USUARIO_FINAL)))
-        assertNotNull(app.iniciarSesion(Credenciales("crojas@correo.ejemplo", CLAVE_DE_PRUEBA, Rol.ADMINISTRADOR)))
-        assertNotNull(app.iniciarSesion(Credenciales("rsalinas@pagoflex.ejemplo", CLAVE_DE_PRUEBA, Rol.ADMINISTRADOR)))
-        assertNull(app.iniciarSesion(Credenciales("CRojas@Correo.Ejemplo", CLAVE_DE_PRUEBA, Rol.USUARIO_FINAL)))
+        assertNotNull(app.iniciarSesion(Credenciales("crojas@correo.ejemplo", "99999")))
+        assertNotNull(app.iniciarSesion(Credenciales("rsalinas@pagoflex.ejemplo", CLAVE_DE_PRUEBA)))
+        assertNull(app.iniciarSesion(Credenciales("alagos@pagoflex.ejemplo", CLAVE_DE_PRUEBA)))
+        assertEquals(Rol.ADMINISTRADOR, app.usuarioActual.value?.rol)
+        app.cerrarSesion()
+        assertNull(app.iniciarSesion(Credenciales("CRojas@Correo.Ejemplo", CLAVE_DE_PRUEBA)))
         assertEquals(1, app.usuarioActual.value?.idUsuario)
+        assertEquals(Rol.USUARIO_FINAL, app.usuarioActual.value?.rol)
 
         assertEquals(1, nuevaApp().usuarioActual.value?.idUsuario)
         app.cerrarSesion()
@@ -109,8 +118,8 @@ class PagoFlexBaseDatosTest {
         assertEquals(Rol.USUARIO_FINAL, app.usuarioActual.value?.rol)
 
         app.cerrarSesion()
-        assertNotNull(app.iniciarSesion(Credenciales("erivas@gmail.com", CLAVE_DE_PRUEBA, Rol.USUARIO_FINAL)))
-        entrar(app, "erivas@gmail.com", Rol.USUARIO_FINAL, clave = "73915")
+        assertNotNull(app.iniciarSesion(Credenciales("erivas@gmail.com", CLAVE_DE_PRUEBA)))
+        entrar(app, "erivas@gmail.com", clave = "73915")
         app.cerrarSesion()
         assertNotNull(app.crearCuenta(nueva))
     }
@@ -118,7 +127,7 @@ class PagoFlexBaseDatosTest {
     @Test
     fun hu03_pagoConTarjetaGuardada() {
         val app = nuevaApp()
-        entrar(app, "crojas@correo.ejemplo", Rol.USUARIO_FINAL)
+        entrar(app, "crojas@correo.ejemplo")
         val resultado = app.pagar(101, SolicitudPago(MedioPago.DEBITO, idTarjeta = 1))
         assertEquals("CPR-000454", resultado?.pago?.numeroComprobante)
         assertEquals(1, resultado?.pago?.idTarjeta)
@@ -134,7 +143,7 @@ class PagoFlexBaseDatosTest {
     @Test
     fun pagoConTarjetaNueva_soloMarcaYUltimos4() {
         val app = nuevaApp()
-        entrar(app, "crojas@correo.ejemplo", Rol.USUARIO_FINAL)
+        entrar(app, "crojas@correo.ejemplo")
         val nueva = TarjetaNueva(MedioPago.CREDITO, MarcaTarjeta.MASTERCARD, "4444", "CAMILA ROJAS", YearMonth.of(2029, 11))
         val resultado = app.pagar(103, SolicitudPago(MedioPago.CREDITO, tarjetaNueva = nueva, guardarTarjeta = false))
         val datos = nuevaApp().datos.value
@@ -150,7 +159,7 @@ class PagoFlexBaseDatosTest {
     @Test
     fun misTarjetas_agregarRepetidaYQuitar() {
         val app = nuevaApp()
-        entrar(app, "lmunoz@correo.ejemplo", Rol.USUARIO_FINAL)
+        entrar(app, "lmunoz@correo.ejemplo")
         val nueva = TarjetaNueva(MedioPago.CREDITO, MarcaTarjeta.VISA, "1111", "LUIS MUNOZ", YearMonth.of(2030, 1))
         val tarjeta = app.agregarTarjeta(nueva)
         assertNotNull(tarjeta)
@@ -164,7 +173,7 @@ class PagoFlexBaseDatosTest {
     @Test
     fun aclaracion5_sinConexionNoSePaga() {
         val app = nuevaApp()
-        entrar(app, "crojas@correo.ejemplo", Rol.USUARIO_FINAL)
+        entrar(app, "crojas@correo.ejemplo")
         app.cambiarConexion(true)
         assertNull(app.pagar(101, SolicitudPago(MedioPago.TRANSFERENCIA)))
         assertEquals(EstadoCompromiso.PENDIENTE, nuevaApp().datos.value.compromisoPorId(101)?.estado)
@@ -173,14 +182,14 @@ class PagoFlexBaseDatosTest {
     @Test
     fun hu06_y_hu10_reporteTomadoYResuelto() {
         val app = nuevaApp()
-        entrar(app, "lmunoz@correo.ejemplo", Rol.USUARIO_FINAL)
+        entrar(app, "lmunoz@correo.ejemplo")
         assertNotNull(app.motivoParaNoPagar(107, revisarConexion = false))
         val reporte = app.reportar(106, SolicitudReporte(MotivoReporte.MONTO_INCORRECTO, null))
         assertEquals("REP-0012", reporte?.numero)
         assertEquals(EstadoCompromiso.EN_REVISION, app.datos.value.compromisoPorId(106)?.estado)
 
         app.cerrarSesion()
-        entrar(app, "alagos@pagoflex.ejemplo", Rol.ADMINISTRADOR)
+        entrar(app, "alagos@pagoflex.ejemplo")
         assertNotNull(app.resolverReporte(12, "Listo"))
         assertNull(app.tomarReporte(12))
         assertNull(app.resolverReporte(12, "El monto incluye el recargo por atraso de \$8.500."))
@@ -193,7 +202,7 @@ class PagoFlexBaseDatosTest {
     @Test
     fun rn13_y_rn14_recomendacionPorEtapas() {
         val app = nuevaApp()
-        entrar(app, "vparedes@pagoflex.ejemplo", Rol.ADMINISTRADOR)
+        entrar(app, "vparedes@pagoflex.ejemplo")
         assertNotNull(app.cambiarEstadoRecomendacion(4, EstadoRecomendacion.SE_UNIO, null))
         assertNull(app.avanzarRecomendacion(3))
         val datos = app.datos.value
@@ -206,7 +215,7 @@ class PagoFlexBaseDatosTest {
     @Test
     fun hu11_registrarBuscarYAnular() {
         val app = nuevaApp()
-        entrar(app, "alagos@pagoflex.ejemplo", Rol.ADMINISTRADOR)
+        entrar(app, "alagos@pagoflex.ejemplo")
         val formulario = FormularioViewModel()
         formulario.onEmpresaSeleccionada(app.datos.value.empresas.first())
         formulario.onRutPersonaCambia("12.476.318-5", app.datos.value)
@@ -247,7 +256,7 @@ class PagoFlexBaseDatosTest {
     @Test
     fun administrador_modificaCompromiso() {
         val app = nuevaApp()
-        entrar(app, "alagos@pagoflex.ejemplo", Rol.ADMINISTRADOR)
+        entrar(app, "alagos@pagoflex.ejemplo")
         val cambios = CambiosCompromiso("Cuota pie departamento", 300_000, LocalDate.of(2026, 10, 30), 14, 36)
         assertNull(app.editarCompromiso(106, cambios))
         val editado = nuevaApp().datos.value.compromisoPorId(106)
@@ -263,7 +272,7 @@ class PagoFlexBaseDatosTest {
     @Test
     fun administrador_creaYEditaCliente() {
         val app = nuevaApp()
-        entrar(app, "alagos@pagoflex.ejemplo", Rol.ADMINISTRADOR)
+        entrar(app, "alagos@pagoflex.ejemplo")
         val datosCliente = DatosCliente("11.111.111-1", "Elena", "Rivas Soto", "erivas@gmail.com", "+56 9 1234 5678", 5, true)
         val cliente = app.crearCliente(datosCliente)
         assertNotNull(cliente)
@@ -271,13 +280,13 @@ class PagoFlexBaseDatosTest {
 
         assertNull(app.editarCliente(cliente!!.idUsuario, datosCliente.copy(correo = "elena.rivas@gmail.com")))
         app.cerrarSesion()
-        entrar(app, "elena.rivas@gmail.com", Rol.USUARIO_FINAL)
+        entrar(app, "elena.rivas@gmail.com")
 
         app.cerrarSesion()
-        entrar(app, "alagos@pagoflex.ejemplo", Rol.ADMINISTRADOR)
+        entrar(app, "alagos@pagoflex.ejemplo")
         assertNull(app.editarCliente(cliente.idUsuario, datosCliente.copy(correo = "elena.rivas@gmail.com", activo = false)))
         app.cerrarSesion()
-        assertNotNull(app.iniciarSesion(Credenciales("elena.rivas@gmail.com", CLAVE_DE_PRUEBA, Rol.USUARIO_FINAL)))
+        assertNotNull(app.iniciarSesion(Credenciales("elena.rivas@gmail.com", CLAVE_DE_PRUEBA)))
     }
 
     @Test
@@ -286,17 +295,17 @@ class PagoFlexBaseDatosTest {
         assertNull(app.crearCuenta(NuevaCuenta("11.111.111-1", "Elena", "Rivas", "erivas@gmail.com", "+56 9 1234 5678", "73915")))
         val idElena = app.usuarioActual.value!!.idUsuario
         app.cerrarSesion()
-        entrar(app, "alagos@pagoflex.ejemplo", Rol.ADMINISTRADOR)
+        entrar(app, "alagos@pagoflex.ejemplo")
         assertNull(app.restablecerClaveCliente(idElena))
         assertNotNull(app.restablecerClaveCliente(9))
         app.cerrarSesion()
-        entrar(app, "erivas@gmail.com", Rol.USUARIO_FINAL)
+        entrar(app, "erivas@gmail.com")
     }
 
     @Test
     fun fotoDePerfil_seGuardaComoBlob() {
         val app = nuevaApp()
-        entrar(app, "crojas@correo.ejemplo", Rol.USUARIO_FINAL)
+        entrar(app, "crojas@correo.ejemplo")
         assertNull(app.usuarioActual.value?.avatar)
 
         val foto = Bitmap.createBitmap(800, 600, Bitmap.Config.ARGB_8888)
@@ -315,7 +324,7 @@ class PagoFlexBaseDatosTest {
     @Test
     fun avisos_y_restablecerDatos() {
         val app = nuevaApp()
-        entrar(app, "crojas@correo.ejemplo", Rol.USUARIO_FINAL)
+        entrar(app, "crojas@correo.ejemplo")
         assertTrue(app.guardarAvisos(false, DiasAnticipacion.CINCO))
         assertEquals(false, nuevaApp().datos.value.usuarioPorId(1)?.avisosActivos)
         app.pagar(101, SolicitudPago(MedioPago.DEBITO, idTarjeta = 1))
@@ -327,4 +336,61 @@ class PagoFlexBaseDatosTest {
         assertEquals(true, datos.usuarioPorId(1)?.avisosActivos)
         assertFalse(datos.pagos.any { it.numeroComprobante == "CPR-000454" })
     }
+
+    @Test
+    fun pagarCuotas_avanzaHastaQuedarAlDia() {
+        val app = nuevaApp()
+        entrar(app, "crojas@correo.ejemplo")
+        val recaudadoAntes = app.datos.value.resumenPanel().recaudadoMes
+
+        val primero = app.pagar(101, SolicitudPago(MedioPago.DEBITO, idTarjeta = 1))
+        val once = primero?.siguienteCuota
+        assertEquals(11, once?.numeroCuota)
+        assertEquals("Arriendo departamento noviembre", once?.concepto)
+        val plazaOriente = { app.datos.value.avancePorEmpresa(1).first { it.empresa.idEmpresa == 8 } }
+        assertEquals(once?.idCompromiso, plazaOriente().actual?.idCompromiso)
+        assertEquals(EstadoCompromiso.PENDIENTE, nuevaApp().datos.value.compromisoPorId(once!!.idCompromiso)?.estado)
+
+        val doce = app.pagar(once.idCompromiso, SolicitudPago(MedioPago.DEBITO, idTarjeta = 1))?.siguienteCuota
+        assertEquals(12, doce?.numeroCuota)
+        assertNull(app.pagar(doce!!.idCompromiso, SolicitudPago(MedioPago.DEBITO, idTarjeta = 1))?.siguienteCuota)
+        assertTrue(plazaOriente().alDia)
+        assertEquals(12, plazaOriente().ultimoPagado?.numeroCuota)
+        assertEquals(recaudadoAntes + 3 * 520_000L, app.datos.value.resumenPanel().recaudadoMes)
+    }
+
+    @Test
+    fun recuperarClave_conCorreoYRut() {
+        val app = nuevaApp()
+        assertNotNull(app.verificarCuenta(DatosRecuperacion("crojas@correo.ejemplo", "12.476.318-5")))
+        assertNotNull(app.verificarCuenta(DatosRecuperacion("rsalinas@pagoflex.ejemplo", "13.907.264-2")))
+        assertNull(app.verificarCuenta(DatosRecuperacion("crojas@correo.ejemplo", "15834207-3")))
+        assertNotNull(app.recuperarClave(ClaveRecuperada("crojas@correo.ejemplo", "15.834.207-3", CLAVE_DE_PRUEBA)))
+        assertNull(app.recuperarClave(ClaveRecuperada("crojas@correo.ejemplo", "15.834.207-3", "73915")))
+
+        assertNotNull(app.iniciarSesion(Credenciales("crojas@correo.ejemplo", CLAVE_DE_PRUEBA)))
+        entrar(app, "crojas@correo.ejemplo", clave = "73915")
+        assertEquals(Rol.USUARIO_FINAL, app.usuarioActual.value?.rol)
+    }
+
+    @Test
+    fun miPerfil_editarDatosYCambiarClave() {
+        val app = nuevaApp()
+        entrar(app, "crojas@correo.ejemplo")
+        val nuevos = MisDatos("Camila Andrea", "Rojas Peña", "camila.rojas@gmail.com", "+56 9 1111 2222", 2)
+        assertNull(app.actualizarMisDatos(nuevos))
+        assertNotNull(app.actualizarMisDatos(nuevos))
+        assertNotNull(app.actualizarMisDatos(nuevos.copy(correo = "lmunoz@correo.ejemplo")))
+        val guardada = nuevaApp().datos.value.usuarioPorId(1)
+        assertEquals("camila.rojas@gmail.com", guardada?.correo)
+        assertEquals(2, guardada?.idComuna)
+        assertEquals("15.834.207-3", guardada?.rut)
+
+        assertNotNull(app.cambiarMiClave(CambioClave("99999", "73915")))
+        assertNull(app.cambiarMiClave(CambioClave(CLAVE_DE_PRUEBA, "73915")))
+        app.cerrarSesion()
+        assertNotNull(app.iniciarSesion(Credenciales("camila.rojas@gmail.com", CLAVE_DE_PRUEBA)))
+        entrar(app, "camila.rojas@gmail.com", clave = "73915")
+    }
 }
+

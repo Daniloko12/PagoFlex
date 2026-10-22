@@ -60,6 +60,8 @@ private val EsquemaOscuro = darkColorScheme(
     surfaceContainerHighest = NegroMaximo,
     inverseSurface = Blanco,
     inverseOnSurface = Negro,
+    error = Rojo,
+    onError = Negro,
     inversePrimary = PrimarioOscuro,
     scrim = Negro
 )
@@ -110,6 +112,8 @@ private val EsquemaClaro = lightColorScheme(
     surfaceContainerHighest = BlancoMaximo,
     inverseSurface = NegroSnackbar,
     inverseOnSurface = Blanco,
+    error = RojoIntenso,
+    onError = Blanco,
     inversePrimary = Primario,
     scrim = Negro
 )

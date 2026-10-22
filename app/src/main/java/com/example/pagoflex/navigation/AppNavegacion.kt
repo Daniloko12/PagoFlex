@@ -21,6 +21,7 @@ import com.example.pagoflex.model.EstadoRecomendacion
 import com.example.pagoflex.model.Rol
 import com.example.pagoflex.model.codigoConfirmacionDe
 import com.example.pagoflex.model.compromisoPorId
+import com.example.pagoflex.model.formatoFecha
 import com.example.pagoflex.model.nombreCompleto
 import com.example.pagoflex.model.pagoPorComprobante
 import com.example.pagoflex.model.primerNombre
@@ -34,6 +35,7 @@ import com.example.pagoflex.model.usuarioPorId
 import com.example.pagoflex.ui.screens.AgregarTarjetaScreen
 import com.example.pagoflex.ui.screens.AvanceScreen
 import com.example.pagoflex.ui.screens.AvisosScreen
+import com.example.pagoflex.ui.screens.CambiarClaveScreen
 import com.example.pagoflex.ui.screens.ClienteFormScreen
 import com.example.pagoflex.ui.screens.ClientesScreen
 import com.example.pagoflex.ui.screens.CobranzaScreen
@@ -45,15 +47,18 @@ import com.example.pagoflex.ui.screens.DetalleCompromisoScreen
 import com.example.pagoflex.ui.screens.DetalleRecomendacionScreen
 import com.example.pagoflex.ui.screens.DetalleReporteScreen
 import com.example.pagoflex.ui.screens.EditarCompromisoScreen
+import com.example.pagoflex.ui.screens.EditarPerfilScreen
 import com.example.pagoflex.ui.screens.HistorialScreen
 import com.example.pagoflex.ui.screens.IngresoScreen
 import com.example.pagoflex.ui.screens.InicioScreen
 import com.example.pagoflex.ui.screens.MenuSesion
 import com.example.pagoflex.ui.screens.OpcionMenu
 import com.example.pagoflex.ui.screens.PagoScreen
+import com.example.pagoflex.ui.screens.PanelScreen
 import com.example.pagoflex.ui.screens.PerfilScreen
 import com.example.pagoflex.ui.screens.RecomendacionesScreen
 import com.example.pagoflex.ui.screens.RecomendarScreen
+import com.example.pagoflex.ui.screens.RecuperarClaveScreen
 import com.example.pagoflex.ui.screens.RegistrarCompromisoScreen
 import com.example.pagoflex.ui.screens.RegistroScreen
 import com.example.pagoflex.ui.screens.ReporteScreen
@@ -126,7 +131,7 @@ fun AppNavegacion(
     LaunchedEffect(usuarioActual, rutaActual) {
         val ruta = navController.currentDestination?.route
         if (usuarioActual == null && rutaActual != null &&
-            ruta != Ruta.Ingreso.ruta && ruta != Ruta.Registro.ruta
+            ruta != Ruta.Ingreso.ruta && ruta != Ruta.Registro.ruta && ruta != Ruta.RecuperarClave.ruta
         ) irAlIngreso()
     }
 
@@ -138,10 +143,12 @@ fun AppNavegacion(
                 datos = datos,
                 onIngresar = { credenciales ->
                     val error = pagoFlexViewModel.iniciarSesion(credenciales)
-                    if (error == null) {
-                        navController.navigate(rutaInicialDe(credenciales.rol).ruta) {
+                    val usuario = pagoFlexViewModel.usuarioActual.value
+                    if (error == null && usuario != null) {
+                        navController.navigate(rutaInicialDe(usuario.rol).ruta) {
                             popUpTo(Ruta.Ingreso.ruta) { inclusive = true }
                         }
+                        avisar("Bienvenido/a, ${primerNombre(usuario)}. Entraste como ${usuario.rol.etiqueta}.")
                     }
                     error
                 },
@@ -150,6 +157,7 @@ fun AppNavegacion(
                     avisar(textoDatosRestablecidos)
                 },
                 onCrearCuenta = { navController.navigate(Ruta.Registro.ruta) },
+                onRecuperarClave = { navController.navigate(Ruta.RecuperarClave.ruta) },
                 modoOscuro = modoOscuro,
                 onCambiarModo = pagoFlexViewModel::cambiarModoOscuro,
                 snackbarHostState = snackbarHostState
@@ -174,6 +182,56 @@ fun AppNavegacion(
             )
         }
 
+        composable(Ruta.RecuperarClave.ruta) {
+            RecuperarClaveScreen(
+                onVerificar = pagoFlexViewModel::verificarCuenta,
+                onClaveValida = { recuperada ->
+                    val error = pagoFlexViewModel.recuperarClave(recuperada)
+                    if (error == null) {
+                        navController.navigateUp()
+                        avisar("Listo, cambiamos tu contraseña. Ya puedes ingresar con ella.")
+                    }
+                    error
+                },
+                onVolver = { navController.navigateUp() },
+                snackbarHostState = snackbarHostState
+            )
+        }
+
+        composable(Ruta.EditarPerfil.ruta) {
+            val usuario = usuarioActual ?: return@composable
+            EditarPerfilScreen(
+                datos = datos,
+                usuario = usuario,
+                onDatosValidos = { misDatos ->
+                    val error = pagoFlexViewModel.actualizarMisDatos(misDatos)
+                    if (error == null) {
+                        navController.navigateUp()
+                        avisar("Listo, actualizamos tus datos.")
+                    }
+                    error
+                },
+                onVolver = { navController.navigateUp() },
+                snackbarHostState = snackbarHostState
+            )
+        }
+
+        composable(Ruta.CambiarClave.ruta) {
+            if (usuarioActual == null) return@composable
+            CambiarClaveScreen(
+                onCambioValido = { cambio ->
+                    val error = pagoFlexViewModel.cambiarMiClave(cambio)
+                    if (error == null) {
+                        navController.navigateUp()
+                        avisar("Listo, cambiaste tu contraseña. Úsala la próxima vez que ingreses.")
+                    }
+                    error
+                },
+                onVolver = { navController.navigateUp() },
+                snackbarHostState = snackbarHostState
+            )
+        }
+
         composable(Ruta.Perfil.ruta) {
             val usuario = usuarioActual ?: return@composable
             PerfilScreen(
@@ -185,6 +243,8 @@ fun AppNavegacion(
                 onImagenElegida = { uri ->
                     avisar(if (pagoFlexViewModel.cambiarAvatarDesdeGaleria(uri)) textoFotoActualizada else textoFotoError)
                 },
+                onEditarDatos = { navController.navigate(Ruta.EditarPerfil.ruta) },
+                onCambiarClave = { navController.navigate(Ruta.CambiarClave.ruta) },
                 menu = menuEn(Ruta.Perfil),
                 snackbarHostState = snackbarHostState
             )
@@ -246,9 +306,17 @@ fun AppNavegacion(
                         navController.navigate(Ruta.Comprobante.crear(resultado.pago.numeroComprobante)) {
                             popUpTo(Ruta.Inicio.ruta)
                         }
+                        val siguiente = resultado.siguienteCuota
+                        val textoSiguiente = when {
+                            siguiente != null ->
+                                " Tu cuota ${siguiente.numeroCuota} de ${siguiente.totalCuotas} vence el ${formatoFecha(siguiente.fechaVencimiento)}."
+                            compromiso.numeroCuota != null && compromiso.numeroCuota == compromiso.totalCuotas ->
+                                " ¡Pagaste todas tus cuotas!"
+                            else -> ""
+                        }
                         avisar(
-                            if (resultado.reconocimientos.isEmpty()) "¡Pago confirmado!"
-                            else "¡Pago confirmado! Nuevo reconocimiento: ${resultado.reconocimientos.joinToString(", ")}"
+                            if (resultado.reconocimientos.isEmpty()) "¡Pago confirmado!$textoSiguiente"
+                            else "¡Pago confirmado!$textoSiguiente Nuevo reconocimiento: ${resultado.reconocimientos.joinToString(", ")}"
                         )
                     }
                 },
@@ -395,6 +463,23 @@ fun AppNavegacion(
                     avisar(if (sinSenal) "Modo sin conexión activado" else "Conexión restablecida")
                 },
                 menu = menuEn(Ruta.Avisos),
+                snackbarHostState = snackbarHostState
+            )
+        }
+
+        composable(Ruta.Panel.ruta) {
+            val admin = usuarioActual?.takeIf { it.rol == Rol.ADMINISTRADOR } ?: return@composable
+            PanelScreen(
+                datos = datos,
+                usuario = admin,
+                onVerCompromiso = { id -> navController.navigate(Ruta.DetalleCompromisoEmpresa.crear(id)) },
+                onVerCompromisos = { irAPrincipal(Ruta.CompromisosEmpresa.ruta) },
+                onVerClientes = { irAPrincipal(Ruta.Clientes.ruta) },
+                onVerReportes = { irAPrincipal(Ruta.Reportes.ruta) },
+                onVerRecomendaciones = { irAPrincipal(Ruta.Recomendaciones.ruta) },
+                onRegistrar = { navController.navigate(Ruta.RegistrarCompromiso.crear()) },
+                onNuevoCliente = { navController.navigate(Ruta.NuevoCliente.ruta) },
+                menu = menuEn(Ruta.Panel),
                 snackbarHostState = snackbarHostState
             )
         }
@@ -675,7 +760,7 @@ fun AppNavegacion(
 
 fun rutaInicialDe(rol: Rol): Ruta = when (rol) {
     Rol.USUARIO_FINAL -> Ruta.Inicio
-    Rol.ADMINISTRADOR -> Ruta.CompromisosEmpresa
+    Rol.ADMINISTRADOR -> Ruta.Panel
 }
 
 private fun opcionesMenu(rol: Rol): List<OpcionMenu> = when (rol) {
@@ -688,6 +773,7 @@ private fun opcionesMenu(rol: Rol): List<OpcionMenu> = when (rol) {
         OpcionMenu(Ruta.Perfil.ruta, R.string.menu_perfil, R.drawable.ic_persona)
     )
     Rol.ADMINISTRADOR -> listOf(
+        OpcionMenu(Ruta.Panel.ruta, R.string.menu_panel, R.drawable.ic_inicio),
         OpcionMenu(Ruta.CompromisosEmpresa.ruta, R.string.menu_compromisos, R.drawable.ic_lista),
         OpcionMenu(Ruta.Clientes.ruta, R.string.menu_clientes, R.drawable.ic_clientes),
         OpcionMenu(Ruta.Cobranza.ruta, R.string.menu_cobranza, R.drawable.ic_grafico),

@@ -328,12 +328,14 @@ class PagoFlexDbHelper(context: Context) :
         pago: Pago,
         compromiso: Compromiso,
         reconocimientos: List<UsuarioReconocimiento>,
-        tarjetaNueva: Tarjeta? = null
+        tarjetaNueva: Tarjeta? = null,
+        siguienteCuota: Compromiso? = null
     ): Boolean =
         enTransaccion { db ->
             if (tarjetaNueva != null) db.insertOrThrow("tarjeta", null, valoresDe(tarjetaNueva))
             db.insertOrThrow("pago", null, valoresDe(pago))
             actualizarCompromiso(db, compromiso)
+            if (siguienteCuota != null) db.insertOrThrow("compromiso", null, valoresDe(siguienteCuota))
             reconocimientos.forEach { db.insertOrThrow("usuario_reconocimiento", null, valoresDe(it)) }
         }
 

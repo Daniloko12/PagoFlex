@@ -51,3 +51,47 @@ data class ResumenCobranza(
     val tasa: Double?,
     val esCifraAgregada: Boolean
 )
+
+data class AvanceEmpresa(
+    val empresa: EmpresaCliente,
+    val actual: Compromiso?,
+    val porPagar: Int,
+    val ultimoPagado: Compromiso?
+) {
+    val alDia: Boolean get() = actual == null
+}
+
+data class CantidadEstado(
+    val estado: EstadoCompromiso,
+    val cantidad: Int
+)
+
+data class RecaudacionMes(
+    val mes: YearMonth,
+    val monto: Long
+)
+
+data class DeudaEmpresa(
+    val empresa: EmpresaCliente,
+    val monto: Long,
+    val cantidad: Int
+)
+
+data class ResumenPanel(
+    val montoPorCobrar: Long,
+    val cantidadPorCobrar: Int,
+    val montoVencido: Long,
+    val cantidadVencidos: Int,
+    val recaudadoMes: Long,
+    val pagosMes: Int,
+    val clientesActivos: Int,
+    val clientesConDeuda: Int,
+    val reportesAbiertos: Int,
+    val reportesAtrasados: Int,
+    val recomendacionesEnCurso: Int,
+    val porEstado: List<CantidadEstado>,
+    val recaudacionPorMes: List<RecaudacionMes>,
+    val deudaPorEmpresa: List<DeudaEmpresa>,
+    val vencidosAntiguos: List<Compromiso>,
+    val proximosVencimientos: List<Compromiso>
+)

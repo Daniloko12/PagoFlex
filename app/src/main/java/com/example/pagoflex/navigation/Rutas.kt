@@ -4,6 +4,9 @@ sealed class Ruta(val ruta: String) {
     data object Ingreso : Ruta("ingreso")
     data object Registro : Ruta("registro")
     data object Perfil : Ruta("perfil")
+    data object RecuperarClave : Ruta("recuperar-clave")
+    data object EditarPerfil : Ruta("editar-perfil")
+    data object CambiarClave : Ruta("cambiar-clave")
 
     data object Inicio : Ruta("inicio")
     data object Historial : Ruta("historial")
@@ -26,6 +29,7 @@ sealed class Ruta(val ruta: String) {
         fun crear(numero: String) = "comprobante/$numero"
     }
 
+    data object Panel : Ruta("panel")
     data object CompromisosEmpresa : Ruta("compromisos-empresa")
     data object DetalleCompromisoEmpresa : Ruta("compromiso-empresa/{idCompromiso}") {
         fun crear(idCompromiso: Int) = "compromiso-empresa/$idCompromiso"

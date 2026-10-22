@@ -401,3 +401,107 @@ fun BaseDatos.validarPersona(
         telefono = if (!telefonoValido(telefono)) "Ingresa un teléfono de al menos 8 dígitos" else null
     )
 }
+
+fun BaseDatos.cuentaParaRecuperar(correo: String, rut: String): Usuario? =
+    usuarioPorCorreo(correo)?.takeIf { validarRut(rut) && normalizarRut(it.rut) == normalizarRut(rut) }
+
+fun BaseDatos.siguienteCuota(compromiso: Compromiso, fecha: LocalDateTime): Compromiso? {
+    val numero = compromiso.numeroCuota ?: return null
+    val total = compromiso.totalCuotas ?: return null
+    if (numero >= total) return null
+    val yaExiste = compromisos.any {
+        it.idUsuarioFinal == compromiso.idUsuarioFinal && it.idEmpresa == compromiso.idEmpresa &&
+            it.totalCuotas == total && it.numeroCuota == numero + 1 && it.estado != EstadoCompromiso.ANULADO
+    }
+    if (yaExiste) return null
+    val nuevoId = compromisos.maxOf { it.idCompromiso } + 1
+    val siguiente = Compromiso(
+        idCompromiso = nuevoId,
+        folio = "CP-%d-%04d".format(fechaHoy.year, nuevoId),
+        idUsuarioFinal = compromiso.idUsuarioFinal,
+        idEmpresa = compromiso.idEmpresa,
+        concepto = conceptoSiguiente(compromiso.concepto),
+        numeroCuota = numero + 1,
+        totalCuotas = total,
+        monto = compromiso.monto,
+        fechaVencimiento = compromiso.fechaVencimiento.plusMonths(1),
+        estado = EstadoCompromiso.PENDIENTE,
+        recargoAplicado = 0,
+        fechaCambioEstado = fecha,
+        idAdminRegistro = compromiso.idAdminRegistro,
+        fechaRegistro = fecha
+    )
+    return actualizarVencimientos(listOf(siguiente), empresas, fechaHoy).first()
+}
+
+fun BaseDatos.avancePorEmpresa(idUsuario: Int): List<AvanceEmpresa> =
+    compromisos
+        .filter { it.idUsuarioFinal == idUsuario && it.estado != EstadoCompromiso.ANULADO }
+        .groupBy { it.idEmpresa }
+        .mapNotNull { (idEmpresa, lista) ->
+            val empresa = empresaPorId(idEmpresa) ?: return@mapNotNull null
+            val vigentes = lista
+                .filter {
+                    it.estado == EstadoCompromiso.PENDIENTE || it.estado == EstadoCompromiso.VENCIDO ||
+                        it.estado == EstadoCompromiso.EN_REVISION
+                }
+                .sortedBy { it.fechaVencimiento }
+            AvanceEmpresa(
+                empresa = empresa,
+                actual = vigentes.firstOrNull(),
+                porPagar = vigentes.size,
+                ultimoPagado = lista
+                    .filter { it.estado == EstadoCompromiso.PAGADO }
+                    .maxWithOrNull(compareBy<Compromiso> { it.fechaVencimiento }.thenBy { it.numeroCuota ?: 0 })
+            )
+        }
+        .sortedWith(
+            compareBy<AvanceEmpresa> { it.alDia }
+                .thenBy { it.actual?.fechaVencimiento }
+                .thenBy { it.empresa.nombreFantasia }
+        )
+
+fun BaseDatos.resumenPanel(meses: Int = 4): ResumenPanel {
+    val porCobrar = compromisos.filter { it.estado == EstadoCompromiso.PENDIENTE || it.estado == EstadoCompromiso.VENCIDO }
+    val vencidos = porCobrar.filter { it.estado == EstadoCompromiso.VENCIDO }
+    val mesActual = YearMonth.from(fechaHoy)
+    val pagosPorMes = pagos.groupBy { YearMonth.from(it.fechaHora) }
+    val pagosDelMes = pagosPorMes[mesActual].orEmpty()
+    val clientes = usuarios.filter { it.rol == Rol.USUARIO_FINAL }
+    return ResumenPanel(
+        montoPorCobrar = porCobrar.sumOf { totalAPagar(it).toLong() },
+        cantidadPorCobrar = porCobrar.size,
+        montoVencido = vencidos.sumOf { totalAPagar(it).toLong() },
+        cantidadVencidos = vencidos.size,
+        recaudadoMes = pagosDelMes.sumOf { it.montoPagado.toLong() },
+        pagosMes = pagosDelMes.size,
+        clientesActivos = clientes.count { it.activo },
+        clientesConDeuda = porCobrar.map { it.idUsuarioFinal }.distinct().size,
+        reportesAbiertos = reportes.count { it.estado != EstadoReporte.RESUELTO },
+        reportesAtrasados = cantidadReportesAtrasados(),
+        recomendacionesEnCurso = recomendaciones.count {
+            it.estado != EstadoRecomendacion.SE_UNIO && it.estado != EstadoRecomendacion.DESCARTADA
+        },
+        porEstado = EstadoCompromiso.entries.map { estado -> CantidadEstado(estado, compromisos.count { it.estado == estado }) },
+        recaudacionPorMes = (meses - 1 downTo 0).map { atras ->
+            val mes = mesActual.minusMonths(atras.toLong())
+            RecaudacionMes(mes, pagosPorMes[mes].orEmpty().sumOf { it.montoPagado.toLong() })
+        },
+        deudaPorEmpresa = porCobrar
+            .groupBy { it.idEmpresa }
+            .mapNotNull { (idEmpresa, lista) ->
+                empresaPorId(idEmpresa)?.let { empresa ->
+                    DeudaEmpresa(empresa, lista.sumOf { totalAPagar(it).toLong() }, lista.size)
+                }
+            }
+            .sortedByDescending { it.monto },
+        vencidosAntiguos = vencidos.sortedByDescending { diasAtraso(it, fechaHoy) }.take(3),
+        proximosVencimientos = porCobrar
+            .filter {
+                it.estado == EstadoCompromiso.PENDIENTE && !it.fechaVencimiento.isBefore(fechaHoy) &&
+                    it.fechaVencimiento.isBefore(fechaHoy.plusDays(8))
+            }
+            .sortedBy { it.fechaVencimiento }
+            .take(5)
+    )
+}

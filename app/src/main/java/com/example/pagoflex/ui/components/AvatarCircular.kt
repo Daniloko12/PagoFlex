@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -33,14 +35,18 @@ import com.example.pagoflex.ui.theme.coloresExtra
 fun AvatarCircular(
     @DrawableRes imagen: Int,
     descripcion: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    foto: ImageBitmap? = null,
+    tamano: Dp = Dimens.tamanoAvatar
 ) {
+    val painter = if (foto != null) BitmapPainter(foto) else painterResource(id = imagen)
+
     Image(
-        painter = painterResource(id = imagen),
+        painter = painter,
         contentDescription = descripcion,
         contentScale = ContentScale.Crop,
         modifier = modifier
-            .size(Dimens.tamanoAvatar)
+            .size(tamano)
             .shadow(elevation = 6.dp, shape = CircleShape)
             .clip(CircleShape)
             .border(Dimens.bordeAvatar, MaterialTheme.colorScheme.surface, CircleShape)

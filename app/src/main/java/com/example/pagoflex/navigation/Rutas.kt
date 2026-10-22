@@ -3,6 +3,7 @@ package com.example.pagoflex.navigation
 sealed class Ruta(val ruta: String) {
     data object Ingreso : Ruta("ingreso")
     data object Registro : Ruta("registro")
+    data object Perfil : Ruta("perfil")
 
     data object Inicio : Ruta("inicio")
     data object Historial : Ruta("historial")

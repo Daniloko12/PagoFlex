@@ -13,11 +13,15 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.pagoflex.R
+import com.example.pagoflex.data.ConvertidorImagen
 import com.example.pagoflex.model.Canal
 import com.example.pagoflex.model.BaseDatos
 import com.example.pagoflex.model.CategoriaCumplimiento
@@ -45,6 +49,11 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 val ESPACIO_BOTON_FLOTANTE = 88.dp
+
+@Composable
+fun fotoDe(avatar: ByteArray?): ImageBitmap? = remember(avatar) {
+    avatar?.let { bytes -> ConvertidorImagen.aBitmap(bytes)?.asImageBitmap() }
+}
 
 @Composable
 fun colorEstado(estado: EstadoCompromiso): Color {

@@ -107,7 +107,6 @@ data class DatosCliente(
 )
 
 data class IngresoUiState(
-    val rol: Rol = Rol.USUARIO_FINAL,
     val correo: String = "",
     val clave: String = "",
 
@@ -120,8 +119,77 @@ data class IngresoUiState(
 
 data class Credenciales(
     val correo: String,
-    val clave: String,
-    val rol: Rol
+    val clave: String
+)
+
+data class RecuperarClaveUiState(
+    val correo: String = "",
+    val rut: String = "",
+    val claveNueva: String = "",
+    val confirmacionClave: String = "",
+
+    val claveVisible: Boolean = false,
+    val cuentaVerificada: Boolean = false,
+
+    val errorCorreo: String? = null,
+    val errorRut: String? = null,
+    val errorClaveNueva: String? = null,
+    val errorConfirmacion: String? = null,
+    val errorRecuperacion: String? = null
+)
+
+data class DatosRecuperacion(
+    val correo: String,
+    val rut: String
+)
+
+data class ClaveRecuperada(
+    val correo: String,
+    val rut: String,
+    val claveNueva: String
+)
+
+data class EditarPerfilUiState(
+    val nombres: String = "",
+    val apellidos: String = "",
+    val correo: String = "",
+    val telefono: String = "",
+    val comuna: Comuna? = null,
+
+    val idCargado: Int? = null,
+
+    val errorNombres: String? = null,
+    val errorApellidos: String? = null,
+    val errorCorreo: String? = null,
+    val errorTelefono: String? = null,
+    val errorComuna: String? = null,
+    val errorGuardar: String? = null
+)
+
+data class MisDatos(
+    val nombres: String,
+    val apellidos: String,
+    val correo: String,
+    val telefono: String,
+    val idComuna: Int?
+)
+
+data class CambiarClaveUiState(
+    val claveActual: String = "",
+    val claveNueva: String = "",
+    val confirmacionClave: String = "",
+
+    val claveVisible: Boolean = false,
+
+    val errorClaveActual: String? = null,
+    val errorClaveNueva: String? = null,
+    val errorConfirmacion: String? = null,
+    val errorCambio: String? = null
+)
+
+data class CambioClave(
+    val claveActual: String,
+    val claveNueva: String
 )
 
 data class RegistroUiState(
@@ -192,7 +260,8 @@ data class SolicitudPago(
 
 data class ResultadoPago(
     val pago: Pago,
-    val reconocimientos: List<String>
+    val reconocimientos: List<String>,
+    val siguienteCuota: Compromiso? = null
 )
 
 data class TarjetaUiState(

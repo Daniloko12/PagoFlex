@@ -27,6 +27,15 @@ fun formatoPesos(monto: Long): String {
 
 fun formatoPesos(monto: Int): String = formatoPesos(monto.toLong())
 
+fun formatoPesosCorto(monto: Long): String = when {
+    monto >= 1_000_000 -> {
+        val decimas = Math.round(monto / 100_000.0)
+        if (decimas % 10 == 0L) "$${decimas / 10} M" else "$${decimas / 10},${decimas % 10} M"
+    }
+    monto >= 1_000 -> "$${Math.round(monto / 1_000.0)} mil"
+    else -> "$$monto"
+}
+
 fun formatoFecha(fecha: LocalDate): String = fecha.format(formatoFechaCorta)
 
 fun formatoFechaHora(fechaHora: LocalDateTime): String = fechaHora.format(formatoFechaHoraCorta)
@@ -40,6 +49,17 @@ fun parsearFecha(texto: String): LocalDate? = try {
 fun nombreMes(mes: Int): String = nombresMeses[mes - 1]
 
 fun etiquetaMes(mes: YearMonth): String = "${nombreMes(mes.monthValue)} ${mes.year}"
+
+fun etiquetaMesCorta(mes: YearMonth): String = nombreMes(mes.monthValue).take(3)
+
+fun conceptoSiguiente(concepto: String): String {
+    val palabras = concepto.trim().split(" ")
+    val indice = nombresMeses.indexOfFirst { it.equals(palabras.last(), ignoreCase = true) }
+    if (indice < 0) return concepto
+    val siguiente = nombresMeses[(indice + 1) % 12]
+    val escrito = if (palabras.last().first().isUpperCase()) siguiente else siguiente.lowercase()
+    return (palabras.dropLast(1) + escrito).joinToString(" ")
+}
 
 fun formatoPorcentaje(valor: Double): String {
     val decimas = Math.round(valor * 10)
@@ -93,6 +113,19 @@ fun codigoConfirmacionDe(rut: String): String {
 const val CLAVE_DE_PRUEBA = "12345"
 
 fun claveValida(clave: String): Boolean = clave.length == 5 && clave.all { it.isDigit() }
+
+fun errorClaveNueva(clave: String): String? = when {
+    clave.isBlank() -> "Crea tu contraseña"
+    !claveValida(clave) -> "La contraseña debe tener 5 dígitos"
+    clave.toSet().size == 1 || clave == "12345" || clave == "54321" -> "Es muy fácil de adivinar. Elige otra combinación"
+    else -> null
+}
+
+fun errorConfirmacionClave(clave: String, confirmacion: String): String? = when {
+    confirmacion.isBlank() -> "Repite tu contraseña"
+    confirmacion != clave -> "Las contraseñas no coinciden"
+    else -> null
+}
 
 fun hashClave(rut: String, clave: String): String {
     val texto = "${normalizarRut(rut)}:$clave"

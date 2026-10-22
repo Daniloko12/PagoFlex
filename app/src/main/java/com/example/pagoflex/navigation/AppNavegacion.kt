@@ -51,6 +51,7 @@ import com.example.pagoflex.ui.screens.InicioScreen
 import com.example.pagoflex.ui.screens.MenuSesion
 import com.example.pagoflex.ui.screens.OpcionMenu
 import com.example.pagoflex.ui.screens.PagoScreen
+import com.example.pagoflex.ui.screens.PerfilScreen
 import com.example.pagoflex.ui.screens.RecomendacionesScreen
 import com.example.pagoflex.ui.screens.RecomendarScreen
 import com.example.pagoflex.ui.screens.RegistrarCompromisoScreen
@@ -81,6 +82,8 @@ fun AppNavegacion(
     val scope = rememberCoroutineScope()
     val textoSesionCerrada = stringResource(R.string.snackbar_sesion_cerrada)
     val textoDatosRestablecidos = stringResource(R.string.snackbar_datos_restablecidos)
+    val textoFotoActualizada = stringResource(R.string.snackbar_foto_actualizada)
+    val textoFotoError = stringResource(R.string.snackbar_foto_error)
 
     fun avisar(texto: String) {
         scope.launch { snackbarHostState.showSnackbar(texto) }
@@ -167,6 +170,22 @@ fun AppNavegacion(
                     error
                 },
                 onVolver = { navController.navigateUp() },
+                snackbarHostState = snackbarHostState
+            )
+        }
+
+        composable(Ruta.Perfil.ruta) {
+            val usuario = usuarioActual ?: return@composable
+            PerfilScreen(
+                datos = datos,
+                usuario = usuario,
+                onFotoTomada = { foto ->
+                    avisar(if (pagoFlexViewModel.cambiarAvatarDesdeCamara(foto)) textoFotoActualizada else textoFotoError)
+                },
+                onImagenElegida = { uri ->
+                    avisar(if (pagoFlexViewModel.cambiarAvatarDesdeGaleria(uri)) textoFotoActualizada else textoFotoError)
+                },
+                menu = menuEn(Ruta.Perfil),
                 snackbarHostState = snackbarHostState
             )
         }
@@ -665,13 +684,15 @@ private fun opcionesMenu(rol: Rol): List<OpcionMenu> = when (rol) {
         OpcionMenu(Ruta.Historial.ruta, R.string.menu_historial, R.drawable.ic_historial),
         OpcionMenu(Ruta.Avance.ruta, R.string.menu_avance, R.drawable.ic_estrella),
         OpcionMenu(Ruta.Tarjetas.ruta, R.string.menu_tarjetas, R.drawable.ic_tarjeta),
-        OpcionMenu(Ruta.Avisos.ruta, R.string.menu_avisos, R.drawable.ic_campana)
+        OpcionMenu(Ruta.Avisos.ruta, R.string.menu_avisos, R.drawable.ic_campana),
+        OpcionMenu(Ruta.Perfil.ruta, R.string.menu_perfil, R.drawable.ic_persona)
     )
     Rol.ADMINISTRADOR -> listOf(
         OpcionMenu(Ruta.CompromisosEmpresa.ruta, R.string.menu_compromisos, R.drawable.ic_lista),
         OpcionMenu(Ruta.Clientes.ruta, R.string.menu_clientes, R.drawable.ic_clientes),
         OpcionMenu(Ruta.Cobranza.ruta, R.string.menu_cobranza, R.drawable.ic_grafico),
         OpcionMenu(Ruta.Reportes.ruta, R.string.menu_reportes, R.drawable.ic_reporte),
-        OpcionMenu(Ruta.Recomendaciones.ruta, R.string.menu_recomendaciones, R.drawable.ic_recomendar)
+        OpcionMenu(Ruta.Recomendaciones.ruta, R.string.menu_recomendaciones, R.drawable.ic_recomendar),
+        OpcionMenu(Ruta.Perfil.ruta, R.string.menu_perfil, R.drawable.ic_persona)
     )
 }

@@ -53,6 +53,7 @@
     <string name="titulo_cliente">Ficha del cliente</string>
     <string name="titulo_nuevo_cliente">Nuevo cliente</string>
     <string name="titulo_editar_cliente">Editar cliente</string>
+    <string name="titulo_perfil">Mi perfil</string>
 
     <string name="menu_inicio">Inicio</string>
     <string name="menu_historial">Historial de pagos</string>
@@ -64,6 +65,7 @@
     <string name="menu_compromisos">Compromisos</string>
     <string name="menu_clientes">Clientes</string>
     <string name="menu_cobranza">Cobranza</string>
+    <string name="menu_perfil">Mi perfil</string>
     <string name="menu_modo_oscuro">Modo oscuro</string>
     <string name="menu_cerrar_sesion">Cerrar sesión</string>
 
@@ -100,6 +102,16 @@
     <string name="btn_nuevo_cliente">Nuevo cliente</string>
     <string name="btn_crear_cliente">Crear cliente</string>
     <string name="btn_guardar_cambios">Guardar cambios</string>
+
+    <string name="btn_camara">Cámara</string>
+    <string name="btn_galeria">Galería</string>
+    <string name="texto_cambiar_foto">Cambia tu foto de perfil</string>
+    <string name="snackbar_foto_actualizada">Listo, actualizamos tu foto de perfil</string>
+    <string name="snackbar_foto_error">No pudimos usar esa imagen. Prueba con otra.</string>
+
+    <string name="permiso_camara_denegado">Sin permiso de cámara no se puede tomar la foto</string>
+    <string name="permiso_galeria_denegado">Sin permiso de fotos no se puede abrir la galería</string>
+    <string name="btn_ajustes">Ajustes</string>
 
     <string name="cd_logo">Logo de PagoFlex</string>
     <string name="cd_banner">Ilustración de tarjetas de pago y un calendario</string>

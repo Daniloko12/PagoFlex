@@ -39,6 +39,7 @@ import com.example.pagoflex.model.formatoPesos
 import com.example.pagoflex.model.nombreCompleto
 import com.example.pagoflex.model.totalAPagar
 import com.example.pagoflex.model.usuarioPorId
+import com.example.pagoflex.ui.components.AvatarCircular
 import com.example.pagoflex.ui.components.BarraSuperior
 import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.BotonSecundario
@@ -105,6 +106,11 @@ fun DetalleClienteScreen(
         ) {
             item {
                 TarjetaSeccion(titulo = nombreCompleto(cliente)) {
+                    AvatarCircular(
+                        imagen = R.drawable.avatar_usuario,
+                        descripcion = stringResource(R.string.cd_avatar),
+                        foto = fotoDe(cliente.avatar)
+                    )
                     EtiquetaInteres(
                         texto = if (cliente.activo) "Cuenta activa" else "Cuenta inactiva: no puede ingresar",
                         color = if (cliente.activo) MaterialTheme.coloresExtra.pagado else MaterialTheme.coloresExtra.anulado

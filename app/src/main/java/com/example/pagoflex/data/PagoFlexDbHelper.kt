@@ -42,7 +42,7 @@ class PagoFlexDbHelper(context: Context) :
     SQLiteOpenHelper(context, NOMBRE_BD, null, VERSION_BD) {
     companion object {
         const val NOMBRE_BD = "pagoflex.db"
-        private const val VERSION_BD = 2
+        private const val VERSION_BD = 3
 
         private val TABLAS = listOf(
             "rol", "comuna", "rubro", "estado_compromiso", "motivo_anulacion", "canal",
@@ -98,7 +98,8 @@ class PagoFlexDbHelper(context: Context) :
                 "id_comuna INTEGER REFERENCES comuna(id_comuna), " +
                 "fecha_incorporacion TEXT, " +
                 "avisos_activos INTEGER, " +
-                "dias_anticipacion INTEGER CHECK (dias_anticipacion IS NULL OR dias_anticipacion IN (1, 3, 5)))",
+                "dias_anticipacion INTEGER CHECK (dias_anticipacion IS NULL OR dias_anticipacion IN (1, 3, 5)), " +
+                "avatar BLOB)",
             "CREATE TABLE tarjeta (" +
                 "id_tarjeta INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario), " +
@@ -209,8 +210,14 @@ class PagoFlexDbHelper(context: Context) :
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        (TABLAS.reversed() + TABLAS_ANTIGUAS).forEach { db.execSQL("DROP TABLE IF EXISTS $it") }
-        onCreate(db)
+        if (oldVersion < 2) {
+            (TABLAS.reversed() + TABLAS_ANTIGUAS).forEach { db.execSQL("DROP TABLE IF EXISTS $it") }
+            onCreate(db)
+            return
+        }
+        if (oldVersion < 3) {
+            db.execSQL("ALTER TABLE usuario ADD COLUMN avatar BLOB")
+        }
     }
 
     private fun precargar(db: SQLiteDatabase) {
@@ -388,6 +395,12 @@ class PagoFlexDbHelper(context: Context) :
             db.update("usuario", valoresDe(usuario), "id_usuario = ?", arrayOf(usuario.idUsuario.toString()))
         }
 
+    fun actualizarAvatar(idUsuario: Int, avatar: ByteArray): Boolean =
+        enTransaccion { db ->
+            val valores = ContentValues().apply { put("avatar", avatar) }
+            db.update("usuario", valores, "id_usuario = ?", arrayOf(idUsuario.toString()))
+        }
+
     fun cambiarClave(usuario: Usuario, claveNueva: String): Boolean =
         enTransaccion { db ->
             val valores = ContentValues().apply { put("clave_hash", hashClave(usuario.rut, claveNueva)) }
@@ -457,7 +470,8 @@ class PagoFlexDbHelper(context: Context) :
         idComuna = c.enteroONulo("id_comuna"),
         fechaIncorporacion = c.textoONulo("fecha_incorporacion")?.let { LocalDate.parse(it) },
         avisosActivos = c.enteroONulo("avisos_activos")?.let { it == 1 },
-        diasAnticipacion = c.enteroONulo("dias_anticipacion")
+        diasAnticipacion = c.enteroONulo("dias_anticipacion"),
+        avatar = c.getColumnIndexOrThrow("avatar").let { columna -> if (c.isNull(columna)) null else c.getBlob(columna) }
     )
 
     private fun leerTarjeta(c: Cursor) = Tarjeta(

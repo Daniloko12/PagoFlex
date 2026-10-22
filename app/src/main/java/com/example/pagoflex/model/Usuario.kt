@@ -26,5 +26,6 @@ data class Usuario(
     val idComuna: Int? = null,
     val fechaIncorporacion: LocalDate? = null,
     val avisosActivos: Boolean? = null,
-    val diasAnticipacion: Int? = null
+    val diasAnticipacion: Int? = null,
+    val avatar: ByteArray? = null
 )

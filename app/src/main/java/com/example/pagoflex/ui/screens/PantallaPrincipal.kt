@@ -208,7 +208,8 @@ private fun EncabezadoMenu(menu: MenuSesion) {
             Spacer(Modifier.height(Dimens.espacioGrande))
             AvatarCircular(
                 imagen = R.drawable.avatar_usuario,
-                descripcion = stringResource(R.string.cd_avatar)
+                descripcion = stringResource(R.string.cd_avatar),
+                foto = fotoDe(menu.usuario?.avatar)
             )
             Spacer(Modifier.height(Dimens.espacioChico))
             Text(

@@ -1,7 +1,10 @@
 package com.example.pagoflex.viewmodel
 
 import android.app.Application
+import android.graphics.Bitmap
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
+import com.example.pagoflex.data.ConvertidorImagen
 import com.example.pagoflex.data.PagoFlexDbHelper
 import com.example.pagoflex.data.SesionPreferencias
 import com.example.pagoflex.model.Anulacion
@@ -141,6 +144,21 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun siguienteIdUsuario(datos: BaseDatos): Int = (datos.usuarios.maxOfOrNull { it.idUsuario } ?: 0) + 1
+
+    fun cambiarAvatarDesdeCamara(foto: Bitmap): Boolean =
+        guardarAvatar(ConvertidorImagen.aBytes(foto))
+
+    fun cambiarAvatarDesdeGaleria(uri: Uri): Boolean {
+        val imagen = ConvertidorImagen.desdeUri(getApplication(), uri) ?: return false
+        return guardarAvatar(ConvertidorImagen.aBytes(imagen))
+    }
+
+    private fun guardarAvatar(bytes: ByteArray): Boolean {
+        val usuario = _usuarioActual.value ?: return false
+        if (!db.actualizarAvatar(usuario.idUsuario, bytes)) return false
+        recargar()
+        return true
+    }
 
     fun cambiarModoOscuro(oscuro: Boolean) {
         _modoOscuro.value = oscuro

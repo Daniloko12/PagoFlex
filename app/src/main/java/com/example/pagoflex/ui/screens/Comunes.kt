@@ -154,11 +154,6 @@ fun inicialesEmpresa(nombre: String): String {
     return palabras.take(2).joinToString("") { it.first().uppercase() }
 }
 
-fun nombreAcceso(rol: Rol): String = when (rol) {
-    Rol.USUARIO_FINAL -> "Usuario"
-    Rol.ADMINISTRADOR -> "Administrador"
-}
-
 fun anticipacionDe(usuario: Usuario): DiasAnticipacion =
     DiasAnticipacion.entries.find { it.dias == usuario.diasAnticipacion } ?: DiasAnticipacion.TRES
 

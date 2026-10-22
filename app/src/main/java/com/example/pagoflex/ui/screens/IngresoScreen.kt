@@ -58,7 +58,6 @@ import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.CampoContrasena
 import com.example.pagoflex.ui.components.CampoTexto
 import com.example.pagoflex.ui.components.OpcionCuenta
-import com.example.pagoflex.ui.components.SelectorSegmentado
 import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
@@ -71,6 +70,7 @@ fun IngresoScreen(
     onIngresar: (Credenciales) -> String?,
     onRestablecer: () -> Unit,
     onCrearCuenta: () -> Unit,
+    onRecuperarClave: () -> Unit,
     modoOscuro: Boolean,
     onCambiarModo: (Boolean) -> Unit,
     snackbarHostState: SnackbarHostState,
@@ -80,8 +80,7 @@ fun IngresoScreen(
 
     IngresoContent(
         uiState = uiState,
-        cuentasDePrueba = datos.usuariosDelRol(uiState.rol),
-        onRolSeleccionado = viewModel::onRolSeleccionado,
+        cuentasDePrueba = datos.usuariosDelRol(Rol.USUARIO_FINAL) + datos.usuariosDelRol(Rol.ADMINISTRADOR),
         onCorreoCambia = viewModel::onCorreoCambia,
         onClaveCambia = viewModel::onClaveCambia,
         onAlternarVisibilidad = viewModel::onAlternarVisibilidad,
@@ -90,9 +89,10 @@ fun IngresoScreen(
                 onIngresar(credenciales)?.let { error -> viewModel.onErrorIngreso(error) }
             }
         },
-        onUsarCuentaDePrueba = { usuario -> viewModel.onUsarCuentaDePrueba(usuario.correo, usuario.rol) },
+        onUsarCuentaDePrueba = { usuario -> viewModel.onUsarCuentaDePrueba(usuario.correo) },
         onRestablecer = onRestablecer,
         onCrearCuenta = onCrearCuenta,
+        onRecuperarClave = onRecuperarClave,
         modoOscuro = modoOscuro,
         onCambiarModo = onCambiarModo,
         snackbarHostState = snackbarHostState
@@ -103,7 +103,6 @@ fun IngresoScreen(
 fun IngresoContent(
     uiState: IngresoUiState,
     cuentasDePrueba: List<Usuario>,
-    onRolSeleccionado: (Rol) -> Unit,
     onCorreoCambia: (String) -> Unit,
     onClaveCambia: (String) -> Unit,
     onAlternarVisibilidad: () -> Unit,
@@ -111,6 +110,7 @@ fun IngresoContent(
     onUsarCuentaDePrueba: (Usuario) -> Unit = {},
     onRestablecer: () -> Unit = {},
     onCrearCuenta: () -> Unit = {},
+    onRecuperarClave: () -> Unit = {},
     modoOscuro: Boolean = true,
     onCambiarModo: (Boolean) -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
@@ -133,7 +133,7 @@ fun IngresoContent(
                         if (indice > 0) HorizontalDivider()
                         OpcionCuenta(
                             nombre = nombreCorto(usuario),
-                            detalle = usuario.correo,
+                            detalle = "${usuario.rol.etiqueta} · ${usuario.correo}",
                             iniciales = inicialesDe(usuario),
                             seleccionada = usuario.correo == uiState.correo,
                             onClick = {
@@ -192,22 +192,10 @@ fun IngresoContent(
                     modifier = Modifier.padding(horizontal = Dimens.espacioPantalla, vertical = Dimens.espacioGrande),
                     verticalArrangement = Arrangement.spacedBy(Dimens.espacioMedio)
                 ) {
-                    Text(text = stringResource(R.string.titulo_ingreso), style = MaterialTheme.typography.titleLarge)
-
-                    SelectorSegmentado(
-                        opciones = Rol.entries,
-                        seleccionada = uiState.rol,
-                        onSeleccionar = onRolSeleccionado,
-                        textoDe = { nombreAcceso(it) }
-                    )
                     Column {
+                        Text(text = stringResource(R.string.titulo_ingreso), style = MaterialTheme.typography.titleLarge)
                         Text(
-                            text = uiState.rol.etiqueta,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = uiState.rol.descripcion,
+                            text = stringResource(R.string.texto_ingreso),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -243,6 +231,18 @@ fun IngresoContent(
                             )
                         }
                     }
+                    TextButton(
+                        onClick = onRecuperarClave,
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .offset(y = (-8).dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.btn_recuperar_clave),
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
 
                     uiState.errorIngreso?.let { TarjetaMensaje(texto = it) }
 
@@ -252,19 +252,17 @@ fun IngresoContent(
                         icono = R.drawable.ic_candado,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    if (uiState.rol == Rol.USUARIO_FINAL) {
-                        Row(
-                            modifier = Modifier.align(Alignment.CenterHorizontally),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = stringResource(R.string.texto_sin_cuenta),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            TextButton(onClick = onCrearCuenta) {
-                                Text(stringResource(R.string.btn_crear_cuenta), fontWeight = FontWeight.SemiBold)
-                            }
+                    Row(
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.texto_sin_cuenta),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        TextButton(onClick = onCrearCuenta) {
+                            Text(stringResource(R.string.btn_crear_cuenta), fontWeight = FontWeight.SemiBold)
                         }
                     }
                     TextButton(
@@ -368,7 +366,7 @@ private fun IngresoPreview() {
         IngresoContent(
             uiState = IngresoUiState(),
             cuentasDePrueba = BaseDatos().usuariosDelRol(Rol.USUARIO_FINAL),
-            onRolSeleccionado = {}, onCorreoCambia = {}, onClaveCambia = {},
+            onCorreoCambia = {}, onClaveCambia = {},
             onAlternarVisibilidad = {}, onIngresar = {}
         )
     }
@@ -380,14 +378,13 @@ private fun IngresoConErroresPreview() {
     PagoFlexTheme(modoOscuro = false) {
         IngresoContent(
             uiState = IngresoUiState(
-                rol = Rol.ADMINISTRADOR,
                 correo = "paula@",
                 clave = "123",
                 errorCorreo = "Ingresa un correo válido, por ejemplo nombre@gmail.com",
                 errorClave = "La contraseña tiene 5 dígitos"
             ),
             cuentasDePrueba = BaseDatos().usuariosDelRol(Rol.ADMINISTRADOR),
-            onRolSeleccionado = {}, onCorreoCambia = {}, onClaveCambia = {},
+            onCorreoCambia = {}, onClaveCambia = {},
             onAlternarVisibilidad = {}, onIngresar = {}, modoOscuro = false
         )
     }

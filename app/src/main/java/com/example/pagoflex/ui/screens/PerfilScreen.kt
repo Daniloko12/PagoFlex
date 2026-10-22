@@ -54,6 +54,8 @@ import com.example.pagoflex.model.tarjetasGuardadas
 import com.example.pagoflex.model.usuarioPorId
 import com.example.pagoflex.permisos.Permisos
 import com.example.pagoflex.ui.components.AvatarCircular
+import com.example.pagoflex.ui.components.BotonPrincipal
+import com.example.pagoflex.ui.components.BotonSecundario
 import com.example.pagoflex.ui.components.FilaDato
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
@@ -67,6 +69,8 @@ fun PerfilScreen(
     usuario: Usuario,
     onFotoTomada: (Bitmap) -> Unit,
     onImagenElegida: (Uri) -> Unit,
+    onEditarDatos: () -> Unit,
+    onCambiarClave: () -> Unit,
     menu: MenuSesion = MenuSesion(),
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
@@ -140,6 +144,8 @@ fun PerfilScreen(
             if (Permisos.tiene(context, Permisos.IMAGENES)) abrirGaleria()
             else pedirPermisoImagenes.launch(Permisos.IMAGENES)
         },
+        onEditarDatos = onEditarDatos,
+        onCambiarClave = onCambiarClave,
         menu = menu,
         snackbarHostState = snackbarHostState
     )
@@ -152,6 +158,8 @@ fun PerfilContent(
     foto: ImageBitmap? = null,
     onTomarFoto: () -> Unit = {},
     onAbrirGaleria: () -> Unit = {},
+    onEditarDatos: () -> Unit = {},
+    onCambiarClave: () -> Unit = {},
     menu: MenuSesion = MenuSesion(),
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
@@ -201,6 +209,17 @@ fun PerfilContent(
                     datos.comunaPorId(usuario.idComuna)?.let { FilaDato("Comuna", it.nombre) }
                     FilaDato("En PagoFlex desde", formatoFecha(usuario.fechaCreacion.toLocalDate()))
                 }
+                BotonPrincipal(
+                    texto = stringResource(R.string.btn_editar_datos),
+                    onClick = onEditarDatos,
+                    icono = R.drawable.ic_editar,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                BotonSecundario(
+                    texto = stringResource(R.string.btn_cambiar_clave),
+                    onClick = onCambiarClave,
+                    modifier = Modifier.fillMaxWidth()
+                )
                 if (usuario.rol == Rol.USUARIO_FINAL) {
                     val vigentes = datos.compromisosVigentes(usuario.idUsuario)
                     TarjetaSeccion(titulo = "Resumen") {

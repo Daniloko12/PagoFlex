@@ -1,8 +1,10 @@
 package com.example.pagoflex
 
 import com.example.pagoflex.model.BaseDatos
+import com.example.pagoflex.model.CambioClave
 import com.example.pagoflex.model.CategoriaCumplimiento
 import com.example.pagoflex.model.DatosAnexo9
+import com.example.pagoflex.model.EstadoCompromiso
 import com.example.pagoflex.model.EstadoRecomendacion
 import com.example.pagoflex.model.EstadoReporte
 import com.example.pagoflex.model.MarcaTarjeta
@@ -10,14 +12,20 @@ import com.example.pagoflex.model.MedioPago
 import com.example.pagoflex.model.MotivoAnulacion
 import com.example.pagoflex.model.MotivoReporte
 import com.example.pagoflex.model.Rol
+import com.example.pagoflex.model.avancePorEmpresa
 import com.example.pagoflex.model.calcularIndicador
 import com.example.pagoflex.model.categoriaCumplimiento
 import com.example.pagoflex.model.claveValida
 import com.example.pagoflex.model.clientes
 import com.example.pagoflex.model.codigoConfirmacionDe
 import com.example.pagoflex.model.compromisoPorId
+import com.example.pagoflex.model.conceptoSiguiente
+import com.example.pagoflex.model.cuentaParaRecuperar
 import com.example.pagoflex.model.deudaDe
+import com.example.pagoflex.model.errorClaveNueva
+import com.example.pagoflex.model.errorConfirmacionClave
 import com.example.pagoflex.model.formatoPesos
+import com.example.pagoflex.model.formatoPesosCorto
 import com.example.pagoflex.model.hashClave
 import com.example.pagoflex.model.luhnValido
 import com.example.pagoflex.model.marcaDe
@@ -33,7 +41,9 @@ import com.example.pagoflex.model.parsearVencimientoTarjeta
 import com.example.pagoflex.model.recomendacionesDe
 import com.example.pagoflex.model.reporteAtrasado
 import com.example.pagoflex.model.resumenCobranza
+import com.example.pagoflex.model.resumenPanel
 import com.example.pagoflex.model.resumenSituacion
+import com.example.pagoflex.model.siguienteCuota
 import com.example.pagoflex.model.tarjetaNuevaDe
 import com.example.pagoflex.model.tarjetasGuardadas
 import com.example.pagoflex.model.tasaCobranza
@@ -41,12 +51,15 @@ import com.example.pagoflex.model.usuarioPorId
 import com.example.pagoflex.model.validarPersona
 import com.example.pagoflex.model.validarRut
 import com.example.pagoflex.model.validarTarjeta
+import com.example.pagoflex.viewmodel.CambiarClaveViewModel
 import com.example.pagoflex.viewmodel.ClienteViewModel
 import com.example.pagoflex.viewmodel.EditarCompromisoViewModel
+import com.example.pagoflex.viewmodel.EditarPerfilViewModel
 import com.example.pagoflex.viewmodel.FormularioViewModel
 import com.example.pagoflex.viewmodel.IngresoViewModel
 import com.example.pagoflex.viewmodel.PagoViewModel
 import com.example.pagoflex.viewmodel.RecomendacionViewModel
+import com.example.pagoflex.viewmodel.RecuperarClaveViewModel
 import com.example.pagoflex.viewmodel.RegistroViewModel
 import com.example.pagoflex.viewmodel.ReporteViewModel
 import com.example.pagoflex.viewmodel.TarjetaViewModel
@@ -57,6 +70,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
 import java.time.YearMonth
 
 class ReglasNegocioTest {
@@ -105,10 +119,9 @@ class ReglasNegocioTest {
 
         ingreso.onCorreoCambia("A@gmail.com")
         ingreso.onClaveCambia("123456")
-        ingreso.onRolSeleccionado(Rol.ADMINISTRADOR)
         val credenciales = ingreso.onIngresar()
         assertEquals("12345", credenciales?.clave)
-        assertEquals(Rol.ADMINISTRADOR, credenciales?.rol)
+        assertEquals("A@gmail.com", credenciales?.correo)
     }
 
     @Test
@@ -357,5 +370,114 @@ class ReglasNegocioTest {
         assertEquals(104, resumen.pagados)
         assertEquals(14, resumen.vencidos)
         assertEquals(88.1, resumen.tasa!!, 0.0)
+    }
+
+    @Test
+    fun cuotas_alPagarSeGeneraLaSiguiente() {
+        assertEquals("Arriendo departamento noviembre", conceptoSiguiente("Arriendo departamento octubre"))
+        assertEquals("Cuota social enero", conceptoSiguiente("Cuota social diciembre"))
+        assertEquals("Mensualidad Noviembre", conceptoSiguiente("Mensualidad Octubre"))
+        assertEquals("Crédito de consumo", conceptoSiguiente("Crédito de consumo"))
+
+        val arriendo = datos.compromisoPorId(101)!!
+        val siguiente = datos.siguienteCuota(arriendo, DatosAnexo9.ULTIMA_ACTUALIZACION)
+        assertEquals(11, siguiente?.numeroCuota)
+        assertEquals(12, siguiente?.totalCuotas)
+        assertEquals("Arriendo departamento noviembre", siguiente?.concepto)
+        assertEquals(LocalDate.of(2026, 11, 10), siguiente?.fechaVencimiento)
+        assertEquals(EstadoCompromiso.PENDIENTE, siguiente?.estado)
+        assertEquals("CP-2026-0113", siguiente?.folio)
+        assertNull(datos.siguienteCuota(datos.compromisoPorId(106)!!, DatosAnexo9.ULTIMA_ACTUALIZACION))
+        assertNull(datos.siguienteCuota(datos.compromisoPorId(103)!!, DatosAnexo9.ULTIMA_ACTUALIZACION))
+        assertNull(datos.siguienteCuota(arriendo.copy(numeroCuota = 12), DatosAnexo9.ULTIMA_ACTUALIZACION))
+    }
+
+    @Test
+    fun inicio_unaTarjetaPorEmpresa() {
+        val avances = datos.avancePorEmpresa(1)
+        assertEquals(listOf(6, 8, 5, 3), avances.map { it.empresa.idEmpresa })
+        assertEquals(102, avances.first().actual?.idCompromiso)
+        assertEquals(101, avances[1].actual?.idCompromiso)
+        assertEquals(89, avances[1].ultimoPagado?.idCompromiso)
+        assertTrue(avances.none { it.alDia })
+
+        val rosa = datos.avancePorEmpresa(3)
+        assertTrue(rosa.single().alDia)
+        assertEquals(108, rosa.single().ultimoPagado?.idCompromiso)
+    }
+
+    @Test
+    fun panel_resumenParaElAdministrador() {
+        val panel = datos.resumenPanel()
+        assertEquals(datos.compromisos.size, panel.porEstado.sumOf { it.cantidad })
+        assertEquals(2, panel.cantidadVencidos)
+        assertEquals(335_500L, panel.montoVencido)
+        assertEquals(listOf(0L, 15_000L, 1_155_800L, 15_000L), panel.recaudacionPorMes.map { it.monto })
+        assertEquals(YearMonth.of(2026, 10), panel.recaudacionPorMes.last().mes)
+        assertEquals(8, panel.clientesActivos)
+        assertEquals(1, panel.deudaPorEmpresa.first().empresa.idEmpresa)
+        assertEquals(106, panel.vencidosAntiguos.first().idCompromiso)
+        assertEquals("$1,2 M", formatoPesosCorto(1_155_800))
+        assertEquals("$15 mil", formatoPesosCorto(15_000))
+        assertEquals("$2 M", formatoPesosCorto(2_000_000))
+        assertEquals("$0", formatoPesosCorto(0))
+    }
+
+    @Test
+    fun claves_recuperarYCambiar() {
+        assertNotNull(errorClaveNueva("12345"))
+        assertNotNull(errorClaveNueva("77777"))
+        assertNotNull(errorClaveNueva("7391"))
+        assertNull(errorClaveNueva("73915"))
+        assertNotNull(errorConfirmacionClave("73915", "73916"))
+        assertNull(errorConfirmacionClave("73915", "73915"))
+
+        assertEquals(1, datos.cuentaParaRecuperar("crojas@correo.ejemplo", "15834207-3")?.idUsuario)
+        assertNull(datos.cuentaParaRecuperar("crojas@correo.ejemplo", "12.476.318-5"))
+
+        val recuperar = RecuperarClaveViewModel()
+        recuperar.onCorreoCambia("crojas@correo.ejemplo")
+        recuperar.onRutCambia("15.834.207-4")
+        assertNull(recuperar.onVerificar())
+        assertNotNull(recuperar.uiState.value.errorRut)
+        recuperar.onRutCambia("15.834.207-3")
+        assertEquals("15.834.207-3", recuperar.onVerificar()?.rut)
+        recuperar.onClaveNuevaCambia("73915")
+        recuperar.onConfirmacionCambia("73915")
+        assertNull(recuperar.onGuardarClave())
+        recuperar.onCuentaVerificada()
+        assertEquals("73915", recuperar.onGuardarClave()?.claveNueva)
+        recuperar.onCorreoCambia("otra@gmail.com")
+        assertFalse(recuperar.uiState.value.cuentaVerificada)
+
+        val cambiar = CambiarClaveViewModel()
+        cambiar.onClaveActualCambia("12345")
+        cambiar.onClaveNuevaCambia("12345")
+        cambiar.onConfirmacionCambia("12345")
+        assertNull(cambiar.onGuardar())
+        cambiar.onClaveNuevaCambia("73915")
+        cambiar.onConfirmacionCambia("73915")
+        assertEquals(CambioClave("12345", "73915"), cambiar.onGuardar())
+    }
+
+    @Test
+    fun perfil_editarMisDatos() {
+        val camila = usuario(1)!!
+        val editar = EditarPerfilViewModel()
+        editar.onCargar(camila, datos)
+        assertEquals("Maipú", editar.uiState.value.comuna?.nombre)
+        editar.onCorreoCambia("lmunoz@correo.ejemplo")
+        assertNull(editar.onGuardar(camila, datos))
+        assertNotNull(editar.uiState.value.errorCorreo)
+        editar.onCorreoCambia("camila.rojas@gmail.com")
+        editar.onTelefonoCambia("+56 9 1111 2222")
+        val misDatos = editar.onGuardar(camila, datos)
+        assertEquals("camila.rojas@gmail.com", misDatos?.correo)
+        assertEquals(1, misDatos?.idComuna)
+
+        val admin = usuario(9)!!
+        val editarAdmin = EditarPerfilViewModel()
+        editarAdmin.onCargar(admin, datos)
+        assertNotNull(editarAdmin.onGuardar(admin, datos))
     }
 }

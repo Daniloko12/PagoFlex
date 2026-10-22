@@ -4,7 +4,8 @@ import androidx.lifecycle.ViewModel
 import com.example.pagoflex.model.BaseDatos
 import com.example.pagoflex.model.NuevaCuenta
 import com.example.pagoflex.model.RegistroUiState
-import com.example.pagoflex.model.claveValida
+import com.example.pagoflex.model.errorClaveNueva
+import com.example.pagoflex.model.errorConfirmacionClave
 import com.example.pagoflex.model.validarPersona
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -58,18 +59,8 @@ class RegistroViewModel : ViewModel() {
     fun onCrearCuenta(datos: BaseDatos): NuevaCuenta? {
         val estado = _uiState.value
         val errores = datos.validarPersona(estado.rut, estado.nombres, estado.apellidos, estado.correo, estado.telefono)
-        val errorClave = when {
-            estado.clave.isBlank() -> "Crea tu contraseña"
-            !claveValida(estado.clave) -> "La contraseña debe tener 5 dígitos"
-            estado.clave.toSet().size == 1 || estado.clave == "12345" || estado.clave == "54321" ->
-                "Es muy fácil de adivinar. Elige otra combinación"
-            else -> null
-        }
-        val errorConfirmacion = when {
-            estado.confirmacionClave.isBlank() -> "Repite tu contraseña"
-            estado.confirmacionClave != estado.clave -> "Las contraseñas no coinciden"
-            else -> null
-        }
+        val errorClave = errorClaveNueva(estado.clave)
+        val errorConfirmacion = errorConfirmacionClave(estado.clave, estado.confirmacionClave)
         val errorTerminos = if (!estado.aceptaTerminos) "Debes aceptar los términos para crear tu cuenta" else null
         val hayErrores = errores.hayErrores || listOf(errorClave, errorConfirmacion, errorTerminos).any { it != null }
 

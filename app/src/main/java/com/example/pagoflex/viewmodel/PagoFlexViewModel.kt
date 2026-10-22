@@ -10,19 +10,23 @@ import com.example.pagoflex.data.SesionPreferencias
 import com.example.pagoflex.model.Anulacion
 import com.example.pagoflex.model.BaseDatos
 import com.example.pagoflex.model.CLAVE_DE_PRUEBA
+import com.example.pagoflex.model.CambioClave
 import com.example.pagoflex.model.CambiosCompromiso
 import com.example.pagoflex.model.Canal
+import com.example.pagoflex.model.ClaveRecuperada
 import com.example.pagoflex.model.Compromiso
 import com.example.pagoflex.model.ContactoRecomendacion
 import com.example.pagoflex.model.Credenciales
 import com.example.pagoflex.model.DatosAnexo9
 import com.example.pagoflex.model.DatosCliente
+import com.example.pagoflex.model.DatosRecuperacion
 import com.example.pagoflex.model.DiasAnticipacion
 import com.example.pagoflex.model.EstadoCompromiso
 import com.example.pagoflex.model.EstadoRecomendacion
 import com.example.pagoflex.model.EstadoReporte
 import com.example.pagoflex.model.HistorialRecomendacion
 import com.example.pagoflex.model.MedioPago
+import com.example.pagoflex.model.MisDatos
 import com.example.pagoflex.model.MotivoAnulacion
 import com.example.pagoflex.model.NuevaCuenta
 import com.example.pagoflex.model.NuevaRecomendacion
@@ -40,6 +44,7 @@ import com.example.pagoflex.model.Usuario
 import com.example.pagoflex.model.UsuarioReconocimiento
 import com.example.pagoflex.model.actualizarVencimientos
 import com.example.pagoflex.model.compromisoPorId
+import com.example.pagoflex.model.cuentaParaRecuperar
 import com.example.pagoflex.model.empresaPorId
 import com.example.pagoflex.model.formatoFecha
 import com.example.pagoflex.model.motivoParaNoAnular
@@ -53,6 +58,7 @@ import com.example.pagoflex.model.normalizarRut
 import com.example.pagoflex.model.reconocimientoPorId
 import com.example.pagoflex.model.recomendacionPorId
 import com.example.pagoflex.model.reportePorId
+import com.example.pagoflex.model.siguienteCuota
 import com.example.pagoflex.model.tarjetaPorId
 import com.example.pagoflex.model.tarjetasGuardadas
 import com.example.pagoflex.model.totalAPagar
@@ -107,7 +113,6 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         return when {
             usuario == null -> "Correo o contraseña incorrectos"
             !usuario.activo -> "Esta cuenta no está activa. Consulta con PagoFlex."
-            usuario.rol != credenciales.rol -> "Esta cuenta es de ${usuario.rol.etiqueta}. Elige esa pestaña para ingresar."
             else -> {
                 abrirSesion(usuario)
                 null
@@ -141,6 +146,45 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         recargar()
         abrirSesion(_datos.value.usuarioPorId(usuario.idUsuario) ?: usuario)
         return null
+    }
+
+    fun verificarCuenta(datosRecuperacion: DatosRecuperacion): String? {
+        val cuenta = _datos.value.cuentaParaRecuperar(datosRecuperacion.correo, datosRecuperacion.rut)
+        return when {
+            cuenta == null -> "El correo y el RUT no coinciden con ninguna cuenta. Revisa que estén bien escritos."
+            !cuenta.activo -> "Esta cuenta no está activa. Consulta con PagoFlex."
+            else -> null
+        }
+    }
+
+    fun recuperarClave(recuperada: ClaveRecuperada): String? {
+        verificarCuenta(DatosRecuperacion(recuperada.correo, recuperada.rut))?.let { return it }
+        val cuenta = _datos.value.cuentaParaRecuperar(recuperada.correo, recuperada.rut) ?: return "No encontramos la cuenta"
+        if (db.buscarPorCredenciales(cuenta.correo, recuperada.claveNueva) != null) {
+            return "Esa ya es tu contraseña. Puedes ingresar con ella o elegir otra."
+        }
+        return if (db.cambiarClave(cuenta, recuperada.claveNueva)) null else "No pudimos cambiar la contraseña. Inténtalo de nuevo."
+    }
+
+    fun actualizarMisDatos(misDatos: MisDatos): String? {
+        val usuario = _usuarioActual.value ?: return "Inicia sesión"
+        val editado = usuario.copy(
+            nombres = misDatos.nombres,
+            apellidos = misDatos.apellidos,
+            correo = misDatos.correo,
+            telefono = misDatos.telefono,
+            idComuna = misDatos.idComuna ?: usuario.idComuna
+        )
+        if (editado == usuario) return "No cambiaste ningún dato"
+        if (!db.actualizarUsuario(editado)) return "No pudimos guardar tus datos. Revisa que el correo no esté registrado."
+        recargar()
+        return null
+    }
+
+    fun cambiarMiClave(cambio: CambioClave): String? {
+        val usuario = _usuarioActual.value ?: return "Inicia sesión"
+        if (db.buscarPorCredenciales(usuario.correo, cambio.claveActual) == null) return "Tu contraseña actual no es correcta"
+        return if (db.cambiarClave(usuario, cambio.claveNueva)) null else "No pudimos cambiar la contraseña. Inténtalo de nuevo."
     }
 
     private fun siguienteIdUsuario(datos: BaseDatos): Int = (datos.usuarios.maxOfOrNull { it.idUsuario } ?: 0) + 1
@@ -213,6 +257,7 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
             idTarjeta = tarjetaGuardada?.idTarjeta ?: tarjetaNueva?.idTarjeta
         )
         val pagado = compromiso.copy(estado = EstadoCompromiso.PAGADO, fechaCambioEstado = fechaPago)
+        val siguiente = datos.siguienteCuota(compromiso, fechaPago)
 
         val nuevos = mutableListOf<UsuarioReconocimiento>()
         val yaTiene = { idReconocimiento: Int ->
@@ -235,11 +280,15 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
                 "Pagaste \"${compromiso.concepto}\" y quedaste sin compromisos vencidos")
         }
 
-        if (!db.registrarPago(pago, pagado, nuevos, tarjetaNueva)) return null
+        if (!db.registrarPago(pago, pagado, nuevos, tarjetaNueva, siguiente)) return null
         _ultimaActualizacion.value = fechaPago
         sesion.guardarUltimaActualizacion(fechaPago)
         recargar()
-        return ResultadoPago(pago, nuevos.mapNotNull { _datos.value.reconocimientoPorId(it.idReconocimiento)?.nombre })
+        return ResultadoPago(
+            pago = pago,
+            reconocimientos = nuevos.mapNotNull { _datos.value.reconocimientoPorId(it.idReconocimiento)?.nombre },
+            siguienteCuota = siguiente
+        )
     }
 
     private fun crearTarjeta(datos: BaseDatos, idUsuario: Int, nueva: TarjetaNueva, guardada: Boolean, fecha: LocalDateTime) =

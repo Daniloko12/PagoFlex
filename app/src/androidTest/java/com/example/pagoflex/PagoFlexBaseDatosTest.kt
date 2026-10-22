@@ -2,8 +2,10 @@ package com.example.pagoflex
 
 import android.app.Application
 import android.content.Context
+import android.graphics.Bitmap
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.example.pagoflex.data.ConvertidorImagen
 import com.example.pagoflex.data.PagoFlexDbHelper
 import com.example.pagoflex.data.SesionPreferencias
 import com.example.pagoflex.model.CLAVE_DE_PRUEBA
@@ -289,6 +291,25 @@ class PagoFlexBaseDatosTest {
         assertNotNull(app.restablecerClaveCliente(9))
         app.cerrarSesion()
         entrar(app, "erivas@gmail.com", Rol.USUARIO_FINAL)
+    }
+
+    @Test
+    fun fotoDePerfil_seGuardaComoBlob() {
+        val app = nuevaApp()
+        entrar(app, "crojas@correo.ejemplo", Rol.USUARIO_FINAL)
+        assertNull(app.usuarioActual.value?.avatar)
+
+        val foto = Bitmap.createBitmap(800, 600, Bitmap.Config.ARGB_8888)
+        assertTrue(app.cambiarAvatarDesdeCamara(foto))
+        val guardada = nuevaApp().datos.value.usuarioPorId(1)?.avatar
+        assertNotNull(guardada)
+        assertEquals(400, ConvertidorImagen.aBitmap(guardada!!)?.width)
+
+        assertTrue(app.guardarAvisos(false, DiasAnticipacion.UNO))
+        assertNotNull(nuevaApp().datos.value.usuarioPorId(1)?.avatar)
+
+        app.cerrarSesion()
+        assertFalse(app.cambiarAvatarDesdeCamara(foto))
     }
 
     @Test

@@ -184,7 +184,8 @@ fun AppNavegacion(
 
         composable(Ruta.RecuperarClave.ruta) {
             RecuperarClaveScreen(
-                onVerificar = pagoFlexViewModel::verificarCuenta,
+                onSolicitarCodigo = pagoFlexViewModel::solicitarCodigo,
+                onVerificarCodigo = pagoFlexViewModel::verificarCodigo,
                 onClaveValida = { recuperada ->
                     val error = pagoFlexViewModel.recuperarClave(recuperada)
                     if (error == null) {

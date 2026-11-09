@@ -361,13 +361,15 @@ class PagoFlexBaseDatosTest {
     }
 
     @Test
-    fun recuperarClave_conCorreoYRut() {
+    fun recuperarClave_conCodigoDeVerificacion() {
         val app = nuevaApp()
-        assertNotNull(app.verificarCuenta(DatosRecuperacion("crojas@correo.ejemplo", "12.476.318-5")))
-        assertNotNull(app.verificarCuenta(DatosRecuperacion("rsalinas@pagoflex.ejemplo", "13.907.264-2")))
-        assertNull(app.verificarCuenta(DatosRecuperacion("crojas@correo.ejemplo", "15834207-3")))
-        assertNotNull(app.recuperarClave(ClaveRecuperada("crojas@correo.ejemplo", "15.834.207-3", CLAVE_DE_PRUEBA)))
-        assertNull(app.recuperarClave(ClaveRecuperada("crojas@correo.ejemplo", "15.834.207-3", "Nueva#2027")))
+        assertNull(app.solicitarCodigo(DatosRecuperacion("crojas@correo.ejemplo", "12.476.318-5")))
+        assertNull(app.solicitarCodigo(DatosRecuperacion("rsalinas@pagoflex.ejemplo", "13.907.264-2")))
+        val datos = DatosRecuperacion("crojas@correo.ejemplo", "15834207-3")
+        val codigo = app.solicitarCodigo(datos)!!
+        assertNull(app.verificarCodigo(datos, codigo))
+        assertNotNull(app.recuperarClave(ClaveRecuperada(datos.correo, datos.rut, codigo, CLAVE_DE_PRUEBA)))
+        assertNull(app.recuperarClave(ClaveRecuperada(datos.correo, datos.rut, codigo, "Nueva#2027")))
 
         assertNotNull(app.iniciarSesion(Credenciales("crojas@correo.ejemplo", CLAVE_DE_PRUEBA)))
         entrar(app, "crojas@correo.ejemplo", clave = "Nueva#2027")

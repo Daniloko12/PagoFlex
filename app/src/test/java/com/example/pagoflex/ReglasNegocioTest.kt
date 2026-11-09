@@ -4,6 +4,7 @@ import com.example.pagoflex.model.BaseDatos
 import com.example.pagoflex.model.CLAVE_DE_PRUEBA
 import com.example.pagoflex.model.CambioClave
 import com.example.pagoflex.model.CategoriaCumplimiento
+import com.example.pagoflex.model.ClaveRecuperada
 import com.example.pagoflex.model.DatosAnexo9
 import com.example.pagoflex.model.EstadoCompromiso
 import com.example.pagoflex.model.EstadoRecomendacion
@@ -13,6 +14,7 @@ import com.example.pagoflex.model.MarcaTarjeta
 import com.example.pagoflex.model.MedioPago
 import com.example.pagoflex.model.MotivoAnulacion
 import com.example.pagoflex.model.MotivoReporte
+import com.example.pagoflex.model.PasoRecuperacion
 import com.example.pagoflex.model.RequisitoClave
 import com.example.pagoflex.model.Rol
 import com.example.pagoflex.model.avancePorEmpresa
@@ -459,17 +461,30 @@ class ReglasNegocioTest {
         val recuperar = RecuperarClaveViewModel()
         recuperar.onCorreoCambia("crojas@correo.ejemplo")
         recuperar.onRutCambia("15.834.207-4")
-        assertNull(recuperar.onVerificar())
+        assertNull(recuperar.onSolicitarCodigo())
         assertNotNull(recuperar.uiState.value.errorRut)
         recuperar.onRutCambia("15.834.207-3")
-        assertEquals("15.834.207-3", recuperar.onVerificar()?.rut)
+        assertEquals("15.834.207-3", recuperar.onSolicitarCodigo()?.rut)
+        assertNull(recuperar.onVerificarCodigo())
+        recuperar.onCodigoEnviado()
+        assertEquals(PasoRecuperacion.CODIGO, recuperar.uiState.value.paso)
+        recuperar.onCodigoCambia("12a34")
+        assertEquals("1234", recuperar.uiState.value.codigo)
+        assertNull(recuperar.onVerificarCodigo())
+        assertEquals("El código tiene 6 números", recuperar.uiState.value.errorCodigo)
+        recuperar.onCodigoCambia("4829137")
+        assertEquals("482913", recuperar.onVerificarCodigo())
         recuperar.onClaveNuevaCambia("Nueva#2027")
         recuperar.onConfirmacionCambia("Nueva#2027")
         assertNull(recuperar.onGuardarClave())
-        recuperar.onCuentaVerificada()
-        assertEquals("Nueva#2027", recuperar.onGuardarClave()?.claveNueva)
-        recuperar.onCorreoCambia("otra@gmail.com")
-        assertFalse(recuperar.uiState.value.cuentaVerificada)
+        recuperar.onCodigoCorrecto()
+        assertEquals(
+            ClaveRecuperada("crojas@correo.ejemplo", "15.834.207-3", "482913", "Nueva#2027"),
+            recuperar.onGuardarClave()
+        )
+        recuperar.onCambiarDatos()
+        assertEquals(PasoRecuperacion.DATOS, recuperar.uiState.value.paso)
+        assertEquals("", recuperar.uiState.value.codigo)
 
         val cambiar = CambiarClaveViewModel()
         cambiar.onClaveActualCambia(CLAVE_DE_PRUEBA)

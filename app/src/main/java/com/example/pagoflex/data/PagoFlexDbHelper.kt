@@ -11,6 +11,7 @@ import com.example.pagoflex.model.BaseDatos
 import com.example.pagoflex.model.CLAVE_ANTERIOR_DE_PRUEBA
 import com.example.pagoflex.model.CLAVE_DE_PRUEBA
 import com.example.pagoflex.model.Canal
+import com.example.pagoflex.model.CodigoRecuperacion
 import com.example.pagoflex.model.Compromiso
 import com.example.pagoflex.model.Comuna
 import com.example.pagoflex.model.ContactoRecomendacion
@@ -43,19 +44,29 @@ class PagoFlexDbHelper(context: Context) :
     SQLiteOpenHelper(context, NOMBRE_BD, null, VERSION_BD) {
     companion object {
         const val NOMBRE_BD = "pagoflex.db"
-        private const val VERSION_BD = 4
+        private const val VERSION_BD = 5
 
         private val TABLAS = listOf(
             "rol", "comuna", "rubro", "estado_compromiso", "motivo_anulacion", "canal",
             "medio_pago", "marca_tarjeta", "motivo_reporte", "estado_reporte", "estado_recomendacion",
             "reconocimiento", "empresa_cliente", "usuario", "tarjeta", "compromiso", "anulacion",
             "pago", "reporte", "recomendacion", "contacto_recomendacion", "historial_recomendacion",
-            "usuario_reconocimiento"
+            "usuario_reconocimiento", "codigo_recuperacion"
         )
 
         private val TABLAS_ANTIGUAS = listOf("area")
 
         private fun idDe(valor: Enum<*>): Int = valor.ordinal + 1
+
+        private const val SQL_CREAR_CODIGO_RECUPERACION =
+            "CREATE TABLE codigo_recuperacion (" +
+                "id_codigo INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario), " +
+                "codigo_hash TEXT NOT NULL CHECK (length(codigo_hash) = 64), " +
+                "fecha_creacion TEXT NOT NULL, " +
+                "fecha_expiracion TEXT NOT NULL, " +
+                "intentos INTEGER NOT NULL DEFAULT 0 CHECK (intentos >= 0), " +
+                "usado INTEGER NOT NULL DEFAULT 0 CHECK (usado IN (0, 1)))"
 
         private val SQL_CREAR_TABLAS = listOf(
             "CREATE TABLE rol (id_rol INTEGER PRIMARY KEY, codigo TEXT NOT NULL UNIQUE, " +
@@ -193,7 +204,8 @@ class PagoFlexDbHelper(context: Context) :
                 "id_reconocimiento INTEGER NOT NULL REFERENCES reconocimiento(id_reconocimiento), " +
                 "fecha_obtencion TEXT NOT NULL, " +
                 "motivo TEXT NOT NULL, " +
-                "PRIMARY KEY (id_usuario_final, id_reconocimiento))"
+                "PRIMARY KEY (id_usuario_final, id_reconocimiento))",
+            SQL_CREAR_CODIGO_RECUPERACION
         )
 
         private const val SQL_SELECT_USUARIOS =
@@ -221,6 +233,9 @@ class PagoFlexDbHelper(context: Context) :
         }
         if (oldVersion < 4) {
             actualizarClavesDePrueba(db)
+        }
+        if (oldVersion < 5) {
+            db.execSQL(SQL_CREAR_CODIGO_RECUPERACION)
         }
     }
 
@@ -429,6 +444,33 @@ class PagoFlexDbHelper(context: Context) :
             db.update("usuario", valores, "id_usuario = ?", arrayOf(usuario.idUsuario.toString()))
         }
 
+    fun guardarCodigoRecuperacion(codigo: CodigoRecuperacion): Boolean =
+        enTransaccion { db ->
+            val anteriores = ContentValues().apply { put("usado", 1) }
+            db.update("codigo_recuperacion", anteriores, "id_usuario = ? AND usado = 0", arrayOf(codigo.idUsuario.toString()))
+            db.insertOrThrow("codigo_recuperacion", null, valoresDe(codigo))
+        }
+
+    fun codigoVigenteDe(idUsuario: Int): CodigoRecuperacion? =
+        consultar(
+            "SELECT * FROM codigo_recuperacion WHERE id_usuario = ? AND usado = 0 ORDER BY id_codigo DESC LIMIT 1",
+            arrayOf(idUsuario.toString())
+        ) { leerCodigo(it) }.firstOrNull()
+
+    fun sumarIntentoCodigo(codigo: CodigoRecuperacion): Boolean =
+        enTransaccion { db ->
+            val valores = ContentValues().apply { put("intentos", codigo.intentos + 1) }
+            db.update("codigo_recuperacion", valores, "id_codigo = ?", arrayOf(codigo.idCodigo.toString()))
+        }
+
+    fun cambiarClaveConCodigo(usuario: Usuario, codigo: CodigoRecuperacion, claveNueva: String): Boolean =
+        enTransaccion { db ->
+            val usado = ContentValues().apply { put("usado", 1) }
+            db.update("codigo_recuperacion", usado, "id_codigo = ?", arrayOf(codigo.idCodigo.toString()))
+            val valores = ContentValues().apply { put("clave_hash", hashClave(usuario.rut, claveNueva)) }
+            db.update("usuario", valores, "id_usuario = ?", arrayOf(usuario.idUsuario.toString()))
+        }
+
     fun registrarTarjeta(tarjeta: Tarjeta): Boolean =
         enTransaccion { db -> db.insertOrThrow("tarjeta", null, valoresDe(tarjeta)) }
 
@@ -600,6 +642,16 @@ class PagoFlexDbHelper(context: Context) :
         motivo = c.textoONulo("motivo")
     )
 
+    private fun leerCodigo(c: Cursor) = CodigoRecuperacion(
+        idCodigo = c.entero("id_codigo"),
+        idUsuario = c.entero("id_usuario"),
+        codigoHash = c.texto("codigo_hash"),
+        fechaCreacion = c.fechaHora("fecha_creacion"),
+        fechaExpiracion = c.fechaHora("fecha_expiracion"),
+        intentos = c.entero("intentos"),
+        usado = c.entero("usado") == 1
+    )
+
     private fun leerUsuarioReconocimiento(c: Cursor) = UsuarioReconocimiento(
         idUsuarioFinal = c.entero("id_usuario_final"),
         idReconocimiento = c.entero("id_reconocimiento"),
@@ -679,5 +731,11 @@ class PagoFlexDbHelper(context: Context) :
     private fun valoresDe(r: UsuarioReconocimiento) = ContentValues().apply {
         put("id_usuario_final", r.idUsuarioFinal); put("id_reconocimiento", r.idReconocimiento)
         put("fecha_obtencion", r.fechaObtencion.toString()); put("motivo", r.motivo)
+    }
+
+    private fun valoresDe(c: CodigoRecuperacion) = ContentValues().apply {
+        put("id_usuario", c.idUsuario); put("codigo_hash", c.codigoHash)
+        put("fecha_creacion", c.fechaCreacion.toString()); put("fecha_expiracion", c.fechaExpiracion.toString())
+        put("intentos", c.intentos); put("usado", if (c.usado) 1 else 0)
     }
 }

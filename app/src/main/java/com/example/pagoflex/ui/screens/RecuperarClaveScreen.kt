@@ -59,6 +59,7 @@ import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.BotonSecundario
 import com.example.pagoflex.ui.components.CampoContrasena
 import com.example.pagoflex.ui.components.CampoTexto
+import com.example.pagoflex.ui.components.MensajeAnimado
 import com.example.pagoflex.ui.components.RequisitosClave
 import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
@@ -216,7 +217,7 @@ fun RecuperarClaveContent(
                 }
             }
 
-            uiState.errorRecuperacion?.let { TarjetaMensaje(texto = it) }
+            MensajeAnimado(texto = uiState.errorRecuperacion)
 
             BotonSecundario(
                 texto = "Volver a iniciar sesión",

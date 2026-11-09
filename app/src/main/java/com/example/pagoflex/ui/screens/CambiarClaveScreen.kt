@@ -27,8 +27,8 @@ import com.example.pagoflex.ui.components.BarraSuperior
 import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.BotonSecundario
 import com.example.pagoflex.ui.components.CampoContrasena
+import com.example.pagoflex.ui.components.MensajeAnimado
 import com.example.pagoflex.ui.components.RequisitosClave
-import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
@@ -111,7 +111,7 @@ fun CambiarClaveContent(
                 )
             }
 
-            uiState.errorCambio?.let { TarjetaMensaje(texto = it) }
+            MensajeAnimado(texto = uiState.errorCambio)
 
             BotonPrincipal(
                 texto = "Guardar contraseña",

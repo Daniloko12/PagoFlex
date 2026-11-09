@@ -67,7 +67,7 @@ fun MovimientosScreen(
                 item { MensajeVacio("No hay movimientos con estos filtros.") }
             }
             items(movimientos, key = { it.idMovimiento }) { movimiento ->
-                FilaMovimiento(movimiento = movimiento, datos = datos, mostrarTitular = true)
+                FilaMovimiento(movimiento = movimiento, datos = datos, mostrarTitular = true, modifier = Modifier.animateItem())
             }
         }
     }

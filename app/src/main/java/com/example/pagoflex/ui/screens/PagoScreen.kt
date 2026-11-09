@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -216,7 +217,8 @@ fun PagoContent(
                     visible = uiState.codigoVisible,
                     onAlternarVisible = onAlternarVisibilidad,
                     error = uiState.errorCodigo,
-                    ayuda = "Son los 4 últimos números de tu RUT, antes del guion"
+                    ayuda = "Son los 4 últimos números de tu RUT, antes del guion",
+                    tipoTeclado = KeyboardType.NumberPassword
                 )
                 CasillaConTexto(
                     texto = "Revisé el total a pagar: $total",

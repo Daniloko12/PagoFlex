@@ -8,6 +8,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.example.pagoflex.model.Anulacion
 import com.example.pagoflex.model.BaseDatos
+import com.example.pagoflex.model.CLAVE_ANTERIOR_DE_PRUEBA
 import com.example.pagoflex.model.CLAVE_DE_PRUEBA
 import com.example.pagoflex.model.Canal
 import com.example.pagoflex.model.Compromiso
@@ -42,7 +43,7 @@ class PagoFlexDbHelper(context: Context) :
     SQLiteOpenHelper(context, NOMBRE_BD, null, VERSION_BD) {
     companion object {
         const val NOMBRE_BD = "pagoflex.db"
-        private const val VERSION_BD = 3
+        private const val VERSION_BD = 4
 
         private val TABLAS = listOf(
             "rol", "comuna", "rubro", "estado_compromiso", "motivo_anulacion", "canal",
@@ -217,6 +218,25 @@ class PagoFlexDbHelper(context: Context) :
         }
         if (oldVersion < 3) {
             db.execSQL("ALTER TABLE usuario ADD COLUMN avatar BLOB")
+        }
+        if (oldVersion < 4) {
+            actualizarClavesDePrueba(db)
+        }
+    }
+
+    private fun actualizarClavesDePrueba(db: SQLiteDatabase) {
+        val conClaveAnterior = mutableListOf<Pair<Int, String>>()
+        db.rawQuery("SELECT id_usuario, rut, clave_hash FROM usuario", null).use { cursor ->
+            while (cursor.moveToNext()) {
+                val rut = cursor.texto("rut")
+                if (cursor.texto("clave_hash") == hashClave(rut, CLAVE_ANTERIOR_DE_PRUEBA)) {
+                    conClaveAnterior.add(cursor.entero("id_usuario") to rut)
+                }
+            }
+        }
+        conClaveAnterior.forEach { (idUsuario, rut) ->
+            val valores = ContentValues().apply { put("clave_hash", hashClave(rut, CLAVE_DE_PRUEBA)) }
+            db.update("usuario", valores, "id_usuario = ?", arrayOf(idUsuario.toString()))
         }
     }
 

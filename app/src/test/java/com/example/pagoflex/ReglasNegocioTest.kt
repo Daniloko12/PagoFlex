@@ -1,16 +1,19 @@
 package com.example.pagoflex
 
 import com.example.pagoflex.model.BaseDatos
+import com.example.pagoflex.model.CLAVE_DE_PRUEBA
 import com.example.pagoflex.model.CambioClave
 import com.example.pagoflex.model.CategoriaCumplimiento
 import com.example.pagoflex.model.DatosAnexo9
 import com.example.pagoflex.model.EstadoCompromiso
 import com.example.pagoflex.model.EstadoRecomendacion
 import com.example.pagoflex.model.EstadoReporte
+import com.example.pagoflex.model.LARGO_MAXIMO_CLAVE
 import com.example.pagoflex.model.MarcaTarjeta
 import com.example.pagoflex.model.MedioPago
 import com.example.pagoflex.model.MotivoAnulacion
 import com.example.pagoflex.model.MotivoReporte
+import com.example.pagoflex.model.RequisitoClave
 import com.example.pagoflex.model.Rol
 import com.example.pagoflex.model.avancePorEmpresa
 import com.example.pagoflex.model.calcularIndicador
@@ -20,6 +23,7 @@ import com.example.pagoflex.model.clientes
 import com.example.pagoflex.model.codigoConfirmacionDe
 import com.example.pagoflex.model.compromisoPorId
 import com.example.pagoflex.model.conceptoSiguiente
+import com.example.pagoflex.model.cumpleRequisito
 import com.example.pagoflex.model.cuentaParaRecuperar
 import com.example.pagoflex.model.deudaDe
 import com.example.pagoflex.model.errorClaveNueva
@@ -40,6 +44,7 @@ import com.example.pagoflex.model.ocultarRut
 import com.example.pagoflex.model.parsearVencimientoTarjeta
 import com.example.pagoflex.model.recomendacionesDe
 import com.example.pagoflex.model.reporteAtrasado
+import com.example.pagoflex.model.requisitosPendientes
 import com.example.pagoflex.model.resumenCobranza
 import com.example.pagoflex.model.resumenPanel
 import com.example.pagoflex.model.resumenSituacion
@@ -95,15 +100,29 @@ class ReglasNegocioTest {
     }
 
     @Test
-    fun contrasena_5digitos_y_hash_RN19() {
-        assertTrue(claveValida("12345"))
-        assertFalse(claveValida("1234"))
-        assertFalse(claveValida("12a45"))
-        val huella = hashClave("15.834.207-3", "12345")
+    fun contrasena_cincoRequisitos_y_hash_RN19() {
+        assertTrue(claveValida(CLAVE_DE_PRUEBA))
+        assertTrue(claveValida("Nueva#2027"))
+        assertFalse(claveValida("12345"))
+        assertFalse(claveValida("Pago#20"))
+        assertFalse(claveValida("pago#2026"))
+        assertFalse(claveValida("PAGO#2026"))
+        assertFalse(claveValida("Pago#flex"))
+        assertFalse(claveValida("Pago2026x"))
+        assertFalse(claveValida("Pago #2026"))
+        assertFalse(claveValida("Pago#2026" + "x".repeat(LARGO_MAXIMO_CLAVE)))
+        assertEquals(RequisitoClave.entries, requisitosPendientes(""))
+        assertEquals(listOf(RequisitoClave.ESPECIAL), requisitosPendientes("Pago2026x"))
+        assertEquals(listOf(RequisitoClave.LARGO, RequisitoClave.MAYUSCULA), requisitosPendientes("p#1"))
+        assertTrue(cumpleRequisito("a.b", RequisitoClave.ESPECIAL))
+        assertFalse(cumpleRequisito("a b", RequisitoClave.ESPECIAL))
+
+        val huella = hashClave("15.834.207-3", CLAVE_DE_PRUEBA)
         assertEquals(64, huella.length)
-        assertFalse(huella.contains("12345"))
-        assertEquals(huella, hashClave("158342073", "12345"))
-        assertNotEquals(huella, hashClave("12.476.318-5", "12345"))
+        assertFalse(huella.contains(CLAVE_DE_PRUEBA))
+        assertEquals(huella, hashClave("158342073", CLAVE_DE_PRUEBA))
+        assertNotEquals(huella, hashClave("12.476.318-5", CLAVE_DE_PRUEBA))
+        assertNotEquals(huella, hashClave("15.834.207-3", "pago#2026"))
     }
 
     @Test
@@ -111,16 +130,17 @@ class ReglasNegocioTest {
         assertEquals(listOf(Rol.USUARIO_FINAL, Rol.ADMINISTRADOR), Rol.entries)
         val ingreso = IngresoViewModel()
         ingreso.onCorreoCambia("A@gmail")
-        ingreso.onClaveCambia("12a3")
-        assertEquals("123", ingreso.uiState.value.clave)
+        ingreso.onClaveCambia("")
         assertNull(ingreso.onIngresar())
         assertNotNull(ingreso.uiState.value.errorCorreo)
         assertNotNull(ingreso.uiState.value.errorClave)
 
         ingreso.onCorreoCambia("A@gmail.com")
-        ingreso.onClaveCambia("123456")
+        ingreso.onClaveCambia(CLAVE_DE_PRUEBA + "x".repeat(LARGO_MAXIMO_CLAVE))
+        assertEquals(LARGO_MAXIMO_CLAVE, ingreso.uiState.value.clave.length)
+        ingreso.onClaveCambia(CLAVE_DE_PRUEBA)
         val credenciales = ingreso.onIngresar()
-        assertEquals("12345", credenciales?.clave)
+        assertEquals(CLAVE_DE_PRUEBA, credenciales?.clave)
         assertEquals("A@gmail.com", credenciales?.correo)
     }
 
@@ -143,16 +163,16 @@ class ReglasNegocioTest {
 
         registro.onRutCambia("11.111.111-1")
         registro.onCorreoCambia("erivas@gmail.com")
-        registro.onClaveCambia("73915")
-        registro.onConfirmacionCambia("73916")
+        registro.onClaveCambia("Nueva#2027")
+        registro.onConfirmacionCambia("Nueva#2028")
         registro.onAceptaTerminosCambia(true)
         assertNull(registro.onCrearCuenta(datos))
         assertEquals("Las contraseñas no coinciden", registro.uiState.value.errorConfirmacion)
 
-        registro.onConfirmacionCambia("73915")
+        registro.onConfirmacionCambia("Nueva#2027")
         val cuenta = registro.onCrearCuenta(datos)
         assertEquals("erivas@gmail.com", cuenta?.correo)
-        assertEquals("73915", cuenta?.clave)
+        assertEquals("Nueva#2027", cuenta?.clave)
     }
 
     @Test
@@ -425,12 +445,13 @@ class ReglasNegocioTest {
 
     @Test
     fun claves_recuperarYCambiar() {
-        assertNotNull(errorClaveNueva("12345"))
-        assertNotNull(errorClaveNueva("77777"))
-        assertNotNull(errorClaveNueva("7391"))
-        assertNull(errorClaveNueva("73915"))
-        assertNotNull(errorConfirmacionClave("73915", "73916"))
-        assertNull(errorConfirmacionClave("73915", "73915"))
+        assertEquals("Crea tu contraseña", errorClaveNueva(""))
+        assertEquals("Te faltan 4 de los 5 requisitos de seguridad", errorClaveNueva("12345"))
+        assertEquals("Te falta: una letra mayúscula", errorClaveNueva("pago#2026"))
+        assertEquals("La contraseña no puede tener espacios", errorClaveNueva("Pago #2026"))
+        assertNull(errorClaveNueva("Nueva#2027"))
+        assertNotNull(errorConfirmacionClave("Nueva#2027", "Nueva#2028"))
+        assertNull(errorConfirmacionClave("Nueva#2027", "Nueva#2027"))
 
         assertEquals(1, datos.cuentaParaRecuperar("crojas@correo.ejemplo", "15834207-3")?.idUsuario)
         assertNull(datos.cuentaParaRecuperar("crojas@correo.ejemplo", "12.476.318-5"))
@@ -442,22 +463,23 @@ class ReglasNegocioTest {
         assertNotNull(recuperar.uiState.value.errorRut)
         recuperar.onRutCambia("15.834.207-3")
         assertEquals("15.834.207-3", recuperar.onVerificar()?.rut)
-        recuperar.onClaveNuevaCambia("73915")
-        recuperar.onConfirmacionCambia("73915")
+        recuperar.onClaveNuevaCambia("Nueva#2027")
+        recuperar.onConfirmacionCambia("Nueva#2027")
         assertNull(recuperar.onGuardarClave())
         recuperar.onCuentaVerificada()
-        assertEquals("73915", recuperar.onGuardarClave()?.claveNueva)
+        assertEquals("Nueva#2027", recuperar.onGuardarClave()?.claveNueva)
         recuperar.onCorreoCambia("otra@gmail.com")
         assertFalse(recuperar.uiState.value.cuentaVerificada)
 
         val cambiar = CambiarClaveViewModel()
-        cambiar.onClaveActualCambia("12345")
-        cambiar.onClaveNuevaCambia("12345")
-        cambiar.onConfirmacionCambia("12345")
+        cambiar.onClaveActualCambia(CLAVE_DE_PRUEBA)
+        cambiar.onClaveNuevaCambia(CLAVE_DE_PRUEBA)
+        cambiar.onConfirmacionCambia(CLAVE_DE_PRUEBA)
         assertNull(cambiar.onGuardar())
-        cambiar.onClaveNuevaCambia("73915")
-        cambiar.onConfirmacionCambia("73915")
-        assertEquals(CambioClave("12345", "73915"), cambiar.onGuardar())
+        assertEquals("La nueva contraseña debe ser distinta a la actual", cambiar.uiState.value.errorClaveNueva)
+        cambiar.onClaveNuevaCambia("Nueva#2027")
+        cambiar.onConfirmacionCambia("Nueva#2027")
+        assertEquals(CambioClave(CLAVE_DE_PRUEBA, "Nueva#2027"), cambiar.onGuardar())
     }
 
     @Test

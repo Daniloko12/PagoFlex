@@ -158,7 +158,7 @@ fun RegistroContent(
 
             TarjetaSeccion(
                 titulo = "Tu contraseña",
-                subtitulo = "5 números que solo tú conozcas. La guardamos cifrada: ni PagoFlex puede leerla."
+                subtitulo = "Mínimo 8 caracteres con mayúscula, minúscula, número y carácter especial. La guardamos cifrada: ni PagoFlex puede leerla."
             ) {
                 CampoContrasena(
                     valor = uiState.clave,
@@ -167,7 +167,7 @@ fun RegistroContent(
                     visible = uiState.claveVisible,
                     onAlternarVisible = onAlternarVisibilidad,
                     error = uiState.errorClave,
-                    ayuda = "${uiState.clave.length}/5 dígitos"
+                    ayuda = "${uiState.clave.length} caracteres"
                 )
                 CampoContrasena(
                     valor = uiState.confirmacionClave,

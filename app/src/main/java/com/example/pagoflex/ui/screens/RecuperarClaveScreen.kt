@@ -139,7 +139,7 @@ fun RecuperarClaveContent(
             }
 
             if (uiState.cuentaVerificada) {
-                TarjetaSeccion(titulo = "2. Crea tu nueva contraseña", subtitulo = "5 dígitos que no sean fáciles de adivinar") {
+                TarjetaSeccion(titulo = "2. Crea tu nueva contraseña", subtitulo = "Mínimo 8 caracteres con mayúscula, minúscula, número y carácter especial") {
                     CampoContrasena(
                         valor = uiState.claveNueva,
                         onValorCambia = onClaveNuevaCambia,
@@ -147,7 +147,7 @@ fun RecuperarClaveContent(
                         visible = uiState.claveVisible,
                         onAlternarVisible = onAlternarVisibilidad,
                         error = uiState.errorClaveNueva,
-                        ayuda = "${uiState.claveNueva.length}/5 dígitos"
+                        ayuda = "${uiState.claveNueva.length} caracteres"
                     )
                     CampoContrasena(
                         valor = uiState.confirmacionClave,
@@ -196,7 +196,7 @@ private fun RecuperarClaveVerificadaPreview() {
         RecuperarClaveContent(
             uiState = RecuperarClaveUiState(
                 correo = "crojas@correo.ejemplo", rut = "15.834.207-3", cuentaVerificada = true,
-                claveNueva = "123", errorClaveNueva = "La contraseña debe tener 5 dígitos"
+                claveNueva = "pago", errorClaveNueva = "Te faltan 4 de los 5 requisitos de seguridad"
             ),
             onCorreoCambia = {}, onRutCambia = {}, onClaveNuevaCambia = {}, onConfirmacionCambia = {},
             onAlternarVisibilidad = {}, onVerificar = {}, onGuardar = {}

@@ -112,14 +112,15 @@ class PagoFlexBaseDatosTest {
     @Test
     fun crearCuenta_quedaConSesionYSuClave() {
         val app = nuevaApp()
-        val nueva = NuevaCuenta("11.111.111-1", "Elena", "Rivas Soto", "erivas@gmail.com", "+56 9 1234 5678", "73915")
+        val nueva = NuevaCuenta("11.111.111-1", "Elena", "Rivas Soto", "erivas@gmail.com", "+56 9 1234 5678", "Nueva#2027")
+        assertNotNull(app.crearCuenta(nueva.copy(clave = "12345")))
         assertNull(app.crearCuenta(nueva))
         assertEquals("Elena", app.usuarioActual.value?.nombres)
         assertEquals(Rol.USUARIO_FINAL, app.usuarioActual.value?.rol)
 
         app.cerrarSesion()
         assertNotNull(app.iniciarSesion(Credenciales("erivas@gmail.com", CLAVE_DE_PRUEBA)))
-        entrar(app, "erivas@gmail.com", clave = "73915")
+        entrar(app, "erivas@gmail.com", clave = "Nueva#2027")
         app.cerrarSesion()
         assertNotNull(app.crearCuenta(nueva))
     }
@@ -292,7 +293,7 @@ class PagoFlexBaseDatosTest {
     @Test
     fun administrador_restableceClave() {
         val app = nuevaApp()
-        assertNull(app.crearCuenta(NuevaCuenta("11.111.111-1", "Elena", "Rivas", "erivas@gmail.com", "+56 9 1234 5678", "73915")))
+        assertNull(app.crearCuenta(NuevaCuenta("11.111.111-1", "Elena", "Rivas", "erivas@gmail.com", "+56 9 1234 5678", "Nueva#2027")))
         val idElena = app.usuarioActual.value!!.idUsuario
         app.cerrarSesion()
         entrar(app, "alagos@pagoflex.ejemplo")
@@ -366,10 +367,10 @@ class PagoFlexBaseDatosTest {
         assertNotNull(app.verificarCuenta(DatosRecuperacion("rsalinas@pagoflex.ejemplo", "13.907.264-2")))
         assertNull(app.verificarCuenta(DatosRecuperacion("crojas@correo.ejemplo", "15834207-3")))
         assertNotNull(app.recuperarClave(ClaveRecuperada("crojas@correo.ejemplo", "15.834.207-3", CLAVE_DE_PRUEBA)))
-        assertNull(app.recuperarClave(ClaveRecuperada("crojas@correo.ejemplo", "15.834.207-3", "73915")))
+        assertNull(app.recuperarClave(ClaveRecuperada("crojas@correo.ejemplo", "15.834.207-3", "Nueva#2027")))
 
         assertNotNull(app.iniciarSesion(Credenciales("crojas@correo.ejemplo", CLAVE_DE_PRUEBA)))
-        entrar(app, "crojas@correo.ejemplo", clave = "73915")
+        entrar(app, "crojas@correo.ejemplo", clave = "Nueva#2027")
         assertEquals(Rol.USUARIO_FINAL, app.usuarioActual.value?.rol)
     }
 
@@ -386,11 +387,12 @@ class PagoFlexBaseDatosTest {
         assertEquals(2, guardada?.idComuna)
         assertEquals("15.834.207-3", guardada?.rut)
 
-        assertNotNull(app.cambiarMiClave(CambioClave("99999", "73915")))
-        assertNull(app.cambiarMiClave(CambioClave(CLAVE_DE_PRUEBA, "73915")))
+        assertNotNull(app.cambiarMiClave(CambioClave("99999", "Nueva#2027")))
+        assertNotNull(app.cambiarMiClave(CambioClave(CLAVE_DE_PRUEBA, "nueva2027")))
+        assertNull(app.cambiarMiClave(CambioClave(CLAVE_DE_PRUEBA, "Nueva#2027")))
         app.cerrarSesion()
         assertNotNull(app.iniciarSesion(Credenciales("camila.rojas@gmail.com", CLAVE_DE_PRUEBA)))
-        entrar(app, "camila.rojas@gmail.com", clave = "73915")
+        entrar(app, "camila.rojas@gmail.com", clave = "Nueva#2027")
     }
 }
 

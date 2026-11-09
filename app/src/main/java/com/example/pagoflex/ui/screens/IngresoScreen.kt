@@ -379,9 +379,9 @@ private fun IngresoConErroresPreview() {
         IngresoContent(
             uiState = IngresoUiState(
                 correo = "paula@",
-                clave = "123",
+                clave = "",
                 errorCorreo = "Ingresa un correo válido, por ejemplo nombre@gmail.com",
-                errorClave = "La contraseña tiene 5 dígitos"
+                errorClave = "Ingresa tu contraseña"
             ),
             cuentasDePrueba = BaseDatos().usuariosDelRol(Rol.ADMINISTRADOR),
             onCorreoCambia = {}, onClaveCambia = {},

@@ -3,6 +3,7 @@ package com.example.pagoflex.viewmodel
 import androidx.lifecycle.ViewModel
 import com.example.pagoflex.model.ClaveRecuperada
 import com.example.pagoflex.model.DatosRecuperacion
+import com.example.pagoflex.model.LARGO_MAXIMO_CLAVE
 import com.example.pagoflex.model.RecuperarClaveUiState
 import com.example.pagoflex.model.correoValido
 import com.example.pagoflex.model.errorClaveNueva
@@ -26,11 +27,11 @@ class RecuperarClaveViewModel : ViewModel() {
     }
 
     fun onClaveNuevaCambia(valor: String) {
-        _uiState.update { it.copy(claveNueva = valor.filter { c -> c.isDigit() }.take(5), errorClaveNueva = null, errorRecuperacion = null) }
+        _uiState.update { it.copy(claveNueva = valor.take(LARGO_MAXIMO_CLAVE), errorClaveNueva = null, errorRecuperacion = null) }
     }
 
     fun onConfirmacionCambia(valor: String) {
-        _uiState.update { it.copy(confirmacionClave = valor.filter { c -> c.isDigit() }.take(5), errorConfirmacion = null) }
+        _uiState.update { it.copy(confirmacionClave = valor.take(LARGO_MAXIMO_CLAVE), errorConfirmacion = null) }
     }
 
     fun onAlternarVisibilidad() {

@@ -43,6 +43,7 @@ import com.example.pagoflex.model.TarjetaNueva
 import com.example.pagoflex.model.Usuario
 import com.example.pagoflex.model.UsuarioReconocimiento
 import com.example.pagoflex.model.actualizarVencimientos
+import com.example.pagoflex.model.claveValida
 import com.example.pagoflex.model.compromisoPorId
 import com.example.pagoflex.model.cuentaParaRecuperar
 import com.example.pagoflex.model.empresaPorId
@@ -70,6 +71,10 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 
 class PagoFlexViewModel(application: Application) : AndroidViewModel(application) {
+    companion object {
+        const val MENSAJE_CLAVE_INSEGURA = "La contraseña no cumple los 5 requisitos de seguridad"
+    }
+
     private val db = PagoFlexDbHelper(application)
 
     private val sesion = SesionPreferencias(application)
@@ -127,6 +132,7 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun crearCuenta(nueva: NuevaCuenta): String? {
+        if (!claveValida(nueva.clave)) return MENSAJE_CLAVE_INSEGURA
         val datos = _datos.value
         val fecha = ahora()
         val usuario = Usuario(
@@ -160,6 +166,7 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
     fun recuperarClave(recuperada: ClaveRecuperada): String? {
         verificarCuenta(DatosRecuperacion(recuperada.correo, recuperada.rut))?.let { return it }
         val cuenta = _datos.value.cuentaParaRecuperar(recuperada.correo, recuperada.rut) ?: return "No encontramos la cuenta"
+        if (!claveValida(recuperada.claveNueva)) return MENSAJE_CLAVE_INSEGURA
         if (db.buscarPorCredenciales(cuenta.correo, recuperada.claveNueva) != null) {
             return "Esa ya es tu contraseña. Puedes ingresar con ella o elegir otra."
         }
@@ -184,6 +191,7 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
     fun cambiarMiClave(cambio: CambioClave): String? {
         val usuario = _usuarioActual.value ?: return "Inicia sesión"
         if (db.buscarPorCredenciales(usuario.correo, cambio.claveActual) == null) return "Tu contraseña actual no es correcta"
+        if (!claveValida(cambio.claveNueva)) return MENSAJE_CLAVE_INSEGURA
         return if (db.cambiarClave(usuario, cambio.claveNueva)) null else "No pudimos cambiar la contraseña. Inténtalo de nuevo."
     }
 

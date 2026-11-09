@@ -102,6 +102,7 @@ fun CamposTarjeta(
                 onAlternarVisible = { cvvVisible = !cvvVisible },
                 error = errorCvv,
                 ayuda = "${largoCvv(numero)} dígitos, al reverso",
+                tipoTeclado = KeyboardType.NumberPassword,
                 modifier = Modifier.weight(1f)
             )
         }

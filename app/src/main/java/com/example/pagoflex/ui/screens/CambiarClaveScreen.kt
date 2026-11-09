@@ -106,7 +106,7 @@ fun CambiarClaveContent(
                     visible = uiState.claveVisible,
                     onAlternarVisible = onAlternarVisibilidad,
                     error = uiState.errorClaveNueva,
-                    ayuda = "${uiState.claveNueva.length}/5 dígitos"
+                    ayuda = "${uiState.claveNueva.length} caracteres"
                 )
                 CampoContrasena(
                     valor = uiState.confirmacionClave,
@@ -140,7 +140,7 @@ fun CambiarClaveContent(
 private fun CambiarClavePreview() {
     PagoFlexTheme(modoOscuro = false) {
         CambiarClaveContent(
-            uiState = CambiarClaveUiState(claveActual = "12345", errorClaveNueva = "Es muy fácil de adivinar. Elige otra combinación"),
+            uiState = CambiarClaveUiState(claveActual = "Pago#2026", claveNueva = "pago2026", errorClaveNueva = "Te faltan 2 de los 5 requisitos de seguridad"),
             onClaveActualCambia = {}, onClaveNuevaCambia = {}, onConfirmacionCambia = {},
             onAlternarVisibilidad = {}, onGuardar = {}
         )

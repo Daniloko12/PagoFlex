@@ -9,7 +9,7 @@
     <string name="campo_correo">Correo electrónico</string>
     <string name="ayuda_correo">Ej: nombre@gmail.com</string>
     <string name="campo_clave">Contraseña</string>
-    <string name="ayuda_clave">5 dígitos</string>
+    <string name="ayuda_clave">Distingue mayúsculas de minúsculas</string>
     <string name="btn_ingresar">Ingresar</string>
     <string name="btn_recuperar_clave">Recuperar contraseña</string>
     <string name="titulo_recuperar_clave">Recuperar contraseña</string>

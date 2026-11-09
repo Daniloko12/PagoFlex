@@ -32,7 +32,7 @@ fun CampoContrasena(
     modifier: Modifier = Modifier,
     error: String? = null,
     ayuda: String? = null,
-    tipoTeclado: KeyboardType = KeyboardType.NumberPassword
+    tipoTeclado: KeyboardType = KeyboardType.Password
 ) {
     OutlinedTextField(
         value = valor,

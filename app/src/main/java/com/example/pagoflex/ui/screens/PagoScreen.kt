@@ -80,7 +80,6 @@ fun PagoScreen(
         onCvvCambia = viewModel::onCvvCambia,
         onGuardarTarjetaCambia = viewModel::onGuardarTarjetaCambia,
         onCodigoCambia = viewModel::onCodigoCambia,
-        onAlternarVisibilidad = viewModel::onAlternarVisibilidad,
         onConfirmaTotalCambia = viewModel::onConfirmaTotalCambia,
         onPagar = {
             viewModel.onPagar(codigoCorrecto, motivoNoPagar(), tarjetas, datos.fechaHoy)
@@ -105,7 +104,6 @@ fun PagoContent(
     onCvvCambia: (String) -> Unit,
     onGuardarTarjetaCambia: (Boolean) -> Unit,
     onCodigoCambia: (String) -> Unit,
-    onAlternarVisibilidad: () -> Unit,
     onConfirmaTotalCambia: (Boolean) -> Unit,
     onPagar: () -> Unit,
     onVolver: () -> Unit = {},
@@ -214,8 +212,6 @@ fun PagoContent(
                     valor = uiState.codigo,
                     onValorCambia = onCodigoCambia,
                     etiqueta = "Código de confirmación",
-                    visible = uiState.codigoVisible,
-                    onAlternarVisible = onAlternarVisibilidad,
                     error = uiState.errorCodigo,
                     ayuda = "Son los 4 últimos números de tu RUT, antes del guion",
                     tipoTeclado = KeyboardType.NumberPassword
@@ -257,7 +253,7 @@ private fun PagoPreview() {
             tarjetas = datos.tarjetasGuardadas(1, MedioPago.DEBITO),
             onMedioPagoSeleccionado = {}, onTarjetaSeleccionada = {}, onNumeroTarjetaCambia = {},
             onTitularTarjetaCambia = {}, onVencimientoTarjetaCambia = {}, onCvvCambia = {},
-            onGuardarTarjetaCambia = {}, onCodigoCambia = {}, onAlternarVisibilidad = {},
+            onGuardarTarjetaCambia = {}, onCodigoCambia = {},
             onConfirmaTotalCambia = {}, onPagar = {}
         )
     }
@@ -287,7 +283,7 @@ private fun PagoConErroresPreview() {
             tarjetas = datos.tarjetasGuardadas(1, MedioPago.CREDITO),
             onMedioPagoSeleccionado = {}, onTarjetaSeleccionada = {}, onNumeroTarjetaCambia = {},
             onTitularTarjetaCambia = {}, onVencimientoTarjetaCambia = {}, onCvvCambia = {},
-            onGuardarTarjetaCambia = {}, onCodigoCambia = {}, onAlternarVisibilidad = {},
+            onGuardarTarjetaCambia = {}, onCodigoCambia = {},
             onConfirmaTotalCambia = {}, onPagar = {}
         )
     }

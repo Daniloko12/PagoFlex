@@ -30,6 +30,7 @@ import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.BotonSecundario
 import com.example.pagoflex.ui.components.CampoContrasena
 import com.example.pagoflex.ui.components.CampoTexto
+import com.example.pagoflex.ui.components.RequisitosClave
 import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
@@ -52,7 +53,6 @@ fun RecuperarClaveScreen(
         onRutCambia = viewModel::onRutCambia,
         onClaveNuevaCambia = viewModel::onClaveNuevaCambia,
         onConfirmacionCambia = viewModel::onConfirmacionCambia,
-        onAlternarVisibilidad = viewModel::onAlternarVisibilidad,
         onVerificar = {
             viewModel.onVerificar()?.let { datos ->
                 val error = onVerificar(datos)
@@ -76,7 +76,6 @@ fun RecuperarClaveContent(
     onRutCambia: (String) -> Unit,
     onClaveNuevaCambia: (String) -> Unit,
     onConfirmacionCambia: (String) -> Unit,
-    onAlternarVisibilidad: () -> Unit,
     onVerificar: () -> Unit,
     onGuardar: () -> Unit,
     onVolver: () -> Unit = {},
@@ -139,22 +138,18 @@ fun RecuperarClaveContent(
             }
 
             if (uiState.cuentaVerificada) {
-                TarjetaSeccion(titulo = "2. Crea tu nueva contraseña", subtitulo = "Mínimo 8 caracteres con mayúscula, minúscula, número y carácter especial") {
+                TarjetaSeccion(titulo = "2. Crea tu nueva contraseña", subtitulo = "Debe cumplir los 5 requisitos de seguridad") {
                     CampoContrasena(
                         valor = uiState.claveNueva,
                         onValorCambia = onClaveNuevaCambia,
                         etiqueta = "Nueva contraseña",
-                        visible = uiState.claveVisible,
-                        onAlternarVisible = onAlternarVisibilidad,
-                        error = uiState.errorClaveNueva,
-                        ayuda = "${uiState.claveNueva.length} caracteres"
+                        error = uiState.errorClaveNueva
                     )
+                    RequisitosClave(clave = uiState.claveNueva)
                     CampoContrasena(
                         valor = uiState.confirmacionClave,
                         onValorCambia = onConfirmacionCambia,
                         etiqueta = "Repite la nueva contraseña",
-                        visible = uiState.claveVisible,
-                        onAlternarVisible = onAlternarVisibilidad,
                         error = uiState.errorConfirmacion
                     )
                     BotonPrincipal(
@@ -184,7 +179,7 @@ private fun RecuperarClavePreview() {
         RecuperarClaveContent(
             uiState = RecuperarClaveUiState(correo = "crojas@correo.ejemplo"),
             onCorreoCambia = {}, onRutCambia = {}, onClaveNuevaCambia = {}, onConfirmacionCambia = {},
-            onAlternarVisibilidad = {}, onVerificar = {}, onGuardar = {}
+            onVerificar = {}, onGuardar = {}
         )
     }
 }
@@ -199,7 +194,7 @@ private fun RecuperarClaveVerificadaPreview() {
                 claveNueva = "pago", errorClaveNueva = "Te faltan 4 de los 5 requisitos de seguridad"
             ),
             onCorreoCambia = {}, onRutCambia = {}, onClaveNuevaCambia = {}, onConfirmacionCambia = {},
-            onAlternarVisibilidad = {}, onVerificar = {}, onGuardar = {}
+            onVerificar = {}, onGuardar = {}
         )
     }
 }

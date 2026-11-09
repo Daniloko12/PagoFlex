@@ -23,10 +23,6 @@ class IngresoViewModel : ViewModel() {
         _uiState.update { it.copy(clave = valor.take(LARGO_MAXIMO_CLAVE), errorClave = null, errorIngreso = null) }
     }
 
-    fun onAlternarVisibilidad() {
-        _uiState.update { it.copy(claveVisible = !it.claveVisible) }
-    }
-
     fun onUsarCuentaDePrueba(correo: String) {
         _uiState.value = IngresoUiState(correo = correo, clave = CLAVE_DE_PRUEBA)
     }

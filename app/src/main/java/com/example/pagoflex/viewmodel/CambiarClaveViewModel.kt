@@ -29,10 +29,6 @@ class CambiarClaveViewModel : ViewModel() {
         _uiState.update { it.copy(confirmacionClave = limitar(valor), errorConfirmacion = null) }
     }
 
-    fun onAlternarVisibilidad() {
-        _uiState.update { it.copy(claveVisible = !it.claveVisible) }
-    }
-
     fun onErrorCambio(mensaje: String) {
         _uiState.update { it.copy(errorCambio = mensaje) }
     }

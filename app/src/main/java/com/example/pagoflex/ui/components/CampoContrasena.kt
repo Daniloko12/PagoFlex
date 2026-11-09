@@ -9,6 +9,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -27,13 +31,13 @@ fun CampoContrasena(
     valor: String,
     onValorCambia: (String) -> Unit,
     etiqueta: String,
-    visible: Boolean,
-    onAlternarVisible: () -> Unit,
     modifier: Modifier = Modifier,
     error: String? = null,
     ayuda: String? = null,
     tipoTeclado: KeyboardType = KeyboardType.Password
 ) {
+    var visible by rememberSaveable { mutableStateOf(false) }
+
     OutlinedTextField(
         value = valor,
         onValueChange = onValorCambia,
@@ -47,7 +51,7 @@ fun CampoContrasena(
             )
         },
         trailingIcon = {
-            IconButton(onClick = onAlternarVisible) {
+            IconButton(onClick = { visible = !visible }) {
                 Icon(
                     painter = painterResource(
                         if (visible) R.drawable.ic_ojo_tachado else R.drawable.ic_ojo
@@ -77,8 +81,6 @@ private fun CampoContrasenaPreview() {
             valor = "4207",
             onValorCambia = {},
             etiqueta = "Código de confirmación",
-            visible = false,
-            onAlternarVisible = {},
             ayuda = "Los 4 últimos números de tu RUT, antes del guion",
             modifier = Modifier.padding(16.dp)
         )

@@ -45,10 +45,6 @@ class RegistroViewModel : ViewModel() {
         _uiState.update { it.copy(confirmacionClave = valor.take(LARGO_MAXIMO_CLAVE), errorConfirmacion = null) }
     }
 
-    fun onAlternarVisibilidad() {
-        _uiState.update { it.copy(claveVisible = !it.claveVisible) }
-    }
-
     fun onAceptaTerminosCambia(valor: Boolean) {
         _uiState.update { it.copy(aceptaTerminos = valor, errorTerminos = null) }
     }

@@ -27,6 +27,7 @@ import com.example.pagoflex.ui.components.BarraSuperior
 import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.BotonSecundario
 import com.example.pagoflex.ui.components.CampoContrasena
+import com.example.pagoflex.ui.components.RequisitosClave
 import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
@@ -47,7 +48,6 @@ fun CambiarClaveScreen(
         onClaveActualCambia = viewModel::onClaveActualCambia,
         onClaveNuevaCambia = viewModel::onClaveNuevaCambia,
         onConfirmacionCambia = viewModel::onConfirmacionCambia,
-        onAlternarVisibilidad = viewModel::onAlternarVisibilidad,
         onGuardar = {
             viewModel.onGuardar()?.let { cambio ->
                 onCambioValido(cambio)?.let { error -> viewModel.onErrorCambio(error) }
@@ -64,7 +64,6 @@ fun CambiarClaveContent(
     onClaveActualCambia: (String) -> Unit,
     onClaveNuevaCambia: (String) -> Unit,
     onConfirmacionCambia: (String) -> Unit,
-    onAlternarVisibilidad: () -> Unit,
     onGuardar: () -> Unit,
     onVolver: () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
@@ -95,25 +94,19 @@ fun CambiarClaveContent(
                     valor = uiState.claveActual,
                     onValorCambia = onClaveActualCambia,
                     etiqueta = "Contraseña actual",
-                    visible = uiState.claveVisible,
-                    onAlternarVisible = onAlternarVisibilidad,
                     error = uiState.errorClaveActual
                 )
                 CampoContrasena(
                     valor = uiState.claveNueva,
                     onValorCambia = onClaveNuevaCambia,
                     etiqueta = "Nueva contraseña",
-                    visible = uiState.claveVisible,
-                    onAlternarVisible = onAlternarVisibilidad,
-                    error = uiState.errorClaveNueva,
-                    ayuda = "${uiState.claveNueva.length} caracteres"
+                    error = uiState.errorClaveNueva
                 )
+                RequisitosClave(clave = uiState.claveNueva)
                 CampoContrasena(
                     valor = uiState.confirmacionClave,
                     onValorCambia = onConfirmacionCambia,
                     etiqueta = "Repite la nueva contraseña",
-                    visible = uiState.claveVisible,
-                    onAlternarVisible = onAlternarVisibilidad,
                     error = uiState.errorConfirmacion
                 )
             }
@@ -142,7 +135,7 @@ private fun CambiarClavePreview() {
         CambiarClaveContent(
             uiState = CambiarClaveUiState(claveActual = "Pago#2026", claveNueva = "pago2026", errorClaveNueva = "Te faltan 2 de los 5 requisitos de seguridad"),
             onClaveActualCambia = {}, onClaveNuevaCambia = {}, onConfirmacionCambia = {},
-            onAlternarVisibilidad = {}, onGuardar = {}
+            onGuardar = {}
         )
     }
 }

@@ -1,5 +1,6 @@
 package com.example.pagoflex
 
+import com.example.pagoflex.model.Accion
 import com.example.pagoflex.model.BaseDatos
 import com.example.pagoflex.model.CLAVE_DE_PRUEBA
 import com.example.pagoflex.model.CambioClave
@@ -21,6 +22,7 @@ import com.example.pagoflex.model.PasoRecuperacion
 import com.example.pagoflex.model.RequisitoClave
 import com.example.pagoflex.model.ResultadoCodigo
 import com.example.pagoflex.model.Rol
+import com.example.pagoflex.model.accionesDe
 import com.example.pagoflex.model.avancePorEmpresa
 import com.example.pagoflex.model.calcularIndicador
 import com.example.pagoflex.model.categoriaCumplimiento
@@ -29,12 +31,12 @@ import com.example.pagoflex.model.clientes
 import com.example.pagoflex.model.codigoConfirmacionDe
 import com.example.pagoflex.model.compromisoPorId
 import com.example.pagoflex.model.conceptoSiguiente
-import com.example.pagoflex.model.cumpleRequisito
 import com.example.pagoflex.model.cuentaParaRecuperar
+import com.example.pagoflex.model.cumpleRequisito
 import com.example.pagoflex.model.deudaDe
-import com.example.pagoflex.model.errorFormatoCodigo
 import com.example.pagoflex.model.errorClaveNueva
 import com.example.pagoflex.model.errorConfirmacionClave
+import com.example.pagoflex.model.errorFormatoCodigo
 import com.example.pagoflex.model.formatoPesos
 import com.example.pagoflex.model.formatoPesosCorto
 import com.example.pagoflex.model.generarCodigoRecuperacion
@@ -50,10 +52,13 @@ import com.example.pagoflex.model.motivoParaNoPagar
 import com.example.pagoflex.model.motivoParaNoReportar
 import com.example.pagoflex.model.motivoParaNoResolver
 import com.example.pagoflex.model.motivoParaNoTomar
+import com.example.pagoflex.model.motivoSinPermiso
 import com.example.pagoflex.model.nuevoCodigoRecuperacion
 import com.example.pagoflex.model.ocultarRut
 import com.example.pagoflex.model.parsearVencimientoTarjeta
 import com.example.pagoflex.model.proximoRecordatorio
+import com.example.pagoflex.model.puede
+import com.example.pagoflex.model.puedeVerCompromiso
 import com.example.pagoflex.model.recomendacionesDe
 import com.example.pagoflex.model.recordatoriosDeHoy
 import com.example.pagoflex.model.reporteAtrasado
@@ -553,6 +558,30 @@ class ReglasNegocioTest {
         assertEquals(deHoy.first(), datos.proximoRecordatorio(camila))
         assertTrue(datos.recordatoriosDeHoy(camila.copy(avisosActivos = false)).isEmpty())
         assertNull(datos.proximoRecordatorio(usuario(9)!!))
+    }
+
+    @Test
+    fun permisos_quienCreaEditaYGestionaCompromisos() {
+        val camila = usuario(1)!!
+        val admin = usuario(9)!!
+        listOf(Accion.CREAR_COMPROMISO, Accion.EDITAR_COMPROMISO, Accion.ANULAR_COMPROMISO, Accion.VER_TODOS_LOS_COMPROMISOS).forEach {
+            assertTrue(puede(admin, it))
+            assertFalse(puede(camila, it))
+        }
+        assertTrue(puede(camila, Accion.PAGAR_COMPROMISO))
+        assertFalse(puede(admin, Accion.PAGAR_COMPROMISO))
+        assertFalse(puede(null, Accion.VER_MIS_COMPROMISOS))
+        assertFalse(puede(camila.copy(activo = false), Accion.PAGAR_COMPROMISO))
+        assertTrue(accionesDe(Rol.USUARIO_FINAL).intersect(accionesDe(Rol.ADMINISTRADOR)).isEmpty())
+        assertEquals(Accion.entries.toSet(), accionesDe(Rol.USUARIO_FINAL) + accionesDe(Rol.ADMINISTRADOR))
+        assertNotNull(motivoSinPermiso(camila, Accion.ANULAR_COMPROMISO))
+        assertNull(motivoSinPermiso(admin, Accion.ANULAR_COMPROMISO))
+
+        val deCamila = datos.compromisoPorId(101)!!
+        val deOtro = datos.compromisos.first { it.idUsuarioFinal != 1 }
+        assertTrue(puedeVerCompromiso(camila, deCamila))
+        assertFalse(puedeVerCompromiso(camila, deOtro))
+        assertTrue(puedeVerCompromiso(admin, deOtro))
     }
 
     @Test

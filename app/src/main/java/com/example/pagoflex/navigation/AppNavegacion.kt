@@ -17,6 +17,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.pagoflex.R
+import com.example.pagoflex.model.Accion
 import com.example.pagoflex.model.CLAVE_DE_PRUEBA
 import com.example.pagoflex.model.EstadoRecomendacion
 import com.example.pagoflex.model.Rol
@@ -26,6 +27,7 @@ import com.example.pagoflex.model.formatoFecha
 import com.example.pagoflex.model.nombreCompleto
 import com.example.pagoflex.model.pagoPorComprobante
 import com.example.pagoflex.model.primerNombre
+import com.example.pagoflex.model.puede
 import com.example.pagoflex.model.recomendacionPorId
 import com.example.pagoflex.model.recomendacionesDe
 import com.example.pagoflex.model.reporteActivoDe
@@ -498,7 +500,7 @@ fun AppNavegacion(
         }
 
         composable(Ruta.CompromisosEmpresa.ruta) {
-            if (usuarioActual?.rol != Rol.ADMINISTRADOR) return@composable
+            if (!puede(usuarioActual, Accion.VER_TODOS_LOS_COMPROMISOS)) return@composable
             CompromisosEmpresaScreen(
                 datos = datos,
                 encontrados = compromisosEncontrados,
@@ -516,7 +518,7 @@ fun AppNavegacion(
             arguments = listOf(navArgument("idCompromiso") { type = NavType.IntType })
         ) { entrada ->
             val idCompromiso = entrada.arguments?.getInt("idCompromiso") ?: 0
-            if (usuarioActual?.rol != Rol.ADMINISTRADOR) return@composable
+            if (!puede(usuarioActual, Accion.VER_TODOS_LOS_COMPROMISOS)) return@composable
             val compromiso = datos.compromisoPorId(idCompromiso) ?: return@composable
             DetalleCompromisoEmpresaScreen(
                 datos = datos,
@@ -545,7 +547,7 @@ fun AppNavegacion(
                 defaultValue = null
             })
         ) { entrada ->
-            if (usuarioActual?.rol != Rol.ADMINISTRADOR) return@composable
+            if (!puede(usuarioActual, Accion.CREAR_COMPROMISO)) return@composable
             RegistrarCompromisoScreen(
                 datos = datos,
                 rutInicial = entrada.arguments?.getString("rut"),
@@ -572,7 +574,7 @@ fun AppNavegacion(
             arguments = listOf(navArgument("idCompromiso") { type = NavType.IntType })
         ) { entrada ->
             val idCompromiso = entrada.arguments?.getInt("idCompromiso") ?: 0
-            if (usuarioActual?.rol != Rol.ADMINISTRADOR) return@composable
+            if (!puede(usuarioActual, Accion.EDITAR_COMPROMISO)) return@composable
             val compromiso = datos.compromisoPorId(idCompromiso) ?: return@composable
             EditarCompromisoScreen(
                 datos = datos,

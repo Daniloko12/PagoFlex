@@ -276,6 +276,25 @@ class PagoFlexBaseDatosTest {
     }
 
     @Test
+    fun permisos_cadaRolSoloHaceLoSuyo() {
+        val app = nuevaApp()
+        entrar(app, "crojas@correo.ejemplo")
+        val ajeno = app.datos.value.compromisos.first { it.idUsuarioFinal != 1 && it.estado == EstadoCompromiso.PENDIENTE }
+        assertEquals("Este compromiso no está a tu nombre", app.motivoParaNoPagar(ajeno.idCompromiso))
+        assertNull(app.pagar(ajeno.idCompromiso, SolicitudPago(MedioPago.DEBITO, idTarjeta = 1)))
+        assertNotNull(app.motivoParaNoReportar(ajeno.idCompromiso))
+        assertNotNull(app.anularCompromiso(101, MotivoAnulacion.ERROR_REGISTRO, null))
+        assertNotNull(app.editarCompromiso(101, CambiosCompromiso("Arriendo", 1_000, LocalDate.of(2026, 12, 1), null, null)))
+        assertNull(app.crearCliente(DatosCliente("11.111.111-1", "Elena", "Rivas", "erivas@gmail.com", "+56 9 1234 5678", 5, true)))
+        assertEquals(EstadoCompromiso.PENDIENTE, nuevaApp().datos.value.compromisoPorId(101)?.estado)
+
+        app.cerrarSesion()
+        entrar(app, "alagos@pagoflex.ejemplo")
+        assertNotNull(app.motivoParaNoPagar(101))
+        assertNull(app.reportar(101, SolicitudReporte(MotivoReporte.entries.first(), null)))
+    }
+
+    @Test
     fun administrador_creaYEditaCliente() {
         val app = nuevaApp()
         entrar(app, "alagos@pagoflex.ejemplo")

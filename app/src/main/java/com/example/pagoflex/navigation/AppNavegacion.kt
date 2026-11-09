@@ -56,6 +56,7 @@ import com.example.pagoflex.ui.screens.HistorialScreen
 import com.example.pagoflex.ui.screens.IngresoScreen
 import com.example.pagoflex.ui.screens.InicioScreen
 import com.example.pagoflex.ui.screens.MenuSesion
+import com.example.pagoflex.ui.screens.MovimientosScreen
 import com.example.pagoflex.ui.screens.OpcionMenu
 import com.example.pagoflex.ui.screens.PagoScreen
 import com.example.pagoflex.ui.screens.PanelScreen
@@ -682,6 +683,15 @@ fun AppNavegacion(
             )
         }
 
+        composable(Ruta.Movimientos.ruta) {
+            if (!puede(usuarioActual, Accion.VER_MOVIMIENTOS)) return@composable
+            MovimientosScreen(
+                datos = datos,
+                menu = menuEn(Ruta.Movimientos),
+                snackbarHostState = snackbarHostState
+            )
+        }
+
         composable(Ruta.Reportes.ruta) {
             if (usuarioActual?.rol != Rol.ADMINISTRADOR) return@composable
             ReportesScreen(
@@ -794,6 +804,7 @@ private fun opcionesMenu(rol: Rol): List<OpcionMenu> = when (rol) {
         OpcionMenu(Ruta.Cobranza.ruta, R.string.menu_cobranza, R.drawable.ic_grafico),
         OpcionMenu(Ruta.Reportes.ruta, R.string.menu_reportes, R.drawable.ic_reporte),
         OpcionMenu(Ruta.Recomendaciones.ruta, R.string.menu_recomendaciones, R.drawable.ic_recomendar),
+        OpcionMenu(Ruta.Movimientos.ruta, R.string.menu_movimientos, R.drawable.ic_historial),
         OpcionMenu(Ruta.Perfil.ruta, R.string.menu_perfil, R.drawable.ic_persona)
     )
 }

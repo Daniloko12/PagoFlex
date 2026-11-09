@@ -40,6 +40,7 @@ import com.example.pagoflex.model.formatoFecha
 import com.example.pagoflex.model.formatoFechaHora
 import com.example.pagoflex.model.formatoPesos
 import com.example.pagoflex.model.motivoParaNoEditar
+import com.example.pagoflex.model.movimientosDelCompromiso
 import com.example.pagoflex.model.nombreCompleto
 import com.example.pagoflex.model.ocultarRut
 import com.example.pagoflex.model.pagoDe
@@ -53,6 +54,7 @@ import com.example.pagoflex.ui.components.CampoTexto
 import com.example.pagoflex.ui.components.EtiquetaInteres
 import com.example.pagoflex.ui.components.FilaDato
 import com.example.pagoflex.ui.components.GrupoRadio
+import com.example.pagoflex.ui.components.LineaDeTiempo
 import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
@@ -184,6 +186,13 @@ fun DetalleCompromisoEmpresaScreen(
                     anulacion.comentario?.let { FilaDato("Comentario", it) }
                     FilaDato("Anulado por", datos.usuarioPorId(anulacion.idAdministrador)?.let { nombreCompleto(it) } ?: "")
                 }
+            }
+
+            TarjetaSeccion(
+                titulo = "Historial de este compromiso",
+                subtitulo = "Cada cambio queda guardado con la fecha y quién lo hizo"
+            ) {
+                LineaDeTiempo(movimientos = datos.movimientosDelCompromiso(compromiso.idCompromiso), datos = datos)
             }
 
             if (sePuedeAnular) {

@@ -37,6 +37,10 @@
     <string name="titulo_historial">Historial de pagos</string>
     <string name="titulo_avance">Mi avance</string>
     <string name="titulo_avisos">Avisos</string>
+    <string name="canal_vencimientos">Vencimientos</string>
+    <string name="canal_vencimientos_descripcion">Recordatorios de tus compromisos por vencer</string>
+    <string name="canal_seguridad">Seguridad de la cuenta</string>
+    <string name="canal_seguridad_descripcion">Códigos para recuperar tu contraseña</string>
     <string name="titulo_detalle">Detalle del compromiso</string>
     <string name="titulo_pagar">Pagar</string>
     <string name="titulo_reportar">Reportar un problema</string>

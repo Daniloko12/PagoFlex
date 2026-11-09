@@ -53,7 +53,9 @@ import com.example.pagoflex.model.motivoParaNoTomar
 import com.example.pagoflex.model.nuevoCodigoRecuperacion
 import com.example.pagoflex.model.ocultarRut
 import com.example.pagoflex.model.parsearVencimientoTarjeta
+import com.example.pagoflex.model.proximoRecordatorio
 import com.example.pagoflex.model.recomendacionesDe
+import com.example.pagoflex.model.recordatoriosDeHoy
 import com.example.pagoflex.model.reporteAtrasado
 import com.example.pagoflex.model.requisitosPendientes
 import com.example.pagoflex.model.resumenCobranza
@@ -68,6 +70,7 @@ import com.example.pagoflex.model.usuarioPorId
 import com.example.pagoflex.model.validarPersona
 import com.example.pagoflex.model.validarRut
 import com.example.pagoflex.model.validarTarjeta
+import com.example.pagoflex.notificaciones.ProgramadorRecordatorios
 import com.example.pagoflex.viewmodel.CambiarClaveViewModel
 import com.example.pagoflex.viewmodel.ClienteViewModel
 import com.example.pagoflex.viewmodel.EditarCompromisoViewModel
@@ -535,6 +538,21 @@ class ReglasNegocioTest {
         cambiar.onClaveNuevaCambia("Nueva#2027")
         cambiar.onConfirmacionCambia("Nueva#2027")
         assertEquals(CambioClave(CLAVE_DE_PRUEBA, "Nueva#2027"), cambiar.onGuardar())
+    }
+
+    @Test
+    fun recordatorios_horaDelAvisoYContenido() {
+        assertEquals(60L, ProgramadorRecordatorios.minutosHastaElAviso(LocalDateTime.of(2026, 10, 6, 8, 0)))
+        assertEquals(23L * 60, ProgramadorRecordatorios.minutosHastaElAviso(LocalDateTime.of(2026, 10, 6, 10, 0)))
+        assertEquals(24L * 60, ProgramadorRecordatorios.minutosHastaElAviso(LocalDateTime.of(2026, 10, 6, 9, 0)))
+
+        val camila = usuario(1)!!
+        val deHoy = datos.recordatoriosDeHoy(camila)
+        assertTrue(deHoy.isNotEmpty())
+        assertTrue(deHoy.all { it.fechaEntrega.toLocalDate() == datos.fechaHoy })
+        assertEquals(deHoy.first(), datos.proximoRecordatorio(camila))
+        assertTrue(datos.recordatoriosDeHoy(camila.copy(avisosActivos = false)).isEmpty())
+        assertNull(datos.proximoRecordatorio(usuario(9)!!))
     }
 
     @Test

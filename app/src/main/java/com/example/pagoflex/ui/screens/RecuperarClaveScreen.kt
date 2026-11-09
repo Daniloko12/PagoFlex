@@ -1,5 +1,7 @@
 package com.example.pagoflex.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -34,6 +36,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -49,6 +52,8 @@ import com.example.pagoflex.model.LARGO_CODIGO_RECUPERACION
 import com.example.pagoflex.model.MINUTOS_VIGENCIA_CODIGO
 import com.example.pagoflex.model.PasoRecuperacion
 import com.example.pagoflex.model.RecuperarClaveUiState
+import com.example.pagoflex.notificaciones.Notificaciones
+import com.example.pagoflex.permisos.Permisos
 import com.example.pagoflex.ui.components.BarraSuperior
 import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.BotonSecundario
@@ -72,13 +77,34 @@ fun RecuperarClaveScreen(
     viewModel: RecuperarClaveViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var codigoEnviado by remember { mutableStateOf<String?>(null) }
+    var codigoSinNotificar by remember { mutableStateOf<String?>(null) }
+    var codigoPendiente by remember { mutableStateOf<String?>(null) }
+
+    fun entregarCodigo(codigo: String) {
+        if (!Notificaciones.mostrarCodigo(context, codigo)) codigoSinNotificar = codigo
+    }
+
+    val pedirPermiso = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { _: Boolean ->
+        codigoPendiente?.let { entregarCodigo(it) }
+        codigoPendiente = null
+    }
 
     fun enviarCodigo(datos: DatosRecuperacion, esReenvio: Boolean) {
         val codigo = onSolicitarCodigo(datos)
         viewModel.onCodigoEnviado()
-        if (codigo != null) codigoEnviado = codigo
+        if (codigo != null) {
+            val permiso = Permisos.NOTIFICACIONES
+            if (permiso != null && !Permisos.tiene(context, permiso)) {
+                codigoPendiente = codigo
+                pedirPermiso.launch(permiso)
+            } else {
+                entregarCodigo(codigo)
+            }
+        }
         if (esReenvio) scope.launch { snackbarHostState.showSnackbar("Te enviamos un código nuevo. El anterior ya no sirve.") }
     }
 
@@ -108,19 +134,20 @@ fun RecuperarClaveScreen(
         snackbarHostState = snackbarHostState
     )
 
-    codigoEnviado?.let { codigo ->
-        CorreoSimulado(codigo = codigo, onCerrar = { codigoEnviado = null })
+    codigoSinNotificar?.let { codigo ->
+        CodigoSinNotificacion(codigo = codigo, onCerrar = { codigoSinNotificar = null })
     }
 }
 
 @Composable
-private fun CorreoSimulado(codigo: String, onCerrar: () -> Unit) {
+private fun CodigoSinNotificacion(codigo: String, onCerrar: () -> Unit) {
     AlertDialog(
         onDismissRequest = onCerrar,
         title = { Text("Correo de PagoFlex") },
         text = {
             Text(
-                "Tu código de verificación es $codigo. Vence en $MINUTOS_VIGENCIA_CODIGO minutos. " +
+                "Las notificaciones están desactivadas, así que te mostramos el mensaje aquí. " +
+                    "Tu código de verificación es $codigo. Vence en $MINUTOS_VIGENCIA_CODIGO minutos. " +
                     "No lo compartas con nadie: PagoFlex nunca te lo pedirá por teléfono."
             )
         },
@@ -274,8 +301,9 @@ private fun PasoCodigo(
 ) {
     TarjetaSeccion(
         titulo = "2. ${PasoRecuperacion.CODIGO.titulo}",
-        subtitulo = "Si los datos corresponden a una cuenta activa, te enviamos un código a ${uiState.correo}. " +
-            "Vence en $MINUTOS_VIGENCIA_CODIGO minutos y tienes $INTENTOS_MAXIMOS_CODIGO intentos."
+        subtitulo = "Si los datos corresponden a una cuenta activa, te enviamos el código en una notificación, " +
+            "como el correo que llegaría a ${uiState.correo}. Vence en $MINUTOS_VIGENCIA_CODIGO minutos " +
+            "y tienes $INTENTOS_MAXIMOS_CODIGO intentos."
     ) {
         CampoTexto(
             valor = uiState.codigo,

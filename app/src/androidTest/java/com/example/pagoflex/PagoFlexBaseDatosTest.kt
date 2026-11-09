@@ -26,12 +26,15 @@ import com.example.pagoflex.model.MisDatos
 import com.example.pagoflex.model.MotivoAnulacion
 import com.example.pagoflex.model.MotivoReporte
 import com.example.pagoflex.model.NuevaCuenta
+import com.example.pagoflex.model.ResultadoCodigo
 import com.example.pagoflex.model.Rol
 import com.example.pagoflex.model.SolicitudPago
 import com.example.pagoflex.model.SolicitudReporte
 import com.example.pagoflex.model.TarjetaNueva
 import com.example.pagoflex.model.avancePorEmpresa
 import com.example.pagoflex.model.compromisoPorId
+import com.example.pagoflex.model.hashCodigo
+import com.example.pagoflex.model.mensajeCodigo
 import com.example.pagoflex.model.resumenPanel
 import com.example.pagoflex.model.tarjetaPorId
 import com.example.pagoflex.model.tarjetasGuardadas
@@ -40,6 +43,7 @@ import com.example.pagoflex.viewmodel.FormularioViewModel
 import com.example.pagoflex.viewmodel.PagoFlexViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -366,14 +370,45 @@ class PagoFlexBaseDatosTest {
         assertNull(app.solicitarCodigo(DatosRecuperacion("crojas@correo.ejemplo", "12.476.318-5")))
         assertNull(app.solicitarCodigo(DatosRecuperacion("rsalinas@pagoflex.ejemplo", "13.907.264-2")))
         val datos = DatosRecuperacion("crojas@correo.ejemplo", "15834207-3")
+        val anterior = app.solicitarCodigo(datos)!!
         val codigo = app.solicitarCodigo(datos)!!
+        val db = PagoFlexDbHelper(contexto)
+        val vigente = db.codigoVigenteDe(1)
+        assertNotNull(vigente)
+        assertEquals(hashCodigo(1, codigo), vigente?.codigoHash)
+        if (anterior != codigo) assertNotEquals(hashCodigo(1, anterior), vigente?.codigoHash)
+
+        val incorrecto = if (codigo == "000000") "111111" else "000000"
+        assertEquals("El código no es correcto. Te quedan 2 intentos.", app.verificarCodigo(datos, incorrecto))
         assertNull(app.verificarCodigo(datos, codigo))
+        assertNotNull(app.recuperarClave(ClaveRecuperada(datos.correo, datos.rut, codigo, "nueva2027")))
         assertNotNull(app.recuperarClave(ClaveRecuperada(datos.correo, datos.rut, codigo, CLAVE_DE_PRUEBA)))
         assertNull(app.recuperarClave(ClaveRecuperada(datos.correo, datos.rut, codigo, "Nueva#2027")))
+        assertNotNull(app.recuperarClave(ClaveRecuperada(datos.correo, datos.rut, codigo, "Otra#2028")))
+        assertNull(db.codigoVigenteDe(1))
+        db.close()
 
         assertNotNull(app.iniciarSesion(Credenciales("crojas@correo.ejemplo", CLAVE_DE_PRUEBA)))
         entrar(app, "crojas@correo.ejemplo", clave = "Nueva#2027")
         assertEquals(Rol.USUARIO_FINAL, app.usuarioActual.value?.rol)
+    }
+
+    @Test
+    fun recuperarClave_bloqueaTrasTresIntentos() {
+        val app = nuevaApp()
+        val datos = DatosRecuperacion("lmunoz@correo.ejemplo", "12.476.318-5")
+        val codigo = app.solicitarCodigo(datos)!!
+        val incorrecto = if (codigo == "000000") "111111" else "000000"
+        assertEquals("El código no es correcto. Te quedan 2 intentos.", app.verificarCodigo(datos, incorrecto))
+        assertEquals("El código no es correcto. Te queda 1 intento.", app.verificarCodigo(datos, incorrecto))
+        assertNotNull(app.verificarCodigo(datos, incorrecto))
+        assertEquals(mensajeCodigo(ResultadoCodigo.SIN_INTENTOS), app.verificarCodigo(datos, codigo))
+        assertNotNull(app.recuperarClave(ClaveRecuperada(datos.correo, datos.rut, codigo, "Nueva#2027")))
+
+        val nuevo = app.solicitarCodigo(datos)!!
+        assertNull(app.verificarCodigo(datos, nuevo))
+        assertNull(app.recuperarClave(ClaveRecuperada(datos.correo, datos.rut, nuevo, "Nueva#2027")))
+        entrar(app, "lmunoz@correo.ejemplo", clave = "Nueva#2027")
     }
 
     @Test

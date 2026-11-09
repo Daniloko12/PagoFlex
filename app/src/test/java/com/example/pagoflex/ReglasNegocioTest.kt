@@ -9,13 +9,17 @@ import com.example.pagoflex.model.DatosAnexo9
 import com.example.pagoflex.model.EstadoCompromiso
 import com.example.pagoflex.model.EstadoRecomendacion
 import com.example.pagoflex.model.EstadoReporte
+import com.example.pagoflex.model.INTENTOS_MAXIMOS_CODIGO
+import com.example.pagoflex.model.LARGO_CODIGO_RECUPERACION
 import com.example.pagoflex.model.LARGO_MAXIMO_CLAVE
+import com.example.pagoflex.model.MINUTOS_VIGENCIA_CODIGO
 import com.example.pagoflex.model.MarcaTarjeta
 import com.example.pagoflex.model.MedioPago
 import com.example.pagoflex.model.MotivoAnulacion
 import com.example.pagoflex.model.MotivoReporte
 import com.example.pagoflex.model.PasoRecuperacion
 import com.example.pagoflex.model.RequisitoClave
+import com.example.pagoflex.model.ResultadoCodigo
 import com.example.pagoflex.model.Rol
 import com.example.pagoflex.model.avancePorEmpresa
 import com.example.pagoflex.model.calcularIndicador
@@ -28,13 +32,17 @@ import com.example.pagoflex.model.conceptoSiguiente
 import com.example.pagoflex.model.cumpleRequisito
 import com.example.pagoflex.model.cuentaParaRecuperar
 import com.example.pagoflex.model.deudaDe
+import com.example.pagoflex.model.errorFormatoCodigo
 import com.example.pagoflex.model.errorClaveNueva
 import com.example.pagoflex.model.errorConfirmacionClave
 import com.example.pagoflex.model.formatoPesos
 import com.example.pagoflex.model.formatoPesosCorto
+import com.example.pagoflex.model.generarCodigoRecuperacion
 import com.example.pagoflex.model.hashClave
+import com.example.pagoflex.model.hashCodigo
 import com.example.pagoflex.model.luhnValido
 import com.example.pagoflex.model.marcaDe
+import com.example.pagoflex.model.mensajeCodigo
 import com.example.pagoflex.model.motivoParaNoAnular
 import com.example.pagoflex.model.motivoParaNoCambiarEstado
 import com.example.pagoflex.model.motivoParaNoEditar
@@ -42,6 +50,7 @@ import com.example.pagoflex.model.motivoParaNoPagar
 import com.example.pagoflex.model.motivoParaNoReportar
 import com.example.pagoflex.model.motivoParaNoResolver
 import com.example.pagoflex.model.motivoParaNoTomar
+import com.example.pagoflex.model.nuevoCodigoRecuperacion
 import com.example.pagoflex.model.ocultarRut
 import com.example.pagoflex.model.parsearVencimientoTarjeta
 import com.example.pagoflex.model.recomendacionesDe
@@ -50,6 +59,7 @@ import com.example.pagoflex.model.requisitosPendientes
 import com.example.pagoflex.model.resumenCobranza
 import com.example.pagoflex.model.resumenPanel
 import com.example.pagoflex.model.resumenSituacion
+import com.example.pagoflex.model.revisarCodigo
 import com.example.pagoflex.model.siguienteCuota
 import com.example.pagoflex.model.tarjetaNuevaDe
 import com.example.pagoflex.model.tarjetasGuardadas
@@ -78,6 +88,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.YearMonth
 
 class ReglasNegocioTest {
@@ -125,6 +136,35 @@ class ReglasNegocioTest {
         assertEquals(huella, hashClave("158342073", CLAVE_DE_PRUEBA))
         assertNotEquals(huella, hashClave("12.476.318-5", CLAVE_DE_PRUEBA))
         assertNotEquals(huella, hashClave("15.834.207-3", "pago#2026"))
+    }
+
+    @Test
+    fun codigoRecuperacion_vigenciaIntentosYUnSoloUso() {
+        val ahora = LocalDateTime.of(2026, 10, 6, 10, 0)
+        val codigo = generarCodigoRecuperacion()
+        assertEquals(LARGO_CODIGO_RECUPERACION, codigo.length)
+        assertTrue(codigo.all { it.isDigit() })
+        assertTrue((1..20).map { generarCodigoRecuperacion() }.toSet().size > 1)
+
+        val guardado = nuevoCodigoRecuperacion(1, "482913", ahora)
+        assertEquals(64, guardado.codigoHash.length)
+        assertFalse(guardado.codigoHash.contains("482913"))
+        assertNotEquals(guardado.codigoHash, hashCodigo(2, "482913"))
+        assertEquals(ahora.plusMinutes(MINUTOS_VIGENCIA_CODIGO), guardado.fechaExpiracion)
+
+        assertEquals(ResultadoCodigo.CORRECTO, revisarCodigo(guardado, "482913", ahora.plusMinutes(9)))
+        assertEquals(ResultadoCodigo.INCORRECTO, revisarCodigo(guardado, "482914", ahora))
+        assertEquals(ResultadoCodigo.VENCIDO, revisarCodigo(guardado, "482913", ahora.plusMinutes(11)))
+        assertEquals(ResultadoCodigo.SIN_INTENTOS, revisarCodigo(guardado.copy(intentos = INTENTOS_MAXIMOS_CODIGO), "482913", ahora))
+        assertEquals(ResultadoCodigo.SIN_CODIGO, revisarCodigo(guardado.copy(usado = true), "482913", ahora))
+        assertEquals(ResultadoCodigo.SIN_CODIGO, revisarCodigo(null, "482913", ahora))
+
+        assertNull(mensajeCodigo(ResultadoCodigo.CORRECTO))
+        assertEquals("El código no es correcto. Te quedan 2 intentos.", mensajeCodigo(ResultadoCodigo.INCORRECTO, 2))
+        assertEquals("El código no es correcto. Te queda 1 intento.", mensajeCodigo(ResultadoCodigo.INCORRECTO, 1))
+        assertNotNull(errorFormatoCodigo(""))
+        assertNotNull(errorFormatoCodigo("12345"))
+        assertNull(errorFormatoCodigo("123456"))
     }
 
     @Test

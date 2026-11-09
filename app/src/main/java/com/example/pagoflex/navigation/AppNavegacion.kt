@@ -275,6 +275,7 @@ fun AppNavegacion(
                 ultimaActualizacion = ultimaActualizacion,
                 onVerCompromiso = { id -> navController.navigate(Ruta.DetalleCompromiso.crear(id)) },
                 onActualizar = { avisar(pagoFlexViewModel.actualizar()) },
+                onVerAvance = { irAPrincipal(Ruta.Avance.ruta) },
                 menu = menuEn(Ruta.Inicio),
                 snackbarHostState = snackbarHostState
             )
@@ -399,6 +400,7 @@ fun AppNavegacion(
                 datos = datos,
                 usuario = usuario,
                 onRecomendar = { navController.navigate(Ruta.Recomendar.ruta) },
+                onVerCompromiso = { id -> navController.navigate(Ruta.DetalleCompromiso.crear(id)) },
                 menu = menuEn(Ruta.Avance),
                 snackbarHostState = snackbarHostState
             )

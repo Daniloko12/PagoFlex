@@ -25,6 +25,7 @@ import com.example.pagoflex.model.MarcaTarjeta
 import com.example.pagoflex.model.MedioPago
 import com.example.pagoflex.model.MotivoAnulacion
 import com.example.pagoflex.model.MotivoReporte
+import com.example.pagoflex.model.Movimiento
 import com.example.pagoflex.model.Pago
 import com.example.pagoflex.model.Recomendacion
 import com.example.pagoflex.model.Reconocimiento
@@ -32,10 +33,12 @@ import com.example.pagoflex.model.Reporte
 import com.example.pagoflex.model.Rol
 import com.example.pagoflex.model.Rubro
 import com.example.pagoflex.model.Tarjeta
+import com.example.pagoflex.model.TipoMovimiento
 import com.example.pagoflex.model.Usuario
 import com.example.pagoflex.model.UsuarioReconocimiento
 import com.example.pagoflex.model.actualizarVencimientos
 import com.example.pagoflex.model.hashClave
+import com.example.pagoflex.model.movimientosIniciales
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth
@@ -44,14 +47,14 @@ class PagoFlexDbHelper(context: Context) :
     SQLiteOpenHelper(context, NOMBRE_BD, null, VERSION_BD) {
     companion object {
         const val NOMBRE_BD = "pagoflex.db"
-        private const val VERSION_BD = 5
+        private const val VERSION_BD = 6
 
         private val TABLAS = listOf(
             "rol", "comuna", "rubro", "estado_compromiso", "motivo_anulacion", "canal",
-            "medio_pago", "marca_tarjeta", "motivo_reporte", "estado_reporte", "estado_recomendacion",
+            "medio_pago", "marca_tarjeta", "motivo_reporte", "estado_reporte", "estado_recomendacion", "tipo_movimiento",
             "reconocimiento", "empresa_cliente", "usuario", "tarjeta", "compromiso", "anulacion",
             "pago", "reporte", "recomendacion", "contacto_recomendacion", "historial_recomendacion",
-            "usuario_reconocimiento", "codigo_recuperacion"
+            "usuario_reconocimiento", "codigo_recuperacion", "movimiento"
         )
 
         private val TABLAS_ANTIGUAS = listOf("area")
@@ -67,6 +70,22 @@ class PagoFlexDbHelper(context: Context) :
                 "fecha_expiracion TEXT NOT NULL, " +
                 "intentos INTEGER NOT NULL DEFAULT 0 CHECK (intentos >= 0), " +
                 "usado INTEGER NOT NULL DEFAULT 0 CHECK (usado IN (0, 1)))"
+
+        private const val SQL_CREAR_TIPO_MOVIMIENTO =
+            "CREATE TABLE tipo_movimiento (id_tipo_movimiento INTEGER PRIMARY KEY, nombre TEXT NOT NULL UNIQUE)"
+
+        private const val SQL_CREAR_MOVIMIENTO =
+            "CREATE TABLE movimiento (" +
+                "id_movimiento INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "id_tipo_movimiento INTEGER NOT NULL REFERENCES tipo_movimiento(id_tipo_movimiento), " +
+                "fecha TEXT NOT NULL, " +
+                "id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario), " +
+                "id_autor INTEGER REFERENCES usuario(id_usuario), " +
+                "id_compromiso INTEGER REFERENCES compromiso(id_compromiso), " +
+                "detalle TEXT NOT NULL)"
+
+        private const val SQL_INDICE_MOVIMIENTO =
+            "CREATE INDEX ix_movimiento_usuario ON movimiento (id_usuario, fecha)"
 
         private val SQL_CREAR_TABLAS = listOf(
             "CREATE TABLE rol (id_rol INTEGER PRIMARY KEY, codigo TEXT NOT NULL UNIQUE, " +
@@ -205,7 +224,10 @@ class PagoFlexDbHelper(context: Context) :
                 "fecha_obtencion TEXT NOT NULL, " +
                 "motivo TEXT NOT NULL, " +
                 "PRIMARY KEY (id_usuario_final, id_reconocimiento))",
-            SQL_CREAR_CODIGO_RECUPERACION
+            SQL_CREAR_CODIGO_RECUPERACION,
+            SQL_CREAR_TIPO_MOVIMIENTO,
+            SQL_CREAR_MOVIMIENTO,
+            SQL_INDICE_MOVIMIENTO
         )
 
         private const val SQL_SELECT_USUARIOS =
@@ -237,6 +259,23 @@ class PagoFlexDbHelper(context: Context) :
         if (oldVersion < 5) {
             db.execSQL(SQL_CREAR_CODIGO_RECUPERACION)
         }
+        if (oldVersion < 6) {
+            db.execSQL(SQL_CREAR_TIPO_MOVIMIENTO)
+            db.execSQL(SQL_CREAR_MOVIMIENTO)
+            db.execSQL(SQL_INDICE_MOVIMIENTO)
+            insertarTiposMovimiento(db)
+            val actuales = cargarDatos(db)
+            movimientosIniciales(actuales.compromisos, actuales.pagos, actuales.anulaciones, actuales.reportes)
+                .forEach { insertarMovimiento(db, it) }
+        }
+    }
+
+    private fun insertarTiposMovimiento(db: SQLiteDatabase) {
+        insertarCatalogo(db, "tipo_movimiento", "id_tipo_movimiento", TipoMovimiento.entries.map { idDe(it) to it.etiqueta })
+    }
+
+    private fun insertarMovimiento(db: SQLiteDatabase, movimiento: Movimiento) {
+        db.insertOrThrow("movimiento", null, valoresDe(movimiento))
     }
 
     private fun actualizarClavesDePrueba(db: SQLiteDatabase) {
@@ -268,6 +307,7 @@ class PagoFlexDbHelper(context: Context) :
         insertarCatalogo(db, "marca_tarjeta", "id_marca_tarjeta", MarcaTarjeta.entries.map { idDe(it) to it.etiqueta })
         insertarCatalogo(db, "motivo_reporte", "id_motivo_reporte", MotivoReporte.entries.map { idDe(it) to it.etiqueta })
         insertarCatalogo(db, "estado_reporte", "id_estado_reporte", EstadoReporte.entries.map { idDe(it) to it.etiqueta })
+        insertarTiposMovimiento(db)
         EstadoRecomendacion.entries.forEach {
             db.insertOrThrow("estado_recomendacion", null, ContentValues().apply {
                 put("id_estado_recomendacion", idDe(it)); put("nombre", it.etiqueta); put("orden", it.orden)
@@ -286,8 +326,8 @@ class PagoFlexDbHelper(context: Context) :
             db.insertOrThrow("usuario", null, valoresDe(it).apply { put("clave_hash", hashClave(it.rut, CLAVE_DE_PRUEBA)) })
         }
         DatosAnexo9.tarjetas.forEach { db.insertOrThrow("tarjeta", null, valoresDe(it)) }
-        actualizarVencimientos(DatosAnexo9.compromisos, DatosAnexo9.empresas, DatosAnexo9.FECHA_HOY)
-            .forEach { db.insertOrThrow("compromiso", null, valoresDe(it)) }
+        val compromisos = actualizarVencimientos(DatosAnexo9.compromisos, DatosAnexo9.empresas, DatosAnexo9.FECHA_HOY)
+        compromisos.forEach { db.insertOrThrow("compromiso", null, valoresDe(it)) }
         DatosAnexo9.anulaciones.forEach { db.insertOrThrow("anulacion", null, valoresDe(it)) }
         DatosAnexo9.pagos.forEach { db.insertOrThrow("pago", null, valoresDe(it)) }
         DatosAnexo9.reportes.forEach { db.insertOrThrow("reporte", null, valoresDe(it)) }
@@ -295,6 +335,8 @@ class PagoFlexDbHelper(context: Context) :
         DatosAnexo9.contactosRecomendacion.forEach { db.insertOrThrow("contacto_recomendacion", null, valoresDe(it)) }
         DatosAnexo9.historialRecomendaciones.forEach { db.insertOrThrow("historial_recomendacion", null, valoresDe(it)) }
         DatosAnexo9.reconocimientosObtenidos.forEach { db.insertOrThrow("usuario_reconocimiento", null, valoresDe(it)) }
+        movimientosIniciales(compromisos, DatosAnexo9.pagos, DatosAnexo9.anulaciones, DatosAnexo9.reportes)
+            .forEach { insertarMovimiento(db, it) }
     }
 
     private fun insertarCatalogo(db: SQLiteDatabase, tabla: String, columnaId: String, filas: List<Pair<Int, String>>) {
@@ -315,23 +357,26 @@ class PagoFlexDbHelper(context: Context) :
         }
     }
 
-    fun cargarDatos(): BaseDatos = BaseDatos(
-        usuarios = consultar("$SQL_SELECT_USUARIOS ORDER BY u.id_usuario") { leerUsuario(it) },
-        empresas = consultar("SELECT * FROM empresa_cliente ORDER BY id_empresa") { leerEmpresa(it) },
-        compromisos = consultar("SELECT * FROM compromiso ORDER BY id_compromiso") { leerCompromiso(it) },
-        pagos = consultar("SELECT * FROM pago ORDER BY id_pago") { leerPago(it) },
-        anulaciones = consultar("SELECT * FROM anulacion") { leerAnulacion(it) },
-        reportes = consultar("SELECT * FROM reporte ORDER BY id_reporte") { leerReporte(it) },
-        recomendaciones = consultar("SELECT * FROM recomendacion ORDER BY id_recomendacion") { leerRecomendacion(it) },
-        contactosRecomendacion = consultar("SELECT * FROM contacto_recomendacion") { leerContacto(it) },
-        historialRecomendaciones = consultar("SELECT * FROM historial_recomendacion ORDER BY id_historial") { leerHistorial(it) },
-        reconocimientosObtenidos = consultar("SELECT * FROM usuario_reconocimiento") { leerUsuarioReconocimiento(it) },
-        tarjetas = consultar("SELECT * FROM tarjeta ORDER BY id_tarjeta") { leerTarjeta(it) },
-        rubros = consultar("SELECT * FROM rubro ORDER BY id_rubro") { Rubro(it.entero("id_rubro"), it.texto("nombre")) },
-        comunas = consultar("SELECT * FROM comuna ORDER BY nombre") { Comuna(it.entero("id_comuna"), it.texto("nombre")) },
-        reconocimientos = consultar("SELECT * FROM reconocimiento ORDER BY id_reconocimiento") {
+    fun cargarDatos(): BaseDatos = cargarDatos(readableDatabase)
+
+    private fun cargarDatos(db: SQLiteDatabase): BaseDatos = BaseDatos(
+        usuarios = consultar("$SQL_SELECT_USUARIOS ORDER BY u.id_usuario", db = db) { leerUsuario(it) },
+        empresas = consultar("SELECT * FROM empresa_cliente ORDER BY id_empresa", db = db) { leerEmpresa(it) },
+        compromisos = consultar("SELECT * FROM compromiso ORDER BY id_compromiso", db = db) { leerCompromiso(it) },
+        pagos = consultar("SELECT * FROM pago ORDER BY id_pago", db = db) { leerPago(it) },
+        anulaciones = consultar("SELECT * FROM anulacion", db = db) { leerAnulacion(it) },
+        reportes = consultar("SELECT * FROM reporte ORDER BY id_reporte", db = db) { leerReporte(it) },
+        recomendaciones = consultar("SELECT * FROM recomendacion ORDER BY id_recomendacion", db = db) { leerRecomendacion(it) },
+        contactosRecomendacion = consultar("SELECT * FROM contacto_recomendacion", db = db) { leerContacto(it) },
+        historialRecomendaciones = consultar("SELECT * FROM historial_recomendacion ORDER BY id_historial", db = db) { leerHistorial(it) },
+        reconocimientosObtenidos = consultar("SELECT * FROM usuario_reconocimiento", db = db) { leerUsuarioReconocimiento(it) },
+        tarjetas = consultar("SELECT * FROM tarjeta ORDER BY id_tarjeta", db = db) { leerTarjeta(it) },
+        rubros = consultar("SELECT * FROM rubro ORDER BY id_rubro", db = db) { Rubro(it.entero("id_rubro"), it.texto("nombre")) },
+        comunas = consultar("SELECT * FROM comuna ORDER BY nombre", db = db) { Comuna(it.entero("id_comuna"), it.texto("nombre")) },
+        reconocimientos = consultar("SELECT * FROM reconocimiento ORDER BY id_reconocimiento", db = db) {
             Reconocimiento(it.entero("id_reconocimiento"), it.texto("nombre"), it.texto("descripcion"))
         },
+        movimientos = consultar("SELECT * FROM movimiento ORDER BY id_movimiento", db = db) { leerMovimiento(it) },
         fechaHoy = DatosAnexo9.FECHA_HOY
     )
 
@@ -364,7 +409,8 @@ class PagoFlexDbHelper(context: Context) :
         compromiso: Compromiso,
         reconocimientos: List<UsuarioReconocimiento>,
         tarjetaNueva: Tarjeta? = null,
-        siguienteCuota: Compromiso? = null
+        siguienteCuota: Compromiso? = null,
+        movimientos: List<Movimiento> = emptyList()
     ): Boolean =
         enTransaccion { db ->
             if (tarjetaNueva != null) db.insertOrThrow("tarjeta", null, valoresDe(tarjetaNueva))
@@ -372,18 +418,21 @@ class PagoFlexDbHelper(context: Context) :
             actualizarCompromiso(db, compromiso)
             if (siguienteCuota != null) db.insertOrThrow("compromiso", null, valoresDe(siguienteCuota))
             reconocimientos.forEach { db.insertOrThrow("usuario_reconocimiento", null, valoresDe(it)) }
+            movimientos.forEach { insertarMovimiento(db, it) }
         }
 
-    fun registrarReporte(reporte: Reporte, compromiso: Compromiso): Boolean =
+    fun registrarReporte(reporte: Reporte, compromiso: Compromiso, movimientos: List<Movimiento> = emptyList()): Boolean =
         enTransaccion { db ->
             db.insertOrThrow("reporte", null, valoresDe(reporte))
             actualizarCompromiso(db, compromiso)
+            movimientos.forEach { insertarMovimiento(db, it) }
         }
 
-    fun actualizarReporte(reporte: Reporte, compromiso: Compromiso?): Boolean =
+    fun actualizarReporte(reporte: Reporte, compromiso: Compromiso?, movimientos: List<Movimiento> = emptyList()): Boolean =
         enTransaccion { db ->
             db.update("reporte", valoresDe(reporte), "id_reporte = ?", arrayOf(reporte.idReporte.toString()))
             if (compromiso != null) actualizarCompromiso(db, compromiso)
+            movimientos.forEach { insertarMovimiento(db, it) }
         }
 
     fun registrarRecomendacion(recomendacion: Recomendacion, contacto: ContactoRecomendacion?): Boolean =
@@ -406,13 +455,14 @@ class PagoFlexDbHelper(context: Context) :
             if (reconocimiento != null) db.insertOrThrow("usuario_reconocimiento", null, valoresDe(reconocimiento))
         }
 
-    fun anularCompromiso(anulacion: Anulacion, compromiso: Compromiso): Boolean =
+    fun anularCompromiso(anulacion: Anulacion, compromiso: Compromiso, movimientos: List<Movimiento> = emptyList()): Boolean =
         enTransaccion { db ->
             db.insertOrThrow("anulacion", null, valoresDe(anulacion))
             actualizarCompromiso(db, compromiso)
+            movimientos.forEach { insertarMovimiento(db, it) }
         }
 
-    fun registrarCompromiso(compromiso: Compromiso, personaNueva: Usuario?): Boolean =
+    fun registrarCompromiso(compromiso: Compromiso, personaNueva: Usuario?, movimientos: List<Movimiento> = emptyList()): Boolean =
         enTransaccion { db ->
             if (personaNueva != null) {
                 db.insertOrThrow("usuario", null, valoresDe(personaNueva).apply {
@@ -420,16 +470,19 @@ class PagoFlexDbHelper(context: Context) :
                 })
             }
             db.insertOrThrow("compromiso", null, valoresDe(compromiso))
+            movimientos.forEach { insertarMovimiento(db, it) }
         }
 
-    fun registrarUsuario(usuario: Usuario, clave: String): Boolean =
+    fun registrarUsuario(usuario: Usuario, clave: String, movimientos: List<Movimiento> = emptyList()): Boolean =
         enTransaccion { db ->
             db.insertOrThrow("usuario", null, valoresDe(usuario).apply { put("clave_hash", hashClave(usuario.rut, clave)) })
+            movimientos.forEach { insertarMovimiento(db, it) }
         }
 
-    fun actualizarUsuario(usuario: Usuario): Boolean =
+    fun actualizarUsuario(usuario: Usuario, movimientos: List<Movimiento> = emptyList()): Boolean =
         enTransaccion { db ->
             db.update("usuario", valoresDe(usuario), "id_usuario = ?", arrayOf(usuario.idUsuario.toString()))
+            movimientos.forEach { insertarMovimiento(db, it) }
         }
 
     fun actualizarAvatar(idUsuario: Int, avatar: ByteArray): Boolean =
@@ -438,10 +491,11 @@ class PagoFlexDbHelper(context: Context) :
             db.update("usuario", valores, "id_usuario = ?", arrayOf(idUsuario.toString()))
         }
 
-    fun cambiarClave(usuario: Usuario, claveNueva: String): Boolean =
+    fun cambiarClave(usuario: Usuario, claveNueva: String, movimientos: List<Movimiento> = emptyList()): Boolean =
         enTransaccion { db ->
             val valores = ContentValues().apply { put("clave_hash", hashClave(usuario.rut, claveNueva)) }
             db.update("usuario", valores, "id_usuario = ?", arrayOf(usuario.idUsuario.toString()))
+            movimientos.forEach { insertarMovimiento(db, it) }
         }
 
     fun guardarCodigoRecuperacion(codigo: CodigoRecuperacion): Boolean =
@@ -463,12 +517,18 @@ class PagoFlexDbHelper(context: Context) :
             db.update("codigo_recuperacion", valores, "id_codigo = ?", arrayOf(codigo.idCodigo.toString()))
         }
 
-    fun cambiarClaveConCodigo(usuario: Usuario, codigo: CodigoRecuperacion, claveNueva: String): Boolean =
+    fun cambiarClaveConCodigo(
+        usuario: Usuario,
+        codigo: CodigoRecuperacion,
+        claveNueva: String,
+        movimientos: List<Movimiento> = emptyList()
+    ): Boolean =
         enTransaccion { db ->
             val usado = ContentValues().apply { put("usado", 1) }
             db.update("codigo_recuperacion", usado, "id_codigo = ?", arrayOf(codigo.idCodigo.toString()))
             val valores = ContentValues().apply { put("clave_hash", hashClave(usuario.rut, claveNueva)) }
             db.update("usuario", valores, "id_usuario = ?", arrayOf(usuario.idUsuario.toString()))
+            movimientos.forEach { insertarMovimiento(db, it) }
         }
 
     fun registrarTarjeta(tarjeta: Tarjeta): Boolean =
@@ -480,8 +540,11 @@ class PagoFlexDbHelper(context: Context) :
             db.update("tarjeta", valores, "id_tarjeta = ?", arrayOf(idTarjeta.toString()))
         }
 
-    fun actualizarCompromisos(compromisos: List<Compromiso>): Boolean =
-        enTransaccion { db -> compromisos.forEach { actualizarCompromiso(db, it) } }
+    fun actualizarCompromisos(compromisos: List<Compromiso>, movimientos: List<Movimiento> = emptyList()): Boolean =
+        enTransaccion { db ->
+            compromisos.forEach { actualizarCompromiso(db, it) }
+            movimientos.forEach { insertarMovimiento(db, it) }
+        }
 
     private fun actualizarCompromiso(db: SQLiteDatabase, compromiso: Compromiso) {
         db.update("compromiso", valoresDe(compromiso), "id_compromiso = ?", arrayOf(compromiso.idCompromiso.toString()))
@@ -501,9 +564,14 @@ class PagoFlexDbHelper(context: Context) :
         }
     }
 
-    private fun <T> consultar(sql: String, args: Array<String>? = null, leerFila: (Cursor) -> T): List<T> {
+    private fun <T> consultar(
+        sql: String,
+        args: Array<String>? = null,
+        db: SQLiteDatabase = readableDatabase,
+        leerFila: (Cursor) -> T
+    ): List<T> {
         val lista = mutableListOf<T>()
-        readableDatabase.rawQuery(sql, args).use { cursor ->
+        db.rawQuery(sql, args).use { cursor ->
             while (cursor.moveToNext()) {
                 lista.add(leerFila(cursor))
             }
@@ -652,6 +720,16 @@ class PagoFlexDbHelper(context: Context) :
         usado = c.entero("usado") == 1
     )
 
+    private fun leerMovimiento(c: Cursor) = Movimiento(
+        idMovimiento = c.entero("id_movimiento"),
+        tipo = TipoMovimiento.entries[c.entero("id_tipo_movimiento") - 1],
+        fecha = c.fechaHora("fecha"),
+        idUsuario = c.entero("id_usuario"),
+        idAutor = c.enteroONulo("id_autor"),
+        idCompromiso = c.enteroONulo("id_compromiso"),
+        detalle = c.texto("detalle")
+    )
+
     private fun leerUsuarioReconocimiento(c: Cursor) = UsuarioReconocimiento(
         idUsuarioFinal = c.entero("id_usuario_final"),
         idReconocimiento = c.entero("id_reconocimiento"),
@@ -737,5 +815,10 @@ class PagoFlexDbHelper(context: Context) :
         put("id_usuario", c.idUsuario); put("codigo_hash", c.codigoHash)
         put("fecha_creacion", c.fechaCreacion.toString()); put("fecha_expiracion", c.fechaExpiracion.toString())
         put("intentos", c.intentos); put("usado", if (c.usado) 1 else 0)
+    }
+
+    private fun valoresDe(m: Movimiento) = ContentValues().apply {
+        put("id_tipo_movimiento", idDe(m.tipo)); put("fecha", m.fecha.toString()); put("id_usuario", m.idUsuario)
+        put("id_autor", m.idAutor); put("id_compromiso", m.idCompromiso); put("detalle", m.detalle)
     }
 }

@@ -42,9 +42,11 @@ import com.example.pagoflex.model.SolicitudPago
 import com.example.pagoflex.model.SolicitudReporte
 import com.example.pagoflex.model.Tarjeta
 import com.example.pagoflex.model.TarjetaNueva
+import com.example.pagoflex.model.TipoMovimiento
 import com.example.pagoflex.model.Usuario
 import com.example.pagoflex.model.UsuarioReconocimiento
 import com.example.pagoflex.model.actualizarVencimientos
+import com.example.pagoflex.model.cambiosDeUsuario
 import com.example.pagoflex.model.claveValida
 import com.example.pagoflex.model.compromisoPorId
 import com.example.pagoflex.model.cuentaParaRecuperar
@@ -60,6 +62,14 @@ import com.example.pagoflex.model.motivoParaNoReportar
 import com.example.pagoflex.model.motivoParaNoResolver
 import com.example.pagoflex.model.motivoParaNoTomar
 import com.example.pagoflex.model.motivoSinPermiso
+import com.example.pagoflex.model.movimientoAnulacion
+import com.example.pagoflex.model.movimientoCuenta
+import com.example.pagoflex.model.movimientoCuotaGenerada
+import com.example.pagoflex.model.movimientoModificacion
+import com.example.pagoflex.model.movimientoPago
+import com.example.pagoflex.model.movimientoRegistro
+import com.example.pagoflex.model.movimientoReporte
+import com.example.pagoflex.model.movimientoVencimiento
 import com.example.pagoflex.model.normalizarRut
 import com.example.pagoflex.model.nuevoCodigoRecuperacion
 import com.example.pagoflex.model.puede
@@ -134,7 +144,8 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
             avisosActivos = true,
             diasAnticipacion = 3
         )
-        if (!repositorio.registrarUsuario(usuario, nueva.clave)) return "No pudimos crear tu cuenta. Revisa que tu RUT y tu correo no estén registrados."
+        val registro = movimientoCuenta(TipoMovimiento.CUENTA_CREADA, usuario.idUsuario, usuario.idUsuario, fecha, "Creaste tu cuenta desde la app")
+        if (!repositorio.registrarUsuario(usuario, nueva.clave, registro)) return "No pudimos crear tu cuenta. Revisa que tu RUT y tu correo no estén registrados."
         repositorio.iniciarSesion(this.datos.value.usuarioPorId(usuario.idUsuario) ?: usuario)
         return null
     }
@@ -169,7 +180,11 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         if (repositorio.buscarPorCredenciales(cuenta.correo, recuperada.claveNueva) != null) {
             return "Esa ya es tu contraseña. Puedes ingresar con ella o elegir otra."
         }
-        return if (repositorio.cambiarClaveConCodigo(cuenta, vigente, recuperada.claveNueva)) null
+        val registro = movimientoCuenta(
+            TipoMovimiento.CLAVE_RECUPERADA, cuenta.idUsuario, cuenta.idUsuario, ahora(),
+            "Verificaste tu identidad con un código de un solo uso"
+        )
+        return if (repositorio.cambiarClaveConCodigo(cuenta, vigente, recuperada.claveNueva, registro)) null
         else "No pudimos cambiar la contraseña. Inténtalo de nuevo."
     }
 
@@ -183,7 +198,8 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
             idComuna = misDatos.idComuna ?: usuario.idComuna
         )
         if (editado == usuario) return "No cambiaste ningún dato"
-        if (!repositorio.actualizarUsuario(editado)) return "No pudimos guardar tus datos. Revisa que el correo no esté registrado."
+        val registro = movimientoCuenta(TipoMovimiento.DATOS_ACTUALIZADOS, usuario.idUsuario, usuario.idUsuario, ahora(), cambiosDeUsuario(usuario, editado))
+        if (!repositorio.actualizarUsuario(editado, listOf(registro))) return "No pudimos guardar tus datos. Revisa que el correo no esté registrado."
         return null
     }
 
@@ -191,7 +207,8 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         val usuario = usuarioActual.value ?: return "Inicia sesión"
         if (repositorio.buscarPorCredenciales(usuario.correo, cambio.claveActual) == null) return "Tu contraseña actual no es correcta"
         if (!claveValida(cambio.claveNueva)) return MENSAJE_CLAVE_INSEGURA
-        return if (repositorio.cambiarClave(usuario, cambio.claveNueva)) null else "No pudimos cambiar la contraseña. Inténtalo de nuevo."
+        val registro = movimientoCuenta(TipoMovimiento.CLAVE_CAMBIADA, usuario.idUsuario, usuario.idUsuario, ahora(), "Cambiaste tu contraseña desde Mi perfil")
+        return if (repositorio.cambiarClave(usuario, cambio.claveNueva, registro)) null else "No pudimos cambiar la contraseña. Inténtalo de nuevo."
     }
 
     private fun siguienteIdUsuario(datos: BaseDatos): Int = (datos.usuarios.maxOfOrNull { it.idUsuario } ?: 0) + 1
@@ -284,7 +301,8 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
                 "Pagaste \"${compromiso.concepto}\" y quedaste sin compromisos vencidos")
         }
 
-        if (!repositorio.registrarPago(pago, pagado, nuevos, tarjetaNueva, siguiente)) return null
+        val registros = listOfNotNull(movimientoPago(pago, compromiso), siguiente?.let { movimientoCuotaGenerada(it, fechaPago) })
+        if (!repositorio.registrarPago(pago, pagado, nuevos, tarjetaNueva, siguiente, registros)) return null
         repositorio.registrarActualizacion(fechaPago)
         return ResultadoPago(
             pago = pago,
@@ -355,7 +373,8 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
             estado = EstadoReporte.ABIERTO
         )
         val enRevision = compromiso.copy(estado = EstadoCompromiso.EN_REVISION, fechaCambioEstado = fecha)
-        if (!repositorio.registrarReporte(reporte, enRevision)) return null
+        val registro = movimientoReporte(TipoMovimiento.REPORTE_ENVIADO, reporte, compromiso, compromiso.idUsuarioFinal, fecha)
+        if (!repositorio.registrarReporte(reporte, enRevision, registro)) return null
         return reporte
     }
 
@@ -398,7 +417,8 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         val datos = datos.value
         val cambiados = actualizarVencimientos(datos.compromisos, datos.empresas, datos.fechaHoy)
             .filter { nuevo -> datos.compromisoPorId(nuevo.idCompromiso) != nuevo }
-        if (cambiados.isNotEmpty()) repositorio.actualizarCompromisos(cambiados)
+        val vencidos = cambiados.filter { it.estado == EstadoCompromiso.VENCIDO }.map { movimientoVencimiento(it) }
+        if (cambiados.isNotEmpty()) repositorio.actualizarCompromisos(cambiados, vencidos)
         repositorio.registrarActualizacion(ahora())
         return "Información actualizada"
     }
@@ -408,8 +428,11 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         val datos = datos.value
         datos.motivoParaNoTomar(idReporte, admin)?.let { return it }
         val reporte = datos.reportePorId(idReporte) ?: return "No encontramos el reporte"
-        val tomado = reporte.copy(estado = EstadoReporte.EN_GESTION, idAdministrador = admin.idUsuario, fechaToma = ahora())
-        if (!repositorio.actualizarReporte(tomado, null)) return "No pudimos guardar el cambio. Inténtalo de nuevo."
+        val compromiso = datos.compromisoPorId(reporte.idCompromiso) ?: return "No encontramos el compromiso del reporte"
+        val fecha = ahora()
+        val tomado = reporte.copy(estado = EstadoReporte.EN_GESTION, idAdministrador = admin.idUsuario, fechaToma = fecha)
+        val registro = movimientoReporte(TipoMovimiento.REPORTE_EN_GESTION, tomado, compromiso, admin.idUsuario, fecha)
+        if (!repositorio.actualizarReporte(tomado, null, registro)) return "No pudimos guardar el cambio. Inténtalo de nuevo."
         return null
     }
 
@@ -432,7 +455,9 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
                 )
             }
         val resuelto = reporte.copy(estado = EstadoReporte.RESUELTO, respuesta = respuesta.trim(), fechaResolucion = fecha)
-        if (!repositorio.actualizarReporte(resuelto, compromiso)) return "No pudimos guardar el cambio. Inténtalo de nuevo."
+        val delReporte = compromiso ?: datos.compromisoPorId(reporte.idCompromiso) ?: return "No encontramos el compromiso del reporte"
+        val registro = movimientoReporte(TipoMovimiento.REPORTE_RESUELTO, resuelto, delReporte, admin.idUsuario, fecha)
+        if (!repositorio.actualizarReporte(resuelto, compromiso, registro)) return "No pudimos guardar el cambio. Inténtalo de nuevo."
         return null
     }
 
@@ -484,7 +509,7 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         val fecha = ahora()
         val anulacion = Anulacion(idCompromiso, admin.idUsuario, motivo, comentario?.trim()?.ifBlank { null }, fecha)
         val anulado = compromiso.copy(estado = EstadoCompromiso.ANULADO, fechaCambioEstado = fecha)
-        if (!repositorio.anularCompromiso(anulacion, anulado)) return "No pudimos guardar la anulación. Inténtalo de nuevo."
+        if (!repositorio.anularCompromiso(anulacion, anulado, movimientoAnulacion(anulacion, anulado))) return "No pudimos guardar la anulación. Inténtalo de nuevo."
         return null
     }
 
@@ -527,12 +552,18 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
             idAdminRegistro = admin.idUsuario,
             fechaRegistro = fecha
         )
-        if (!repositorio.registrarCompromiso(compromiso, personaNueva)) return null
+        val registros = listOfNotNull(
+            personaNueva?.let {
+                movimientoCuenta(TipoMovimiento.CUENTA_CREADA, it.idUsuario, admin.idUsuario, fecha, "Un administrador creó la cuenta al registrar un compromiso")
+            },
+            movimientoRegistro(compromiso, admin.idUsuario, fecha)
+        )
+        if (!repositorio.registrarCompromiso(compromiso, personaNueva, registros)) return null
         return compromiso
     }
 
     fun editarCompromiso(idCompromiso: Int, cambios: CambiosCompromiso): String? {
-        sinPermiso(Accion.EDITAR_COMPROMISO)?.let { return it }
+        val admin = conPermiso(Accion.EDITAR_COMPROMISO) ?: return sinPermiso(Accion.EDITAR_COMPROMISO)
         val datos = datos.value
         datos.motivoParaNoEditar(idCompromiso)?.let { return it }
         val actual = datos.compromisoPorId(idCompromiso) ?: return "No encontramos el compromiso"
@@ -554,12 +585,13 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
             fechaCambioEstado = if (estado != actual.estado) ahora() else actual.fechaCambioEstado
         )
         if (editado == actual) return "No cambiaste ningún dato"
-        if (!repositorio.actualizarCompromisos(listOf(editado))) return "No pudimos guardar los cambios. Revisa que no esté repetido."
+        val registro = movimientoModificacion(actual, editado, admin.idUsuario, ahora())
+        if (!repositorio.actualizarCompromisos(listOf(editado), listOf(registro))) return "No pudimos guardar los cambios. Revisa que no esté repetido."
         return null
     }
 
     fun crearCliente(datosCliente: DatosCliente): Usuario? {
-        if (!puede(usuarioActual.value, Accion.GESTIONAR_CLIENTES)) return null
+        val admin = conPermiso(Accion.GESTIONAR_CLIENTES) ?: return null
         val datos = datos.value
         val cliente = Usuario(
             idUsuario = siguienteIdUsuario(datos),
@@ -576,12 +608,13 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
             avisosActivos = true,
             diasAnticipacion = 3
         )
-        if (!repositorio.registrarUsuario(cliente, CLAVE_DE_PRUEBA)) return null
+        val registro = movimientoCuenta(TipoMovimiento.CUENTA_CREADA, cliente.idUsuario, admin.idUsuario, cliente.fechaCreacion, "Cuenta creada por un administrador")
+        if (!repositorio.registrarUsuario(cliente, CLAVE_DE_PRUEBA, registro)) return null
         return cliente
     }
 
     fun editarCliente(idUsuario: Int, datosCliente: DatosCliente): String? {
-        sinPermiso(Accion.GESTIONAR_CLIENTES)?.let { return it }
+        val admin = conPermiso(Accion.GESTIONAR_CLIENTES) ?: return sinPermiso(Accion.GESTIONAR_CLIENTES)
         val cliente = datos.value.usuarioPorId(idUsuario)
             ?.takeIf { it.rol == Rol.USUARIO_FINAL } ?: return "No encontramos al cliente"
         val editado = cliente.copy(
@@ -592,15 +625,17 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
             idComuna = datosCliente.idComuna,
             activo = datosCliente.activo
         )
-        if (!repositorio.actualizarUsuario(editado)) return "No pudimos guardar los cambios. Revisa que el correo no esté registrado."
+        val registro = movimientoCuenta(TipoMovimiento.DATOS_ACTUALIZADOS, cliente.idUsuario, admin.idUsuario, ahora(), cambiosDeUsuario(cliente, editado))
+        if (!repositorio.actualizarUsuario(editado, listOf(registro))) return "No pudimos guardar los cambios. Revisa que el correo no esté registrado."
         return null
     }
 
     fun restablecerClaveCliente(idUsuario: Int): String? {
-        sinPermiso(Accion.GESTIONAR_CLIENTES)?.let { return it }
+        val admin = conPermiso(Accion.GESTIONAR_CLIENTES) ?: return sinPermiso(Accion.GESTIONAR_CLIENTES)
         val cliente = datos.value.usuarioPorId(idUsuario)
             ?.takeIf { it.rol == Rol.USUARIO_FINAL } ?: return "No encontramos al cliente"
-        return if (repositorio.cambiarClave(cliente, CLAVE_DE_PRUEBA)) null else "No pudimos restablecer la contraseña"
+        val registro = movimientoCuenta(TipoMovimiento.CLAVE_RESTABLECIDA, cliente.idUsuario, admin.idUsuario, ahora(), "Se asignó la contraseña de prueba")
+        return if (repositorio.cambiarClave(cliente, CLAVE_DE_PRUEBA, registro)) null else "No pudimos restablecer la contraseña"
     }
 
     override fun onCleared() {

@@ -21,6 +21,7 @@ data class BaseDatos(
     val rubros: List<Rubro> = DatosAnexo9.rubros,
     val comunas: List<Comuna> = DatosAnexo9.comunas,
     val reconocimientos: List<Reconocimiento> = DatosAnexo9.reconocimientos,
+    val movimientos: List<Movimiento> = movimientosIniciales(compromisos, pagos, anulaciones, reportes),
     val fechaHoy: LocalDate = DatosAnexo9.FECHA_HOY
 )
 
@@ -105,7 +106,7 @@ fun BaseDatos.empresasDelUsuario(idUsuario: Int): List<EmpresaCliente> {
     return empresas.filter { it.idEmpresa in ids }
 }
 
-fun BaseDatos.movimientos(idUsuario: Int): List<MovimientoHistorial> {
+fun BaseDatos.pagosYAnulaciones(idUsuario: Int): List<MovimientoHistorial> {
     val propios = compromisos.filter { it.idUsuarioFinal == idUsuario }
     val conPago = propios.mapNotNull { c -> pagoDe(c.idCompromiso)?.let { p -> MovimientoHistorial(p.fechaHora, c, p, null) } }
     val anulados = propios.mapNotNull { c -> anulacionDe(c.idCompromiso)?.let { a -> MovimientoHistorial(a.fecha, c, null, a) } }
@@ -113,14 +114,43 @@ fun BaseDatos.movimientos(idUsuario: Int): List<MovimientoHistorial> {
 }
 
 fun BaseDatos.aniosHistorial(idUsuario: Int): List<Int> =
-    movimientos(idUsuario).map { it.fecha.year }.distinct().sortedDescending()
+    pagosYAnulaciones(idUsuario).map { it.fecha.year }.distinct().sortedDescending()
 
 fun BaseDatos.historialFiltrado(idUsuario: Int, idEmpresa: Int?, anio: Int?, mes: Int?): List<MovimientoHistorial> =
-    movimientos(idUsuario).filter { m ->
+    pagosYAnulaciones(idUsuario).filter { m ->
         (idEmpresa == null || m.compromiso.idEmpresa == idEmpresa) &&
             (anio == null || m.fecha.year == anio) &&
             (mes == null || m.fecha.monthValue == mes)
     }
+
+fun BaseDatos.movimientosDe(idUsuario: Int, grupo: GrupoMovimiento? = null): List<Movimiento> =
+    movimientos
+        .filter { it.idUsuario == idUsuario && (grupo == null || it.tipo.grupo == grupo) }
+        .sortedWith(compareByDescending<Movimiento> { it.fecha }.thenByDescending { it.idMovimiento })
+
+fun BaseDatos.movimientosDelCompromiso(idCompromiso: Int): List<Movimiento> =
+    movimientos
+        .filter { it.idCompromiso == idCompromiso }
+        .sortedWith(compareBy<Movimiento> { it.fecha }.thenBy { it.idMovimiento })
+
+fun BaseDatos.movimientosFiltrados(grupo: GrupoMovimiento?, texto: String): List<Movimiento> {
+    val buscado = texto.trim().lowercase()
+    return movimientos
+        .filter { m ->
+            (grupo == null || m.tipo.grupo == grupo) && (
+                buscado.isEmpty() ||
+                    m.detalle.lowercase().contains(buscado) ||
+                    usuarioPorId(m.idUsuario)?.let { nombreCompleto(it).lowercase().contains(buscado) } == true
+                )
+        }
+        .sortedWith(compareByDescending<Movimiento> { it.fecha }.thenByDescending { it.idMovimiento })
+}
+
+fun BaseDatos.autorDe(movimiento: Movimiento): String = when (val autor = usuarioPorId(movimiento.idAutor)) {
+    null -> "PagoFlex (automático)"
+    else -> if (autor.idUsuario == movimiento.idUsuario) "${nombreCompleto(autor)} (titular)"
+    else "${nombreCompleto(autor)} (${autor.rol.etiqueta.lowercase()})"
+}
 
 fun indicadorDe(idUsuario: Int): IndicadorCumplimiento {
     val base = DatosAnexo9.cumplimientoHistorico.find { it.idUsuarioFinal == idUsuario }

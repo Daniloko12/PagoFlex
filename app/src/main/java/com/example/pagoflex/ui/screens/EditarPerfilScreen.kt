@@ -35,6 +35,7 @@ import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.BotonSecundario
 import com.example.pagoflex.ui.components.CampoTexto
 import com.example.pagoflex.ui.components.ListaDesplegable
+import com.example.pagoflex.ui.components.MensajeAnimado
 import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
@@ -154,7 +155,7 @@ fun EditarPerfilContent(
                 }
             }
 
-            uiState.errorGuardar?.let { TarjetaMensaje(texto = it) }
+            MensajeAnimado(texto = uiState.errorGuardar)
 
             BotonPrincipal(
                 texto = stringResource(R.string.btn_guardar_cambios),

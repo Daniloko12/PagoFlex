@@ -1,5 +1,8 @@
 package com.example.pagoflex.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +14,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,11 +36,17 @@ fun RequisitosClave(
     val cumplidos = RequisitoClave.entries.count { cumpleRequisito(clave, it) }
     val total = RequisitoClave.entries.size
     val colores = MaterialTheme.coloresExtra
-    val colorAvance: Color = when {
+    val colorObjetivo: Color = when {
         cumplidos == total -> colores.exito
         cumplidos >= 3 -> colores.advertencia
         else -> MaterialTheme.colorScheme.error
     }
+    val colorAvance by animateColorAsState(targetValue = colorObjetivo, label = "colorSeguridad")
+    val avance by animateFloatAsState(
+        targetValue = cumplidos.toFloat() / total,
+        animationSpec = tween(durationMillis = 400),
+        label = "avanceSeguridad"
+    )
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -48,7 +58,7 @@ fun RequisitosClave(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         LinearProgressIndicator(
-            progress = { cumplidos.toFloat() / total },
+            progress = { avance },
             modifier = Modifier.fillMaxWidth(),
             color = colorAvance,
             trackColor = MaterialTheme.colorScheme.surfaceVariant
@@ -61,7 +71,10 @@ fun RequisitosClave(
 
 @Composable
 private fun FilaRequisito(texto: String, cumplido: Boolean) {
-    val color = if (cumplido) MaterialTheme.coloresExtra.exito else MaterialTheme.colorScheme.onSurfaceVariant
+    val color by animateColorAsState(
+        targetValue = if (cumplido) MaterialTheme.coloresExtra.exito else MaterialTheme.colorScheme.onSurfaceVariant,
+        label = "colorRequisito"
+    )
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
             painter = painterResource(if (cumplido) R.drawable.ic_check_circulo else R.drawable.ic_info),

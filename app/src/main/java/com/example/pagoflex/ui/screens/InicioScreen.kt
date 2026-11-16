@@ -1,5 +1,10 @@
 package com.example.pagoflex.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -8,11 +13,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -25,9 +32,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.example.pagoflex.R
 import com.example.pagoflex.model.BaseDatos
 import com.example.pagoflex.model.DatosAnexo9
@@ -70,6 +80,7 @@ fun InicioScreen(
     var estado by rememberSaveable { mutableStateOf(FiltroEstado.POR_PAGAR) }
     var idEmpresa by rememberSaveable { mutableStateOf<Int?>(null) }
     var vencimiento by rememberSaveable { mutableStateOf(FiltroVencimiento.CUALQUIERA) }
+    var mostrarFiltros by rememberSaveable { mutableStateOf(false) }
     val filtros = FiltrosCompromiso(estado, idEmpresa, vencimiento)
 
     val resumen = datos.resumenSituacion(usuario.idUsuario)
@@ -101,29 +112,47 @@ fun InicioScreen(
                     subtitulo = if (filtros.cantidadActivos == 0) "Mostrando lo que tienes por pagar"
                     else "${filtros.cantidadActivos} filtro(s) activo(s)"
                 ) {
-                    Text(text = "Estado", style = MaterialTheme.typography.labelLarge)
-                    FilaChips(
-                        opciones = FiltroEstado.entries,
-                        seleccionada = estado,
-                        textoDe = { it.etiqueta },
-                        onSeleccionar = { estado = it }
-                    )
-                    ListaDesplegable(
-                        etiqueta = "Organización",
-                        opciones = listOf<Int?>(null) + datos.empresasDelUsuario(usuario.idUsuario).map { it.idEmpresa },
-                        seleccionada = idEmpresa,
-                        onSeleccionar = { idEmpresa = it },
-                        textoDe = { id -> if (id == null) "Todas" else datos.empresaPorId(id)?.nombreFantasia ?: "" },
-                        icono = R.drawable.ic_empresa,
-                        textoVacio = "Todas"
-                    )
-                    Text(text = "Vencimiento", style = MaterialTheme.typography.labelLarge)
-                    FilaChips(
-                        opciones = FiltroVencimiento.entries,
-                        seleccionada = vencimiento,
-                        textoDe = { it.etiqueta },
-                        onSeleccionar = { vencimiento = it }
-                    )
+                    val giro by animateFloatAsState(targetValue = if (mostrarFiltros) 180f else 0f, label = "giroFiltros")
+                    TextButton(onClick = { mostrarFiltros = !mostrarFiltros }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_buscar),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(18.dp)
+                                .rotate(giro)
+                        )
+                        Text(
+                            text = if (mostrarFiltros) "Ocultar filtros" else "Mostrar filtros",
+                            modifier = Modifier.padding(start = Dimens.espacioChico)
+                        )
+                    }
+                    AnimatedVisibility(visible = mostrarFiltros, label = "filtros") {
+                        Column(verticalArrangement = Arrangement.spacedBy(Dimens.espacioChico)) {
+                            Text(text = "Estado", style = MaterialTheme.typography.labelLarge)
+                            FilaChips(
+                                opciones = FiltroEstado.entries,
+                                seleccionada = estado,
+                                textoDe = { it.etiqueta },
+                                onSeleccionar = { estado = it }
+                            )
+                            ListaDesplegable(
+                                etiqueta = "Organización",
+                                opciones = listOf<Int?>(null) + datos.empresasDelUsuario(usuario.idUsuario).map { it.idEmpresa },
+                                seleccionada = idEmpresa,
+                                onSeleccionar = { idEmpresa = it },
+                                textoDe = { id -> if (id == null) "Todas" else datos.empresaPorId(id)?.nombreFantasia ?: "" },
+                                icono = R.drawable.ic_empresa,
+                                textoVacio = "Todas"
+                            )
+                            Text(text = "Vencimiento", style = MaterialTheme.typography.labelLarge)
+                            FilaChips(
+                                opciones = FiltroVencimiento.entries,
+                                seleccionada = vencimiento,
+                                textoDe = { it.etiqueta },
+                                onSeleccionar = { vencimiento = it }
+                            )
+                        }
+                    }
                     if (filtros.cantidadActivos > 0) {
                         TextButton(
                             onClick = {
@@ -155,6 +184,7 @@ fun InicioScreen(
             items(compromisos, key = { it.idCompromiso }) { compromiso ->
                 val empresa = datos.empresaPorId(compromiso.idEmpresa)
                 TarjetaLista(
+                    modifier = Modifier.animateItem(),
                     iniciales = empresa?.let { inicialesEmpresa(it.nombreFantasia) },
                     colorAvatar = colorAvatarDe(compromiso.idEmpresa),
                     titulo = empresa?.nombreFantasia ?: "",
@@ -178,8 +208,15 @@ fun InicioScreen(
 @Composable
 private fun ResumenDelMes(datos: BaseDatos, resumen: ResumenSituacion) {
     val proximo = resumen.proximoVencimiento
+    val total by animateIntAsState(
+        targetValue = resumen.totalPorPagar,
+        animationSpec = tween(durationMillis = 700),
+        label = "totalPorPagar"
+    )
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(),
         shape = EstilosTarjeta.forma,
         colors = EstilosTarjeta.coloresDestacada()
     ) {
@@ -189,7 +226,7 @@ private fun ResumenDelMes(datos: BaseDatos, resumen: ResumenSituacion) {
         ) {
             Text(text = "Total por pagar este mes", style = MaterialTheme.typography.labelLarge)
             Text(
-                text = formatoPesos(resumen.totalPorPagar),
+                text = formatoPesos(total),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )

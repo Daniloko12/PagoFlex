@@ -2,7 +2,10 @@ package com.example.pagoflex.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -131,21 +134,29 @@ fun AvisosScreen(
             }
 
             item {
-                TarjetaSeccion(titulo = "Tus próximos avisos", subtitulo = "Así te llegarán") {
-                    when {
-                        !activos ->
-                            Text(text = "Desactivaste los avisos. Puedes volver a activarlos cuando quieras.", style = MaterialTheme.typography.bodyMedium)
-                        avisos.isEmpty() ->
-                            Text(text = "No tienes vencimientos por avisar.", style = MaterialTheme.typography.bodyMedium)
+                TarjetaSeccion(
+                    titulo = "Tus próximos avisos",
+                    subtitulo = "Así te llegarán",
+                    modifier = Modifier.animateContentSize()
+                ) {
+                    AnimatedVisibility(visible = !activos, label = "avisosApagados") {
+                        Text(text = "Desactivaste los avisos. Puedes volver a activarlos cuando quieras.", style = MaterialTheme.typography.bodyMedium)
                     }
-                    avisos.forEachIndexed { indice, aviso ->
-                        if (indice > 0) HorizontalDivider()
-                        Text(
-                            text = formatoFechaHora(aviso.fechaEntrega),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(text = aviso.mensaje, style = MaterialTheme.typography.bodyMedium)
+                    AnimatedVisibility(visible = activos, label = "listaAvisos") {
+                        Column(verticalArrangement = Arrangement.spacedBy(Dimens.espacioChico)) {
+                            if (avisos.isEmpty()) {
+                                Text(text = "No tienes vencimientos por avisar.", style = MaterialTheme.typography.bodyMedium)
+                            }
+                            avisos.forEachIndexed { indice, aviso ->
+                                if (indice > 0) HorizontalDivider()
+                                Text(
+                                    text = formatoFechaHora(aviso.fechaEntrega),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(text = aviso.mensaje, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
                     }
                 }
             }

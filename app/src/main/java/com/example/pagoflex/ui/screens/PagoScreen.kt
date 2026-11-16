@@ -45,7 +45,7 @@ import com.example.pagoflex.ui.components.CamposTarjeta
 import com.example.pagoflex.ui.components.CasillaConTexto
 import com.example.pagoflex.ui.components.FilaDato
 import com.example.pagoflex.ui.components.GrupoRadio
-import com.example.pagoflex.ui.components.TarjetaMensaje
+import com.example.pagoflex.ui.components.MensajeAnimado
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
@@ -224,7 +224,7 @@ fun PagoContent(
                 )
             }
 
-            uiState.errorPago?.let { TarjetaMensaje(texto = it) }
+            MensajeAnimado(texto = uiState.errorPago)
 
             BotonPrincipal(
                 texto = "Pagar $total",

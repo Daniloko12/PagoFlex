@@ -28,8 +28,8 @@ import com.example.pagoflex.ui.components.BarraSuperior
 import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.BotonSecundario
 import com.example.pagoflex.ui.components.CamposTarjeta
+import com.example.pagoflex.ui.components.MensajeAnimado
 import com.example.pagoflex.ui.components.SelectorSegmentado
-import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
@@ -121,7 +121,7 @@ fun AgregarTarjetaContent(
                     errorCvv = uiState.errorCvv
                 )
             }
-            uiState.errorTarjeta?.let { TarjetaMensaje(texto = it) }
+            MensajeAnimado(texto = uiState.errorTarjeta)
 
             BotonPrincipal(
                 texto = stringResource(R.string.btn_guardar_tarjeta),

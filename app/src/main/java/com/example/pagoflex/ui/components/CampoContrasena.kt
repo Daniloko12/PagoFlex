@@ -1,5 +1,6 @@
 package com.example.pagoflex.ui.components
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -52,15 +53,17 @@ fun CampoContrasena(
         },
         trailingIcon = {
             IconButton(onClick = { visible = !visible }) {
-                Icon(
-                    painter = painterResource(
-                        if (visible) R.drawable.ic_ojo_tachado else R.drawable.ic_ojo
-                    ),
-                    contentDescription = stringResource(
-                        if (visible) R.string.cd_ocultar_contrasena else R.string.cd_mostrar_contrasena
-                    ),
-                    modifier = Modifier.size(Dimens.tamanoIcono)
-                )
+                Crossfade(targetState = visible, label = "ojo") { mostrando ->
+                    Icon(
+                        painter = painterResource(
+                            if (mostrando) R.drawable.ic_ojo_tachado else R.drawable.ic_ojo
+                        ),
+                        contentDescription = stringResource(
+                            if (mostrando) R.string.cd_ocultar_contrasena else R.string.cd_mostrar_contrasena
+                        ),
+                        modifier = Modifier.size(Dimens.tamanoIcono)
+                    )
+                }
             }
         },
         visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),

@@ -103,7 +103,7 @@ fun HistorialScreen(
                     item { MensajeVacio("No hay movimientos de este tipo.") }
                 }
                 items(movimientos, key = { it.idMovimiento }) { movimiento ->
-                    FilaMovimiento(movimiento = movimiento, datos = datos)
+                    FilaMovimiento(movimiento = movimiento, datos = datos, modifier = Modifier.animateItem())
                 }
             } else {
                 item {

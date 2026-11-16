@@ -57,8 +57,8 @@ import com.example.pagoflex.model.usuariosDelRol
 import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.CampoContrasena
 import com.example.pagoflex.ui.components.CampoTexto
+import com.example.pagoflex.ui.components.MensajeAnimado
 import com.example.pagoflex.ui.components.OpcionCuenta
-import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
 import com.example.pagoflex.ui.theme.coloresExtra
@@ -240,7 +240,7 @@ fun IngresoContent(
                         )
                     }
 
-                    uiState.errorIngreso?.let { TarjetaMensaje(texto = it) }
+                    MensajeAnimado(texto = uiState.errorIngreso)
 
                     BotonPrincipal(
                         texto = stringResource(R.string.btn_ingresar),

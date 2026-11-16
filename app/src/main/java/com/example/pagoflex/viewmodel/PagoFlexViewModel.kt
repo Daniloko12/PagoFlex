@@ -51,7 +51,6 @@ import com.example.pagoflex.model.claveValida
 import com.example.pagoflex.model.compromisoPorId
 import com.example.pagoflex.model.cuentaParaRecuperar
 import com.example.pagoflex.model.empresaPorId
-import com.example.pagoflex.model.formatoFecha
 import com.example.pagoflex.model.generarCodigoRecuperacion
 import com.example.pagoflex.model.mensajeCodigo
 import com.example.pagoflex.model.motivoParaNoAnular
@@ -83,13 +82,21 @@ import com.example.pagoflex.model.tarjetaPorId
 import com.example.pagoflex.model.tarjetasGuardadas
 import com.example.pagoflex.model.totalAPagar
 import com.example.pagoflex.model.usuarioPorId
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDateTime
 import java.time.LocalTime
 
 class PagoFlexViewModel(application: Application) : AndroidViewModel(application) {
     companion object {
         const val MENSAJE_CLAVE_INSEGURA = "La contraseña no cumple los 5 requisitos de seguridad"
+        const val INTERVALO_SINCRONIZACION_MS = 60_000L
     }
 
     private val repositorio = PagoFlexRepositorio(application)
@@ -100,7 +107,17 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
 
     val sinConexion: StateFlow<Boolean> = repositorio.sinConexion
 
-    val ultimaActualizacion: StateFlow<LocalDateTime> = repositorio.ultimaActualizacion
+    private val sincronizacionAutomatica: Flow<Unit> = flow {
+        while (true) {
+            sincronizar()
+            emit(Unit)
+            delay(INTERVALO_SINCRONIZACION_MS)
+        }
+    }
+
+    val ultimaActualizacion: StateFlow<LocalDateTime> =
+        combine(repositorio.ultimaActualizacion, sincronizacionAutomatica) { fecha, _ -> fecha }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), repositorio.ultimaActualizacion.value)
 
     val modoOscuro: StateFlow<Boolean> = repositorio.modoOscuro
 
@@ -408,19 +425,18 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
 
     fun cambiarConexion(sinConexion: Boolean) {
         repositorio.cambiarConexion(sinConexion)
+        if (!sinConexion) sincronizar()
     }
 
-    fun actualizar(): String {
-        if (sinConexion.value) {
-            return "Sin conexión: te mostramos tu última situación conocida, del ${formatoFecha(ultimaActualizacion.value.toLocalDate())}."
-        }
+    fun sincronizar(): Boolean {
+        if (sinConexion.value) return false
         val datos = datos.value
         val cambiados = actualizarVencimientos(datos.compromisos, datos.empresas, datos.fechaHoy)
             .filter { nuevo -> datos.compromisoPorId(nuevo.idCompromiso) != nuevo }
         val vencidos = cambiados.filter { it.estado == EstadoCompromiso.VENCIDO }.map { movimientoVencimiento(it) }
         if (cambiados.isNotEmpty()) repositorio.actualizarCompromisos(cambiados, vencidos)
         repositorio.registrarActualizacion(ahora())
-        return "Información actualizada"
+        return true
     }
 
     fun tomarReporte(idReporte: Int): String? {

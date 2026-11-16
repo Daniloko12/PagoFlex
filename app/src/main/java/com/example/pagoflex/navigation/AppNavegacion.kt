@@ -274,7 +274,6 @@ fun AppNavegacion(
                 sinConexion = sinConexion,
                 ultimaActualizacion = ultimaActualizacion,
                 onVerCompromiso = { id -> navController.navigate(Ruta.DetalleCompromiso.crear(id)) },
-                onActualizar = { avisar(pagoFlexViewModel.actualizar()) },
                 onVerAvance = { irAPrincipal(Ruta.Avance.ruta) },
                 menu = menuEn(Ruta.Inicio),
                 snackbarHostState = snackbarHostState
@@ -478,7 +477,7 @@ fun AppNavegacion(
                 },
                 onCambiarConexion = { sinSenal ->
                     pagoFlexViewModel.cambiarConexion(sinSenal)
-                    avisar(if (sinSenal) "Modo sin conexión activado" else "Conexión restablecida")
+                    avisar(if (sinSenal) "Modo sin conexión activado" else "Conexión restablecida: datos actualizados")
                 },
                 menu = menuEn(Ruta.Avisos),
                 snackbarHostState = snackbarHostState

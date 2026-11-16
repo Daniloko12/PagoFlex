@@ -72,6 +72,7 @@ Los permisos están centralizados en `model/PermisosRol.kt`. El ViewModel revisa
 
 - **MVVM** con Jetpack Compose y Navigation Compose.
 - **Capa de datos con Flow**: `PagoFlexRepositorio` expone `StateFlow` (datos, usuario actual, búsqueda, preferencias). Cada vez que se guarda algo en SQLite, el repositorio vuelve a leer la base y emite los datos nuevos, y la interfaz se actualiza sola con `collectAsStateWithLifecycle`.
+- **Sincronización automática**: no hay botón "Actualizar". El ViewModel tiene un `Flow` que sincroniza al abrir la app y luego cada minuto (`stateIn` con `SharingStarted.WhileSubscribed`), así que solo trabaja mientras la app está en pantalla. Al volver la conexión también se sincroniza sola.
 - **SQLite** con `SQLiteOpenHelper` (versión 6, 26 tablas). Las escrituras van en transacciones y las versiones nuevas se migran sin perder datos:
   - v4: contraseñas de prueba con los nuevos requisitos.
   - v5: tabla `codigo_recuperacion`.

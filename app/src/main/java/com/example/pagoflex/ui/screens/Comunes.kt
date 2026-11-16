@@ -1,5 +1,6 @@
 package com.example.pagoflex.ui.screens
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,7 +10,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,7 +18,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.pagoflex.R
 import com.example.pagoflex.data.ConvertidorImagen
@@ -192,7 +191,6 @@ fun MensajeVacio(texto: String, modifier: Modifier = Modifier) {
 fun EstadoConexion(
     sinConexion: Boolean,
     ultimaActualizacion: LocalDateTime,
-    onActualizar: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colores = MaterialTheme.coloresExtra
@@ -203,23 +201,26 @@ fun EstadoConexion(
         contentColor = if (sinConexion) colores.advertencia else MaterialTheme.colorScheme.onSurfaceVariant
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = Dimens.espacioMedio, vertical = Dimens.espacioMini),
+            modifier = Modifier.padding(horizontal = Dimens.espacioMedio, vertical = Dimens.espacioChico),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = if (sinConexion)
-                    "Sin conexión. Esta es tu última situación conocida, del ${formatoFechaHora(ultimaActualizacion)}."
-                else "Actualizado: ${formatoFechaHora(ultimaActualizacion)}",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.weight(1f)
+            Icon(
+                painter = painterResource(R.drawable.ic_actualizar),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
             )
-            TextButton(onClick = onActualizar) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_actualizar),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+            Crossfade(
+                targetState = formatoFechaHora(ultimaActualizacion),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = Dimens.espacioChico),
+                label = "ultimaActualizacion"
+            ) { hora ->
+                Text(
+                    text = if (sinConexion) "Sin conexión. Te mostramos tu última situación conocida, del $hora. Se actualizará sola al volver la conexión."
+                    else "Se actualiza sola · última vez $hora",
+                    style = MaterialTheme.typography.bodySmall
                 )
-                Text(text = stringResource(R.string.btn_actualizar), modifier = Modifier.padding(start = Dimens.espacioMini))
             }
         }
     }

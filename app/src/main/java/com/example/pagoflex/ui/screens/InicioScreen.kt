@@ -72,7 +72,6 @@ fun InicioScreen(
     sinConexion: Boolean,
     ultimaActualizacion: LocalDateTime,
     onVerCompromiso: (Int) -> Unit,
-    onActualizar: () -> Unit,
     onVerAvance: () -> Unit = {},
     menu: MenuSesion = MenuSesion(),
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
@@ -100,7 +99,7 @@ fun InicioScreen(
             contentPadding = PaddingValues(Dimens.espacioPantalla),
             verticalArrangement = Arrangement.spacedBy(Dimens.espacioChico)
         ) {
-            item { EstadoConexion(sinConexion, ultimaActualizacion, onActualizar) }
+            item { EstadoConexion(sinConexion, ultimaActualizacion) }
             if (avisoDeHoy != null) {
                 item { TarjetaMensaje(texto = avisoDeHoy.mensaje, icono = R.drawable.ic_campana) }
             }
@@ -273,8 +272,7 @@ private fun InicioPreview() {
             usuario = DatosAnexo9.usuarios.first(),
             sinConexion = false,
             ultimaActualizacion = DatosAnexo9.ULTIMA_ACTUALIZACION,
-            onVerCompromiso = {},
-            onActualizar = {}
+            onVerCompromiso = {}
         )
     }
 }

@@ -584,6 +584,8 @@ class ReglasNegocioTest {
         }
         assertTrue(puede(camila, Accion.PAGAR_COMPROMISO))
         assertFalse(puede(admin, Accion.PAGAR_COMPROMISO))
+        assertTrue(puede(camila, Accion.AGREGAR_MIS_COMPROMISOS))
+        assertFalse(puede(admin, Accion.AGREGAR_MIS_COMPROMISOS))
         assertFalse(puede(null, Accion.VER_MIS_COMPROMISOS))
         assertFalse(puede(camila.copy(activo = false), Accion.PAGAR_COMPROMISO))
         assertTrue(accionesDe(Rol.USUARIO_FINAL).intersect(accionesDe(Rol.ADMINISTRADOR)).isEmpty())

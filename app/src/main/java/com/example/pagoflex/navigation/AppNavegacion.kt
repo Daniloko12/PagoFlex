@@ -36,6 +36,7 @@ import com.example.pagoflex.model.textoTarjeta
 import com.example.pagoflex.model.usuarioDeReporte
 import com.example.pagoflex.model.usuarioPorId
 import com.example.pagoflex.notificaciones.ProgramadorRecordatorios
+import com.example.pagoflex.ui.screens.AgregarPagoScreen
 import com.example.pagoflex.ui.screens.AgregarTarjetaScreen
 import com.example.pagoflex.ui.screens.AvanceScreen
 import com.example.pagoflex.ui.screens.AvisosScreen
@@ -275,6 +276,7 @@ fun AppNavegacion(
                 ultimaActualizacion = ultimaActualizacion,
                 onVerCompromiso = { id -> navController.navigate(Ruta.DetalleCompromiso.crear(id)) },
                 onVerAvance = { irAPrincipal(Ruta.Avance.ruta) },
+                onAgregarPago = { navController.navigate(Ruta.AgregarPago.ruta) },
                 menu = menuEn(Ruta.Inicio),
                 snackbarHostState = snackbarHostState
             )
@@ -297,6 +299,28 @@ fun AppNavegacion(
                 onPagar = { navController.navigate(Ruta.Pagar.crear(idCompromiso)) },
                 onReportar = { navController.navigate(Ruta.Reportar.crear(idCompromiso)) },
                 onVerComprobante = { numero -> navController.navigate(Ruta.Comprobante.crear(numero)) },
+                snackbarHostState = snackbarHostState
+            )
+        }
+
+        composable(Ruta.AgregarPago.ruta) {
+            val usuario = usuarioActual ?: return@composable
+            if (!puede(usuario, Accion.AGREGAR_MIS_COMPROMISOS)) return@composable
+            AgregarPagoScreen(
+                datos = datos,
+                usuario = usuario,
+                onAgregar = { nuevo ->
+                    val compromiso = pagoFlexViewModel.registrarMiCompromiso(nuevo)
+                    if (compromiso == null) {
+                        avisar("No pudimos agregar el pago. Inténtalo de nuevo.")
+                    } else {
+                        navController.navigate(Ruta.DetalleCompromiso.crear(compromiso.idCompromiso)) {
+                            popUpTo(Ruta.AgregarPago.ruta) { inclusive = true }
+                        }
+                        avisar("Listo: agregamos \"${compromiso.concepto}\" a tus pagos.")
+                    }
+                },
+                onVolver = { navController.navigateUp() },
                 snackbarHostState = snackbarHostState
             )
         }

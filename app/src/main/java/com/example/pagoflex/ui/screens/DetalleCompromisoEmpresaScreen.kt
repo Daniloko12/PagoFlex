@@ -44,6 +44,7 @@ import com.example.pagoflex.model.movimientosDelCompromiso
 import com.example.pagoflex.model.nombreCompleto
 import com.example.pagoflex.model.ocultarRut
 import com.example.pagoflex.model.pagoDe
+import com.example.pagoflex.model.registradoPorElCliente
 import com.example.pagoflex.model.reporteActivoDe
 import com.example.pagoflex.model.totalAPagar
 import com.example.pagoflex.model.usuarioPorId
@@ -135,7 +136,14 @@ fun DetalleCompromisoEmpresaScreen(
                     FilaDato("Días de atraso", textoDias(diasAtraso(compromiso, datos.fechaHoy)))
                     FilaDato("Total con recargo", formatoPesos(totalAPagar(compromiso)), destacado = true)
                 }
-                FilaDato("Registrado por", registradoPor?.let { nombreCorto(it) } ?: "Equipo PagoFlex (planilla)")
+                FilaDato(
+                    "Registrado por",
+                    when {
+                        registradoPor != null -> nombreCorto(registradoPor)
+                        datos.registradoPorElCliente(compromiso) -> "El cliente, desde la app"
+                        else -> "Equipo PagoFlex (planilla)"
+                    }
+                )
                 FilaDato("Registrado el", formatoFecha(compromiso.fechaRegistro.toLocalDate()))
                 FilaDato("Folio", compromiso.folio)
             }

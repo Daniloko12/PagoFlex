@@ -48,6 +48,7 @@
     <string name="titulo_recomendar">Recomendar una organización</string>
     <string name="titulo_reportes">Reportes de problemas</string>
     <string name="titulo_movimientos">Historial de movimientos</string>
+    <string name="titulo_agregar_pago">Agregar cuenta por pagar</string>
     <string name="titulo_detalle_reporte">Atender reporte</string>
     <string name="titulo_recomendaciones">Recomendaciones</string>
     <string name="titulo_detalle_recomendacion">Recomendación</string>

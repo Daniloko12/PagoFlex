@@ -529,6 +529,33 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         return null
     }
 
+    fun registrarMiCompromiso(nuevo: NuevoCompromiso): Compromiso? {
+        val usuario = conPermiso(Accion.AGREGAR_MIS_COMPROMISOS) ?: return null
+        if (nuevo.idPersona != usuario.idUsuario || nuevo.personaNueva != null) return null
+        val datos = datos.value
+        val fecha = ahora()
+        val nuevoId = datos.compromisos.maxOf { it.idCompromiso } + 1
+        val compromiso = Compromiso(
+            idCompromiso = nuevoId,
+            folio = "CP-%d-%04d".format(datos.fechaHoy.year, nuevoId),
+            idUsuarioFinal = usuario.idUsuario,
+            idEmpresa = nuevo.idEmpresa,
+            concepto = nuevo.concepto,
+            numeroCuota = nuevo.numeroCuota,
+            totalCuotas = nuevo.totalCuotas,
+            monto = nuevo.monto,
+            fechaVencimiento = nuevo.fechaVencimiento,
+            estado = EstadoCompromiso.PENDIENTE,
+            recargoAplicado = 0,
+            fechaCambioEstado = fecha,
+            idAdminRegistro = null,
+            fechaRegistro = fecha
+        )
+        val registro = movimientoRegistro(compromiso, usuario.idUsuario, fecha)
+        if (!repositorio.registrarCompromiso(compromiso, null, listOf(registro))) return null
+        return compromiso
+    }
+
     fun registrarCompromiso(nuevo: NuevoCompromiso): Compromiso? {
         val admin = conPermiso(Accion.CREAR_COMPROMISO) ?: return null
         val datos = datos.value

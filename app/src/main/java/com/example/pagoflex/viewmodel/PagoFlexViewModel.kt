@@ -25,6 +25,7 @@ import com.example.pagoflex.model.EstadoCompromiso
 import com.example.pagoflex.model.EstadoRecomendacion
 import com.example.pagoflex.model.EstadoReporte
 import com.example.pagoflex.model.HistorialRecomendacion
+import com.example.pagoflex.model.INTENTOS_MAXIMOS_CODIGO
 import com.example.pagoflex.model.MedioPago
 import com.example.pagoflex.model.MisDatos
 import com.example.pagoflex.model.MotivoAnulacion
@@ -34,6 +35,7 @@ import com.example.pagoflex.model.NuevoCompromiso
 import com.example.pagoflex.model.Pago
 import com.example.pagoflex.model.Recomendacion
 import com.example.pagoflex.model.Reporte
+import com.example.pagoflex.model.ResultadoCodigo
 import com.example.pagoflex.model.ResultadoPago
 import com.example.pagoflex.model.Rol
 import com.example.pagoflex.model.SolicitudPago
@@ -48,6 +50,8 @@ import com.example.pagoflex.model.compromisoPorId
 import com.example.pagoflex.model.cuentaParaRecuperar
 import com.example.pagoflex.model.empresaPorId
 import com.example.pagoflex.model.formatoFecha
+import com.example.pagoflex.model.generarCodigoRecuperacion
+import com.example.pagoflex.model.mensajeCodigo
 import com.example.pagoflex.model.motivoParaNoAnular
 import com.example.pagoflex.model.motivoParaNoCambiarEstado
 import com.example.pagoflex.model.motivoParaNoEditar
@@ -56,9 +60,11 @@ import com.example.pagoflex.model.motivoParaNoReportar
 import com.example.pagoflex.model.motivoParaNoResolver
 import com.example.pagoflex.model.motivoParaNoTomar
 import com.example.pagoflex.model.normalizarRut
+import com.example.pagoflex.model.nuevoCodigoRecuperacion
 import com.example.pagoflex.model.reconocimientoPorId
 import com.example.pagoflex.model.recomendacionPorId
 import com.example.pagoflex.model.reportePorId
+import com.example.pagoflex.model.revisarCodigo
 import com.example.pagoflex.model.siguienteCuota
 import com.example.pagoflex.model.tarjetaPorId
 import com.example.pagoflex.model.tarjetasGuardadas
@@ -154,23 +160,38 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         return null
     }
 
-    fun verificarCuenta(datosRecuperacion: DatosRecuperacion): String? {
-        val cuenta = _datos.value.cuentaParaRecuperar(datosRecuperacion.correo, datosRecuperacion.rut)
-        return when {
-            cuenta == null -> "El correo y el RUT no coinciden con ninguna cuenta. Revisa que estén bien escritos."
-            !cuenta.activo -> "Esta cuenta no está activa. Consulta con PagoFlex."
-            else -> null
-        }
+    private fun cuentaActivaPara(datosRecuperacion: DatosRecuperacion): Usuario? =
+        _datos.value.cuentaParaRecuperar(datosRecuperacion.correo, datosRecuperacion.rut)?.takeIf { it.activo }
+
+    fun solicitarCodigo(datosRecuperacion: DatosRecuperacion): String? {
+        val cuenta = cuentaActivaPara(datosRecuperacion) ?: return null
+        val codigo = generarCodigoRecuperacion()
+        return if (db.guardarCodigoRecuperacion(nuevoCodigoRecuperacion(cuenta.idUsuario, codigo, ahora()))) codigo else null
     }
 
+    private fun validarCodigo(cuenta: Usuario?, codigo: String): String? {
+        val vigente = cuenta?.let { db.codigoVigenteDe(it.idUsuario) }
+        val resultado = revisarCodigo(vigente, codigo, ahora())
+        if (resultado == ResultadoCodigo.INCORRECTO && vigente != null) {
+            db.sumarIntentoCodigo(vigente)
+            return mensajeCodigo(resultado, INTENTOS_MAXIMOS_CODIGO - vigente.intentos - 1)
+        }
+        return mensajeCodigo(resultado)
+    }
+
+    fun verificarCodigo(datosRecuperacion: DatosRecuperacion, codigo: String): String? =
+        validarCodigo(cuentaActivaPara(datosRecuperacion), codigo)
+
     fun recuperarClave(recuperada: ClaveRecuperada): String? {
-        verificarCuenta(DatosRecuperacion(recuperada.correo, recuperada.rut))?.let { return it }
-        val cuenta = _datos.value.cuentaParaRecuperar(recuperada.correo, recuperada.rut) ?: return "No encontramos la cuenta"
+        val cuenta = cuentaActivaPara(DatosRecuperacion(recuperada.correo, recuperada.rut))
+        validarCodigo(cuenta, recuperada.codigo)?.let { return it }
+        val vigente = cuenta?.let { db.codigoVigenteDe(it.idUsuario) } ?: return mensajeCodigo(ResultadoCodigo.SIN_CODIGO)
         if (!claveValida(recuperada.claveNueva)) return MENSAJE_CLAVE_INSEGURA
         if (db.buscarPorCredenciales(cuenta.correo, recuperada.claveNueva) != null) {
             return "Esa ya es tu contraseña. Puedes ingresar con ella o elegir otra."
         }
-        return if (db.cambiarClave(cuenta, recuperada.claveNueva)) null else "No pudimos cambiar la contraseña. Inténtalo de nuevo."
+        return if (db.cambiarClaveConCodigo(cuenta, vigente, recuperada.claveNueva)) null
+        else "No pudimos cambiar la contraseña. Inténtalo de nuevo."
     }
 
     fun actualizarMisDatos(misDatos: MisDatos): String? {

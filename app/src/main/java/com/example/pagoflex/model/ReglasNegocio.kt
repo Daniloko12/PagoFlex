@@ -160,11 +160,12 @@ fun errorConfirmacionClave(clave: String, confirmacion: String): String? = when 
     else -> null
 }
 
-fun hashClave(rut: String, clave: String): String {
-    val texto = "${normalizarRut(rut)}:$clave"
+fun sha256(texto: String): String {
     val bytes = MessageDigest.getInstance("SHA-256").digest(texto.toByteArray(Charsets.UTF_8))
     return bytes.joinToString("") { "%02x".format(it) }
 }
+
+fun hashClave(rut: String, clave: String): String = sha256("${normalizarRut(rut)}:$clave")
 
 fun correoValido(correo: String): Boolean {
     val texto = correo.trim()

@@ -120,16 +120,23 @@ data class Credenciales(
     val clave: String
 )
 
+enum class PasoRecuperacion(val numero: Int, val titulo: String) {
+    DATOS(1, "Confirma que eres tú"),
+    CODIGO(2, "Ingresa el código"),
+    CLAVE(3, "Crea tu nueva contraseña")
+}
+
 data class RecuperarClaveUiState(
+    val paso: PasoRecuperacion = PasoRecuperacion.DATOS,
     val correo: String = "",
     val rut: String = "",
+    val codigo: String = "",
     val claveNueva: String = "",
     val confirmacionClave: String = "",
 
-    val cuentaVerificada: Boolean = false,
-
     val errorCorreo: String? = null,
     val errorRut: String? = null,
+    val errorCodigo: String? = null,
     val errorClaveNueva: String? = null,
     val errorConfirmacion: String? = null,
     val errorRecuperacion: String? = null
@@ -143,6 +150,7 @@ data class DatosRecuperacion(
 data class ClaveRecuperada(
     val correo: String,
     val rut: String,
+    val codigo: String,
     val claveNueva: String
 )
 

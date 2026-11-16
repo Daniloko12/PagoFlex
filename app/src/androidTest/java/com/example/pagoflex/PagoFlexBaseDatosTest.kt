@@ -2,6 +2,7 @@ package com.example.pagoflex
 
 import android.app.Application
 import android.content.Context
+import android.database.sqlite.SQLiteDatabase
 import android.graphics.Bitmap
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -9,6 +10,7 @@ import com.example.pagoflex.data.ConvertidorImagen
 import com.example.pagoflex.data.PagoFlexDbHelper
 import com.example.pagoflex.data.SesionPreferencias
 import com.example.pagoflex.model.BaseDatos
+import com.example.pagoflex.model.CLAVE_ANTERIOR_DE_PRUEBA
 import com.example.pagoflex.model.CLAVE_DE_PRUEBA
 import com.example.pagoflex.model.CambioClave
 import com.example.pagoflex.model.CambiosCompromiso
@@ -35,6 +37,7 @@ import com.example.pagoflex.model.TarjetaNueva
 import com.example.pagoflex.model.TipoMovimiento
 import com.example.pagoflex.model.avancePorEmpresa
 import com.example.pagoflex.model.compromisoPorId
+import com.example.pagoflex.model.hashClave
 import com.example.pagoflex.model.hashCodigo
 import com.example.pagoflex.model.mensajeCodigo
 import com.example.pagoflex.model.movimientosDe
@@ -89,6 +92,38 @@ class PagoFlexBaseDatosTest {
         assertEquals(Rol.ADMINISTRADOR, datos.usuarioPorId(9)?.rol)
         assertEquals(MarcaTarjeta.VISA, datos.tarjetaPorId(1)?.marca)
         assertEquals(YearMonth.of(2028, 8), datos.tarjetaPorId(1)?.vencimiento)
+    }
+
+    @Test
+    fun migracion_desdeLaVersion3ConservaLosDatos() {
+        PagoFlexDbHelper(contexto).apply {
+            cargarDatos()
+            close()
+        }
+        val ruta = contexto.getDatabasePath(PagoFlexDbHelper.NOMBRE_BD).path
+        SQLiteDatabase.openDatabase(ruta, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
+            db.execSQL("DROP TABLE movimiento")
+            db.execSQL("DROP TABLE tipo_movimiento")
+            db.execSQL("DROP TABLE codigo_recuperacion")
+            DatosAnexo9.usuarios.forEach { usuario ->
+                db.execSQL(
+                    "UPDATE usuario SET clave_hash = ? WHERE id_usuario = ?",
+                    arrayOf(hashClave(usuario.rut, CLAVE_ANTERIOR_DE_PRUEBA), usuario.idUsuario)
+                )
+            }
+            db.execSQL("UPDATE usuario SET clave_hash = ? WHERE id_usuario = 2", arrayOf(hashClave("12.476.318-5", "Propia#2025")))
+            db.version = 3
+        }
+
+        val app = nuevaApp()
+        assertNotNull(app.iniciarSesion(Credenciales("crojas@correo.ejemplo", CLAVE_ANTERIOR_DE_PRUEBA)))
+        entrar(app, "crojas@correo.ejemplo")
+        app.cerrarSesion()
+        entrar(app, "lmunoz@correo.ejemplo", clave = "Propia#2025")
+        assertEquals(BaseDatos().movimientos.size, app.datos.value.movimientos.size)
+        assertEquals(DatosAnexo9.compromisos.size, app.datos.value.compromisos.size)
+        app.cerrarSesion()
+        assertNotNull(app.solicitarCodigo(DatosRecuperacion("crojas@correo.ejemplo", "15.834.207-3")))
     }
 
     @Test

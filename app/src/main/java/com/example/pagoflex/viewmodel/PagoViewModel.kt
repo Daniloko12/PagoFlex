@@ -63,10 +63,6 @@ class PagoViewModel : ViewModel() {
         _uiState.update { it.copy(codigo = limpio, errorCodigo = null) }
     }
 
-    fun onAlternarVisibilidad() {
-        _uiState.update { it.copy(codigoVisible = !it.codigoVisible) }
-    }
-
     fun onConfirmaTotalCambia(valor: Boolean) {
         _uiState.update { it.copy(confirmaTotal = valor, errorConfirmacion = null) }
     }

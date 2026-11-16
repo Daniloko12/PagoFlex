@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import com.example.pagoflex.model.CLAVE_DE_PRUEBA
 import com.example.pagoflex.model.Credenciales
 import com.example.pagoflex.model.IngresoUiState
-import com.example.pagoflex.model.claveValida
+import com.example.pagoflex.model.LARGO_MAXIMO_CLAVE
 import com.example.pagoflex.model.correoValido
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,11 +20,7 @@ class IngresoViewModel : ViewModel() {
     }
 
     fun onClaveCambia(valor: String) {
-        _uiState.update { it.copy(clave = valor.filter { c -> c.isDigit() }.take(5), errorClave = null, errorIngreso = null) }
-    }
-
-    fun onAlternarVisibilidad() {
-        _uiState.update { it.copy(claveVisible = !it.claveVisible) }
+        _uiState.update { it.copy(clave = valor.take(LARGO_MAXIMO_CLAVE), errorClave = null, errorIngreso = null) }
     }
 
     fun onUsarCuentaDePrueba(correo: String) {
@@ -43,11 +39,7 @@ class IngresoViewModel : ViewModel() {
             !correoValido(estado.correo) -> "Ingresa un correo válido, por ejemplo nombre@gmail.com"
             else -> null
         }
-        val errorClave = when {
-            estado.clave.isBlank() -> "Ingresa tu contraseña"
-            !claveValida(estado.clave) -> "La contraseña tiene 5 dígitos"
-            else -> null
-        }
+        val errorClave = if (estado.clave.isBlank()) "Ingresa tu contraseña" else null
         val hayErrores = errorCorreo != null || errorClave != null
 
         _uiState.update { it.copy(errorCorreo = errorCorreo, errorClave = errorClave, errorIngreso = null) }

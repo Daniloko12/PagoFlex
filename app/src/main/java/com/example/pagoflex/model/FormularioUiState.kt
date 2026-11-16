@@ -110,8 +110,6 @@ data class IngresoUiState(
     val correo: String = "",
     val clave: String = "",
 
-    val claveVisible: Boolean = false,
-
     val errorCorreo: String? = null,
     val errorClave: String? = null,
     val errorIngreso: String? = null
@@ -128,7 +126,6 @@ data class RecuperarClaveUiState(
     val claveNueva: String = "",
     val confirmacionClave: String = "",
 
-    val claveVisible: Boolean = false,
     val cuentaVerificada: Boolean = false,
 
     val errorCorreo: String? = null,
@@ -179,8 +176,6 @@ data class CambiarClaveUiState(
     val claveNueva: String = "",
     val confirmacionClave: String = "",
 
-    val claveVisible: Boolean = false,
-
     val errorClaveActual: String? = null,
     val errorClaveNueva: String? = null,
     val errorConfirmacion: String? = null,
@@ -201,8 +196,6 @@ data class RegistroUiState(
     val clave: String = "",
     val confirmacionClave: String = "",
     val aceptaTerminos: Boolean = false,
-
-    val claveVisible: Boolean = false,
 
     val errorRut: String? = null,
     val errorNombres: String? = null,
@@ -235,8 +228,6 @@ data class PagoUiState(
     val guardarTarjeta: Boolean = true,
     val codigo: String = "",
     val confirmaTotal: Boolean = false,
-
-    val codigoVisible: Boolean = false,
 
     val errorMedioPago: String? = null,
     val errorTarjeta: String? = null,

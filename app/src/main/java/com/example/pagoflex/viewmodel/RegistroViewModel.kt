@@ -2,6 +2,7 @@ package com.example.pagoflex.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.example.pagoflex.model.BaseDatos
+import com.example.pagoflex.model.LARGO_MAXIMO_CLAVE
 import com.example.pagoflex.model.NuevaCuenta
 import com.example.pagoflex.model.RegistroUiState
 import com.example.pagoflex.model.errorClaveNueva
@@ -37,15 +38,11 @@ class RegistroViewModel : ViewModel() {
     }
 
     fun onClaveCambia(valor: String) {
-        _uiState.update { it.copy(clave = valor.filter { c -> c.isDigit() }.take(5), errorClave = null) }
+        _uiState.update { it.copy(clave = valor.take(LARGO_MAXIMO_CLAVE), errorClave = null) }
     }
 
     fun onConfirmacionCambia(valor: String) {
-        _uiState.update { it.copy(confirmacionClave = valor.filter { c -> c.isDigit() }.take(5), errorConfirmacion = null) }
-    }
-
-    fun onAlternarVisibilidad() {
-        _uiState.update { it.copy(claveVisible = !it.claveVisible) }
+        _uiState.update { it.copy(confirmacionClave = valor.take(LARGO_MAXIMO_CLAVE), errorConfirmacion = null) }
     }
 
     fun onAceptaTerminosCambia(valor: Boolean) {

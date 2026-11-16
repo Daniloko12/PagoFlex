@@ -32,6 +32,7 @@ import com.example.pagoflex.ui.components.BarraSuperior
 import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.CampoContrasena
 import com.example.pagoflex.ui.components.CampoTexto
+import com.example.pagoflex.ui.components.RequisitosClave
 import com.example.pagoflex.ui.components.CasillaConTexto
 import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
@@ -58,7 +59,6 @@ fun RegistroScreen(
         onTelefonoCambia = viewModel::onTelefonoCambia,
         onClaveCambia = viewModel::onClaveCambia,
         onConfirmacionCambia = viewModel::onConfirmacionCambia,
-        onAlternarVisibilidad = viewModel::onAlternarVisibilidad,
         onAceptaTerminosCambia = viewModel::onAceptaTerminosCambia,
         onCrearCuenta = {
             viewModel.onCrearCuenta(datos)?.let { nueva ->
@@ -80,7 +80,6 @@ fun RegistroContent(
     onTelefonoCambia: (String) -> Unit,
     onClaveCambia: (String) -> Unit,
     onConfirmacionCambia: (String) -> Unit,
-    onAlternarVisibilidad: () -> Unit,
     onAceptaTerminosCambia: (Boolean) -> Unit,
     onCrearCuenta: () -> Unit,
     onVolver: () -> Unit = {},
@@ -158,23 +157,19 @@ fun RegistroContent(
 
             TarjetaSeccion(
                 titulo = "Tu contraseña",
-                subtitulo = "5 números que solo tú conozcas. La guardamos cifrada: ni PagoFlex puede leerla."
+                subtitulo = "La guardamos cifrada: ni PagoFlex puede leerla. Toca el ojo de cada campo para ver lo que escribiste."
             ) {
                 CampoContrasena(
                     valor = uiState.clave,
                     onValorCambia = onClaveCambia,
                     etiqueta = "Contraseña *",
-                    visible = uiState.claveVisible,
-                    onAlternarVisible = onAlternarVisibilidad,
-                    error = uiState.errorClave,
-                    ayuda = "${uiState.clave.length}/5 dígitos"
+                    error = uiState.errorClave
                 )
+                RequisitosClave(clave = uiState.clave)
                 CampoContrasena(
                     valor = uiState.confirmacionClave,
                     onValorCambia = onConfirmacionCambia,
                     etiqueta = "Repite la contraseña *",
-                    visible = uiState.claveVisible,
-                    onAlternarVisible = onAlternarVisibilidad,
                     error = uiState.errorConfirmacion
                 )
             }
@@ -209,7 +204,7 @@ private fun RegistroPreview() {
             uiState = RegistroUiState(),
             onRutCambia = {}, onNombresCambia = {}, onApellidosCambia = {}, onCorreoCambia = {},
             onTelefonoCambia = {}, onClaveCambia = {}, onConfirmacionCambia = {},
-            onAlternarVisibilidad = {}, onAceptaTerminosCambia = {}, onCrearCuenta = {}
+            onAceptaTerminosCambia = {}, onCrearCuenta = {}
         )
     }
 }
@@ -233,7 +228,7 @@ private fun RegistroConErroresPreview() {
             ),
             onRutCambia = {}, onNombresCambia = {}, onApellidosCambia = {}, onCorreoCambia = {},
             onTelefonoCambia = {}, onClaveCambia = {}, onConfirmacionCambia = {},
-            onAlternarVisibilidad = {}, onAceptaTerminosCambia = {}, onCrearCuenta = {}
+            onAceptaTerminosCambia = {}, onCrearCuenta = {}
         )
     }
 }

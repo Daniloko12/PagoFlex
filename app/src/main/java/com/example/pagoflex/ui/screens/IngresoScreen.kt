@@ -83,7 +83,6 @@ fun IngresoScreen(
         cuentasDePrueba = datos.usuariosDelRol(Rol.USUARIO_FINAL) + datos.usuariosDelRol(Rol.ADMINISTRADOR),
         onCorreoCambia = viewModel::onCorreoCambia,
         onClaveCambia = viewModel::onClaveCambia,
-        onAlternarVisibilidad = viewModel::onAlternarVisibilidad,
         onIngresar = {
             viewModel.onIngresar()?.let { credenciales ->
                 onIngresar(credenciales)?.let { error -> viewModel.onErrorIngreso(error) }
@@ -105,7 +104,6 @@ fun IngresoContent(
     cuentasDePrueba: List<Usuario>,
     onCorreoCambia: (String) -> Unit,
     onClaveCambia: (String) -> Unit,
-    onAlternarVisibilidad: () -> Unit,
     onIngresar: () -> Unit,
     onUsarCuentaDePrueba: (Usuario) -> Unit = {},
     onRestablecer: () -> Unit = {},
@@ -224,8 +222,6 @@ fun IngresoContent(
                                 valor = uiState.clave,
                                 onValorCambia = onClaveCambia,
                                 etiqueta = stringResource(R.string.campo_clave),
-                                visible = uiState.claveVisible,
-                                onAlternarVisible = onAlternarVisibilidad,
                                 error = uiState.errorClave,
                                 ayuda = stringResource(R.string.ayuda_clave)
                             )
@@ -367,7 +363,7 @@ private fun IngresoPreview() {
             uiState = IngresoUiState(),
             cuentasDePrueba = BaseDatos().usuariosDelRol(Rol.USUARIO_FINAL),
             onCorreoCambia = {}, onClaveCambia = {},
-            onAlternarVisibilidad = {}, onIngresar = {}
+            onIngresar = {}
         )
     }
 }
@@ -379,13 +375,13 @@ private fun IngresoConErroresPreview() {
         IngresoContent(
             uiState = IngresoUiState(
                 correo = "paula@",
-                clave = "123",
+                clave = "",
                 errorCorreo = "Ingresa un correo válido, por ejemplo nombre@gmail.com",
-                errorClave = "La contraseña tiene 5 dígitos"
+                errorClave = "Ingresa tu contraseña"
             ),
             cuentasDePrueba = BaseDatos().usuariosDelRol(Rol.ADMINISTRADOR),
             onCorreoCambia = {}, onClaveCambia = {},
-            onAlternarVisibilidad = {}, onIngresar = {}, modoOscuro = false
+            onIngresar = {}, modoOscuro = false
         )
     }
 }

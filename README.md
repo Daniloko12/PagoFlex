@@ -115,6 +115,46 @@ app/src/main/java/com/example/pagoflex
 └── viewmodel       ViewModels de la app y de cada formulario
 ```
 
+## Microservicios
+
+El backend está en la carpeta `backend/`: 4 microservicios en **Java 21 con Spring Boot 3.5**, una base **MySQL 8.4** y todo se levanta con **Docker Compose**. Cada microservicio tiene su propia base de datos.
+
+| Microservicio | Puerto | Base de datos | Qué maneja |
+|---|---|---|---|
+| `ms-usuarios` | 8081 | `pagoflex_usuarios` | Cuentas, inicio de sesión, contraseñas, recuperación con código, comunas y reconocimientos |
+| `ms-compromisos` | 8082 | `pagoflex_compromisos` | Organizaciones, compromisos, fotos de boletas, anulaciones, reportes y recomendaciones |
+| `ms-pagos` | 8083 | `pagoflex_pagos` | Pagos y tarjetas guardadas |
+| `ms-movimientos` | 8084 | `pagoflex_movimientos` | Historial de movimientos (quién hizo qué y cuándo) |
+
+**Comunicación entre microservicios:** con `RestClient`. Por ejemplo, al registrar un pago, `ms-pagos` le pide el compromiso a `ms-compromisos`, revisa que no esté pagado ni anulado, guarda el pago, deja el compromiso como pagado en `ms-compromisos`, envía los reconocimientos a `ms-usuarios` y el movimiento a `ms-movimientos`. Si otro microservicio no responde, el pago no se guarda.
+
+Cada microservicio sigue las capas `controller` → `service` → `repository` (Spring Data JPA) → `model`, y al partir con la base vacía carga los mismos datos de prueba de la app (`datos.sql`).
+
+### Levantar el backend
+
+Se necesita **Docker** con Docker Compose. No hace falta instalar Java ni Maven: Docker compila cada microservicio.
+
+```
+cd backend
+docker compose up --build
+```
+
+La primera vez demora varios minutos porque descarga las imágenes y las librerías. Cuando en la terminal aparezca `Started ...Application` para los 4 microservicios, se puede probar cada uno en su página Swagger:
+
+- http://localhost:8081/swagger-ui.html (usuarios)
+- http://localhost:8082/swagger-ui.html (compromisos)
+- http://localhost:8083/swagger-ui.html (pagos)
+- http://localhost:8084/swagger-ui.html (movimientos)
+
+Comandos útiles:
+
+| Para | Comando |
+|---|---|
+| Detener todo | `docker compose down` |
+| Detener y borrar la base de datos | `docker compose down -v` |
+| Ver los mensajes de un microservicio | `docker compose logs -f ms-pagos` |
+| Volver a los datos de prueba | `POST /api/admin/restablecer` en cada microservicio |
+
 ## Cómo ejecutar
 
 1. Instalar una versión actual de **Android Studio** (el proyecto usa AGP 9.4, Kotlin 2.2 y compileSdk 37).

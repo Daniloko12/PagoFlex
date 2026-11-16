@@ -17,6 +17,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.pagoflex.R
+import com.example.pagoflex.model.Accion
 import com.example.pagoflex.model.CLAVE_DE_PRUEBA
 import com.example.pagoflex.model.EstadoRecomendacion
 import com.example.pagoflex.model.Rol
@@ -26,6 +27,7 @@ import com.example.pagoflex.model.formatoFecha
 import com.example.pagoflex.model.nombreCompleto
 import com.example.pagoflex.model.pagoPorComprobante
 import com.example.pagoflex.model.primerNombre
+import com.example.pagoflex.model.puede
 import com.example.pagoflex.model.recomendacionPorId
 import com.example.pagoflex.model.recomendacionesDe
 import com.example.pagoflex.model.reporteActivoDe
@@ -54,6 +56,7 @@ import com.example.pagoflex.ui.screens.HistorialScreen
 import com.example.pagoflex.ui.screens.IngresoScreen
 import com.example.pagoflex.ui.screens.InicioScreen
 import com.example.pagoflex.ui.screens.MenuSesion
+import com.example.pagoflex.ui.screens.MovimientosScreen
 import com.example.pagoflex.ui.screens.OpcionMenu
 import com.example.pagoflex.ui.screens.PagoScreen
 import com.example.pagoflex.ui.screens.PanelScreen
@@ -498,7 +501,7 @@ fun AppNavegacion(
         }
 
         composable(Ruta.CompromisosEmpresa.ruta) {
-            if (usuarioActual?.rol != Rol.ADMINISTRADOR) return@composable
+            if (!puede(usuarioActual, Accion.VER_TODOS_LOS_COMPROMISOS)) return@composable
             CompromisosEmpresaScreen(
                 datos = datos,
                 encontrados = compromisosEncontrados,
@@ -516,7 +519,7 @@ fun AppNavegacion(
             arguments = listOf(navArgument("idCompromiso") { type = NavType.IntType })
         ) { entrada ->
             val idCompromiso = entrada.arguments?.getInt("idCompromiso") ?: 0
-            if (usuarioActual?.rol != Rol.ADMINISTRADOR) return@composable
+            if (!puede(usuarioActual, Accion.VER_TODOS_LOS_COMPROMISOS)) return@composable
             val compromiso = datos.compromisoPorId(idCompromiso) ?: return@composable
             DetalleCompromisoEmpresaScreen(
                 datos = datos,
@@ -545,7 +548,7 @@ fun AppNavegacion(
                 defaultValue = null
             })
         ) { entrada ->
-            if (usuarioActual?.rol != Rol.ADMINISTRADOR) return@composable
+            if (!puede(usuarioActual, Accion.CREAR_COMPROMISO)) return@composable
             RegistrarCompromisoScreen(
                 datos = datos,
                 rutInicial = entrada.arguments?.getString("rut"),
@@ -572,7 +575,7 @@ fun AppNavegacion(
             arguments = listOf(navArgument("idCompromiso") { type = NavType.IntType })
         ) { entrada ->
             val idCompromiso = entrada.arguments?.getInt("idCompromiso") ?: 0
-            if (usuarioActual?.rol != Rol.ADMINISTRADOR) return@composable
+            if (!puede(usuarioActual, Accion.EDITAR_COMPROMISO)) return@composable
             val compromiso = datos.compromisoPorId(idCompromiso) ?: return@composable
             EditarCompromisoScreen(
                 datos = datos,
@@ -676,6 +679,15 @@ fun AppNavegacion(
                     }
                 },
                 onVolver = { navController.navigateUp() },
+                snackbarHostState = snackbarHostState
+            )
+        }
+
+        composable(Ruta.Movimientos.ruta) {
+            if (!puede(usuarioActual, Accion.VER_MOVIMIENTOS)) return@composable
+            MovimientosScreen(
+                datos = datos,
+                menu = menuEn(Ruta.Movimientos),
                 snackbarHostState = snackbarHostState
             )
         }
@@ -792,6 +804,7 @@ private fun opcionesMenu(rol: Rol): List<OpcionMenu> = when (rol) {
         OpcionMenu(Ruta.Cobranza.ruta, R.string.menu_cobranza, R.drawable.ic_grafico),
         OpcionMenu(Ruta.Reportes.ruta, R.string.menu_reportes, R.drawable.ic_reporte),
         OpcionMenu(Ruta.Recomendaciones.ruta, R.string.menu_recomendaciones, R.drawable.ic_recomendar),
+        OpcionMenu(Ruta.Movimientos.ruta, R.string.menu_movimientos, R.drawable.ic_historial),
         OpcionMenu(Ruta.Perfil.ruta, R.string.menu_perfil, R.drawable.ic_persona)
     )
 }

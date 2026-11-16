@@ -1,5 +1,6 @@
 package com.example.pagoflex
 
+import com.example.pagoflex.model.Accion
 import com.example.pagoflex.model.BaseDatos
 import com.example.pagoflex.model.CLAVE_DE_PRUEBA
 import com.example.pagoflex.model.CambioClave
@@ -9,6 +10,7 @@ import com.example.pagoflex.model.DatosAnexo9
 import com.example.pagoflex.model.EstadoCompromiso
 import com.example.pagoflex.model.EstadoRecomendacion
 import com.example.pagoflex.model.EstadoReporte
+import com.example.pagoflex.model.GrupoMovimiento
 import com.example.pagoflex.model.INTENTOS_MAXIMOS_CODIGO
 import com.example.pagoflex.model.LARGO_CODIGO_RECUPERACION
 import com.example.pagoflex.model.LARGO_MAXIMO_CLAVE
@@ -21,20 +23,24 @@ import com.example.pagoflex.model.PasoRecuperacion
 import com.example.pagoflex.model.RequisitoClave
 import com.example.pagoflex.model.ResultadoCodigo
 import com.example.pagoflex.model.Rol
+import com.example.pagoflex.model.TipoMovimiento
+import com.example.pagoflex.model.accionesDe
+import com.example.pagoflex.model.autorDe
 import com.example.pagoflex.model.avancePorEmpresa
 import com.example.pagoflex.model.calcularIndicador
+import com.example.pagoflex.model.cambiosEntre
 import com.example.pagoflex.model.categoriaCumplimiento
 import com.example.pagoflex.model.claveValida
 import com.example.pagoflex.model.clientes
 import com.example.pagoflex.model.codigoConfirmacionDe
 import com.example.pagoflex.model.compromisoPorId
 import com.example.pagoflex.model.conceptoSiguiente
-import com.example.pagoflex.model.cumpleRequisito
 import com.example.pagoflex.model.cuentaParaRecuperar
+import com.example.pagoflex.model.cumpleRequisito
 import com.example.pagoflex.model.deudaDe
-import com.example.pagoflex.model.errorFormatoCodigo
 import com.example.pagoflex.model.errorClaveNueva
 import com.example.pagoflex.model.errorConfirmacionClave
+import com.example.pagoflex.model.errorFormatoCodigo
 import com.example.pagoflex.model.formatoPesos
 import com.example.pagoflex.model.formatoPesosCorto
 import com.example.pagoflex.model.generarCodigoRecuperacion
@@ -50,10 +56,16 @@ import com.example.pagoflex.model.motivoParaNoPagar
 import com.example.pagoflex.model.motivoParaNoReportar
 import com.example.pagoflex.model.motivoParaNoResolver
 import com.example.pagoflex.model.motivoParaNoTomar
+import com.example.pagoflex.model.motivoSinPermiso
+import com.example.pagoflex.model.movimientosDe
+import com.example.pagoflex.model.movimientosDelCompromiso
+import com.example.pagoflex.model.movimientosFiltrados
 import com.example.pagoflex.model.nuevoCodigoRecuperacion
 import com.example.pagoflex.model.ocultarRut
 import com.example.pagoflex.model.parsearVencimientoTarjeta
 import com.example.pagoflex.model.proximoRecordatorio
+import com.example.pagoflex.model.puede
+import com.example.pagoflex.model.puedeVerCompromiso
 import com.example.pagoflex.model.recomendacionesDe
 import com.example.pagoflex.model.recordatoriosDeHoy
 import com.example.pagoflex.model.reporteAtrasado
@@ -553,6 +565,57 @@ class ReglasNegocioTest {
         assertEquals(deHoy.first(), datos.proximoRecordatorio(camila))
         assertTrue(datos.recordatoriosDeHoy(camila.copy(avisosActivos = false)).isEmpty())
         assertNull(datos.proximoRecordatorio(usuario(9)!!))
+    }
+
+    @Test
+    fun permisos_quienCreaEditaYGestionaCompromisos() {
+        val camila = usuario(1)!!
+        val admin = usuario(9)!!
+        listOf(Accion.CREAR_COMPROMISO, Accion.EDITAR_COMPROMISO, Accion.ANULAR_COMPROMISO, Accion.VER_TODOS_LOS_COMPROMISOS).forEach {
+            assertTrue(puede(admin, it))
+            assertFalse(puede(camila, it))
+        }
+        assertTrue(puede(camila, Accion.PAGAR_COMPROMISO))
+        assertFalse(puede(admin, Accion.PAGAR_COMPROMISO))
+        assertFalse(puede(null, Accion.VER_MIS_COMPROMISOS))
+        assertFalse(puede(camila.copy(activo = false), Accion.PAGAR_COMPROMISO))
+        assertTrue(accionesDe(Rol.USUARIO_FINAL).intersect(accionesDe(Rol.ADMINISTRADOR)).isEmpty())
+        assertEquals(Accion.entries.toSet(), accionesDe(Rol.USUARIO_FINAL) + accionesDe(Rol.ADMINISTRADOR))
+        assertNotNull(motivoSinPermiso(camila, Accion.ANULAR_COMPROMISO))
+        assertNull(motivoSinPermiso(admin, Accion.ANULAR_COMPROMISO))
+
+        val deCamila = datos.compromisoPorId(101)!!
+        val deOtro = datos.compromisos.first { it.idUsuarioFinal != 1 }
+        assertTrue(puedeVerCompromiso(camila, deCamila))
+        assertFalse(puedeVerCompromiso(camila, deOtro))
+        assertTrue(puedeVerCompromiso(admin, deOtro))
+    }
+
+    @Test
+    fun movimientos_historialInicialOrdenado() {
+        val esperados = datos.compromisos.size +
+            datos.compromisos.count { it.estado == EstadoCompromiso.VENCIDO } +
+            datos.pagos.size + datos.anulaciones.size +
+            datos.reportes.size + datos.reportes.count { it.fechaToma != null } + datos.reportes.count { it.fechaResolucion != null }
+        assertEquals(esperados, datos.movimientos.size)
+        assertEquals((1..esperados).toList(), datos.movimientos.map { it.idMovimiento })
+        assertEquals(datos.movimientos.sortedBy { it.fecha }, datos.movimientos)
+
+        val deCamila = datos.movimientosDe(1)
+        assertTrue(deCamila.isNotEmpty())
+        assertTrue(deCamila.all { it.idUsuario == 1 })
+        assertTrue(datos.movimientosDe(1, GrupoMovimiento.PAGOS).all { it.tipo == TipoMovimiento.PAGO_REGISTRADO })
+        val historia = datos.movimientosDelCompromiso(102)
+        assertEquals(TipoMovimiento.COMPROMISO_REGISTRADO, historia.first().tipo)
+        assertTrue(historia.any { it.tipo == TipoMovimiento.COMPROMISO_VENCIDO })
+        assertEquals("PagoFlex (automático)", datos.autorDe(historia.first { it.tipo == TipoMovimiento.COMPROMISO_VENCIDO }))
+
+        val antes = datos.compromisoPorId(106)!!
+        val despues = antes.copy(monto = 300_000, fechaVencimiento = antes.fechaVencimiento.plusDays(5))
+        val cambios = cambiosEntre(antes, despues)
+        assertEquals(2, cambios.size)
+        assertTrue(cambios.first().startsWith("Monto:"))
+        assertTrue(datos.movimientosFiltrados(null, "camila").all { it.idUsuario == 1 })
     }
 
     @Test

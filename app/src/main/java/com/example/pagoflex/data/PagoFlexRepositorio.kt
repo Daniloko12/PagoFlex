@@ -8,6 +8,7 @@ import com.example.pagoflex.model.Compromiso
 import com.example.pagoflex.model.ContactoRecomendacion
 import com.example.pagoflex.model.DatosAnexo9
 import com.example.pagoflex.model.HistorialRecomendacion
+import com.example.pagoflex.model.Movimiento
 import com.example.pagoflex.model.Pago
 import com.example.pagoflex.model.Recomendacion
 import com.example.pagoflex.model.Reporte
@@ -112,14 +113,17 @@ class PagoFlexRepositorio(context: Context) {
 
     fun sumarIntentoCodigo(codigo: CodigoRecuperacion): Boolean = db.sumarIntentoCodigo(codigo)
 
-    fun cambiarClaveConCodigo(usuario: Usuario, codigo: CodigoRecuperacion, claveNueva: String): Boolean =
-        db.cambiarClaveConCodigo(usuario, codigo, claveNueva)
+    fun cambiarClaveConCodigo(usuario: Usuario, codigo: CodigoRecuperacion, claveNueva: String, movimiento: Movimiento): Boolean =
+        guardar(db.cambiarClaveConCodigo(usuario, codigo, claveNueva, listOf(movimiento)))
 
-    fun cambiarClave(usuario: Usuario, claveNueva: String): Boolean = db.cambiarClave(usuario, claveNueva)
+    fun cambiarClave(usuario: Usuario, claveNueva: String, movimiento: Movimiento): Boolean =
+        guardar(db.cambiarClave(usuario, claveNueva, listOf(movimiento)))
 
-    fun registrarUsuario(usuario: Usuario, clave: String): Boolean = guardar(db.registrarUsuario(usuario, clave))
+    fun registrarUsuario(usuario: Usuario, clave: String, movimiento: Movimiento): Boolean =
+        guardar(db.registrarUsuario(usuario, clave, listOf(movimiento)))
 
-    fun actualizarUsuario(usuario: Usuario): Boolean = guardar(db.actualizarUsuario(usuario))
+    fun actualizarUsuario(usuario: Usuario, movimientos: List<Movimiento> = emptyList()): Boolean =
+        guardar(db.actualizarUsuario(usuario, movimientos))
 
     fun actualizarAvatar(idUsuario: Int, avatar: ByteArray): Boolean = guardar(db.actualizarAvatar(idUsuario, avatar))
 
@@ -128,16 +132,19 @@ class PagoFlexRepositorio(context: Context) {
         compromiso: Compromiso,
         reconocimientos: List<UsuarioReconocimiento>,
         tarjetaNueva: Tarjeta?,
-        siguienteCuota: Compromiso?
-    ): Boolean = guardar(db.registrarPago(pago, compromiso, reconocimientos, tarjetaNueva, siguienteCuota))
+        siguienteCuota: Compromiso?,
+        movimientos: List<Movimiento>
+    ): Boolean = guardar(db.registrarPago(pago, compromiso, reconocimientos, tarjetaNueva, siguienteCuota, movimientos))
 
     fun registrarTarjeta(tarjeta: Tarjeta): Boolean = guardar(db.registrarTarjeta(tarjeta))
 
     fun quitarTarjeta(idTarjeta: Int): Boolean = guardar(db.quitarTarjeta(idTarjeta))
 
-    fun registrarReporte(reporte: Reporte, compromiso: Compromiso): Boolean = guardar(db.registrarReporte(reporte, compromiso))
+    fun registrarReporte(reporte: Reporte, compromiso: Compromiso, movimiento: Movimiento): Boolean =
+        guardar(db.registrarReporte(reporte, compromiso, listOf(movimiento)))
 
-    fun actualizarReporte(reporte: Reporte, compromiso: Compromiso?): Boolean = guardar(db.actualizarReporte(reporte, compromiso))
+    fun actualizarReporte(reporte: Reporte, compromiso: Compromiso?, movimiento: Movimiento): Boolean =
+        guardar(db.actualizarReporte(reporte, compromiso, listOf(movimiento)))
 
     fun registrarRecomendacion(recomendacion: Recomendacion, contacto: ContactoRecomendacion?): Boolean =
         guardar(db.registrarRecomendacion(recomendacion, contacto))
@@ -148,12 +155,14 @@ class PagoFlexRepositorio(context: Context) {
         reconocimiento: UsuarioReconocimiento?
     ): Boolean = guardar(db.cambiarEstadoRecomendacion(recomendacion, historial, reconocimiento))
 
-    fun anularCompromiso(anulacion: Anulacion, compromiso: Compromiso): Boolean = guardar(db.anularCompromiso(anulacion, compromiso))
+    fun anularCompromiso(anulacion: Anulacion, compromiso: Compromiso, movimiento: Movimiento): Boolean =
+        guardar(db.anularCompromiso(anulacion, compromiso, listOf(movimiento)))
 
-    fun registrarCompromiso(compromiso: Compromiso, personaNueva: Usuario?): Boolean =
-        guardar(db.registrarCompromiso(compromiso, personaNueva))
+    fun registrarCompromiso(compromiso: Compromiso, personaNueva: Usuario?, movimientos: List<Movimiento>): Boolean =
+        guardar(db.registrarCompromiso(compromiso, personaNueva, movimientos))
 
-    fun actualizarCompromisos(compromisos: List<Compromiso>): Boolean = guardar(db.actualizarCompromisos(compromisos))
+    fun actualizarCompromisos(compromisos: List<Compromiso>, movimientos: List<Movimiento>): Boolean =
+        guardar(db.actualizarCompromisos(compromisos, movimientos))
 
     fun cerrar() {
         db.close()

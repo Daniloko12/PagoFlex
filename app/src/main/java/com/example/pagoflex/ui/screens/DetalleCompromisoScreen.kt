@@ -29,6 +29,7 @@ import com.example.pagoflex.model.empresaPorId
 import com.example.pagoflex.model.formatoFecha
 import com.example.pagoflex.model.formatoFechaHora
 import com.example.pagoflex.model.formatoPesos
+import com.example.pagoflex.model.movimientosDelCompromiso
 import com.example.pagoflex.model.pagoDe
 import com.example.pagoflex.model.totalAPagar
 import com.example.pagoflex.model.ultimoReporteDe
@@ -37,6 +38,7 @@ import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.BotonSecundario
 import com.example.pagoflex.ui.components.EtiquetaInteres
 import com.example.pagoflex.ui.components.FilaDato
+import com.example.pagoflex.ui.components.LineaDeTiempo
 import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
@@ -137,6 +139,10 @@ fun DetalleCompromisoScreen(
                         FilaDato("Resultado", compromiso.estado.etiqueta)
                     }
                 }
+            }
+
+            TarjetaSeccion(titulo = "Historial de este compromiso") {
+                LineaDeTiempo(movimientos = datos.movimientosDelCompromiso(compromiso.idCompromiso), datos = datos)
             }
 
             if (empresa != null) {

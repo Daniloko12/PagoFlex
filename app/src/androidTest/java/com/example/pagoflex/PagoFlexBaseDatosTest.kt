@@ -8,6 +8,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.example.pagoflex.data.ConvertidorImagen
 import com.example.pagoflex.data.PagoFlexDbHelper
 import com.example.pagoflex.data.SesionPreferencias
+import com.example.pagoflex.model.BaseDatos
 import com.example.pagoflex.model.CLAVE_DE_PRUEBA
 import com.example.pagoflex.model.CambioClave
 import com.example.pagoflex.model.CambiosCompromiso
@@ -31,10 +32,13 @@ import com.example.pagoflex.model.Rol
 import com.example.pagoflex.model.SolicitudPago
 import com.example.pagoflex.model.SolicitudReporte
 import com.example.pagoflex.model.TarjetaNueva
+import com.example.pagoflex.model.TipoMovimiento
 import com.example.pagoflex.model.avancePorEmpresa
 import com.example.pagoflex.model.compromisoPorId
 import com.example.pagoflex.model.hashCodigo
 import com.example.pagoflex.model.mensajeCodigo
+import com.example.pagoflex.model.movimientosDe
+import com.example.pagoflex.model.movimientosDelCompromiso
 import com.example.pagoflex.model.resumenPanel
 import com.example.pagoflex.model.tarjetaPorId
 import com.example.pagoflex.model.tarjetasGuardadas
@@ -273,6 +277,55 @@ class PagoFlexBaseDatosTest {
         assertNotNull(app.editarCompromiso(106, cambios))
         assertNotNull(app.editarCompromiso(104, cambios.copy(monto = 1)))
         assertNotNull(app.editarCompromiso(106, cambios.copy(numeroCuota = 15)))
+    }
+
+    @Test
+    fun movimientos_quedanRegistradosConSuAutor() {
+        val app = nuevaApp()
+        assertEquals(BaseDatos().movimientos.size, app.datos.value.movimientos.size)
+        entrar(app, "crojas@correo.ejemplo")
+        val pago = app.pagar(101, SolicitudPago(MedioPago.DEBITO, idTarjeta = 1))!!
+        val deCamila = nuevaApp().datos.value.movimientosDe(1)
+        val registroPago = deCamila.first { it.tipo == TipoMovimiento.PAGO_REGISTRADO && it.idCompromiso == 101 }
+        assertEquals(1, registroPago.idAutor)
+        assertTrue(registroPago.detalle.contains(pago.pago.numeroComprobante))
+        assertTrue(deCamila.any { it.tipo == TipoMovimiento.CUOTA_GENERADA && it.idCompromiso == pago.siguienteCuota?.idCompromiso })
+
+        app.cerrarSesion()
+        entrar(app, "alagos@pagoflex.ejemplo")
+        val cambios = CambiosCompromiso("Cuota pie departamento", 300_000, LocalDate.of(2026, 10, 30), 14, 36)
+        assertNull(app.editarCompromiso(106, cambios))
+        val edicion = app.datos.value.movimientosDelCompromiso(106).last()
+        assertEquals(TipoMovimiento.COMPROMISO_MODIFICADO, edicion.tipo)
+        assertEquals(9, edicion.idAutor)
+        assertTrue(edicion.detalle.contains("Monto"))
+        assertNull(app.anularCompromiso(102, MotivoAnulacion.REPACTACION, null))
+        assertEquals(TipoMovimiento.COMPROMISO_ANULADO, app.datos.value.movimientosDelCompromiso(102).last().tipo)
+
+        app.cerrarSesion()
+        val datos = DatosRecuperacion("crojas@correo.ejemplo", "15.834.207-3")
+        val codigo = app.solicitarCodigo(datos)!!
+        assertNull(app.recuperarClave(ClaveRecuperada(datos.correo, datos.rut, codigo, "Nueva#2027")))
+        assertEquals(TipoMovimiento.CLAVE_RECUPERADA, app.datos.value.movimientosDe(1).first().tipo)
+    }
+
+    @Test
+    fun permisos_cadaRolSoloHaceLoSuyo() {
+        val app = nuevaApp()
+        entrar(app, "crojas@correo.ejemplo")
+        val ajeno = app.datos.value.compromisos.first { it.idUsuarioFinal != 1 && it.estado == EstadoCompromiso.PENDIENTE }
+        assertEquals("Este compromiso no está a tu nombre", app.motivoParaNoPagar(ajeno.idCompromiso))
+        assertNull(app.pagar(ajeno.idCompromiso, SolicitudPago(MedioPago.DEBITO, idTarjeta = 1)))
+        assertNotNull(app.motivoParaNoReportar(ajeno.idCompromiso))
+        assertNotNull(app.anularCompromiso(101, MotivoAnulacion.ERROR_REGISTRO, null))
+        assertNotNull(app.editarCompromiso(101, CambiosCompromiso("Arriendo", 1_000, LocalDate.of(2026, 12, 1), null, null)))
+        assertNull(app.crearCliente(DatosCliente("11.111.111-1", "Elena", "Rivas", "erivas@gmail.com", "+56 9 1234 5678", 5, true)))
+        assertEquals(EstadoCompromiso.PENDIENTE, nuevaApp().datos.value.compromisoPorId(101)?.estado)
+
+        app.cerrarSesion()
+        entrar(app, "alagos@pagoflex.ejemplo")
+        assertNotNull(app.motivoParaNoPagar(101))
+        assertNull(app.reportar(101, SolicitudReporte(MotivoReporte.entries.first(), null)))
     }
 
     @Test

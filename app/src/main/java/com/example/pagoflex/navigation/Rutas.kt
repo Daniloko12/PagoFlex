@@ -51,6 +51,7 @@ sealed class Ruta(val ruta: String) {
         fun crear(idUsuario: Int) = "editar-cliente/$idUsuario"
     }
 
+    data object Movimientos : Ruta("movimientos")
     data object Reportes : Ruta("reportes")
     data object DetalleReporte : Ruta("reporte/{idReporte}") {
         fun crear(idReporte: Int) = "reporte/$idReporte"

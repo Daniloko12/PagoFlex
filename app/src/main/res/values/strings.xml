@@ -34,7 +34,7 @@
     <string name="campo_buscar_cliente">Buscar por nombre, RUT o correo</string>
 
     <string name="saludo">Hola, %1$s</string>
-    <string name="titulo_historial">Historial de pagos</string>
+    <string name="titulo_historial">Historial de pagos y movimientos</string>
     <string name="titulo_avance">Mi avance</string>
     <string name="titulo_avisos">Avisos</string>
     <string name="canal_vencimientos">Vencimientos</string>
@@ -47,6 +47,7 @@
     <string name="titulo_comprobante">Comprobante de pago</string>
     <string name="titulo_recomendar">Recomendar una organización</string>
     <string name="titulo_reportes">Reportes de problemas</string>
+    <string name="titulo_movimientos">Historial de movimientos</string>
     <string name="titulo_detalle_reporte">Atender reporte</string>
     <string name="titulo_recomendaciones">Recomendaciones</string>
     <string name="titulo_detalle_recomendacion">Recomendación</string>
@@ -66,12 +67,13 @@
     <string name="titulo_panel">Panel</string>
 
     <string name="menu_inicio">Inicio</string>
-    <string name="menu_historial">Historial de pagos</string>
+    <string name="menu_historial">Historial</string>
     <string name="menu_avance">Mi avance</string>
     <string name="menu_tarjetas">Mis tarjetas</string>
     <string name="menu_avisos">Avisos</string>
     <string name="menu_reportes">Reportes</string>
     <string name="menu_recomendaciones">Recomendaciones</string>
+    <string name="menu_movimientos">Movimientos</string>
     <string name="menu_compromisos">Compromisos</string>
     <string name="menu_clientes">Clientes</string>
     <string name="menu_cobranza">Cobranza</string>

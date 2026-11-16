@@ -46,6 +46,7 @@ import com.example.pagoflex.model.BaseDatos
 import com.example.pagoflex.model.EstadoCompromiso
 import com.example.pagoflex.model.Rol
 import com.example.pagoflex.model.Usuario
+import com.example.pagoflex.model.accionesDe
 import com.example.pagoflex.model.compromisosVigentes
 import com.example.pagoflex.model.comunaPorId
 import com.example.pagoflex.model.formatoFecha
@@ -220,6 +221,23 @@ fun PerfilContent(
                     onClick = onCambiarClave,
                     modifier = Modifier.fillMaxWidth()
                 )
+                TarjetaSeccion(titulo = "Tu rol: ${usuario.rol.etiqueta}", subtitulo = usuario.rol.descripcion) {
+                    accionesDe(usuario.rol).forEach { accion ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_check),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = accion.descripcion,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = Dimens.espacioChico)
+                            )
+                        }
+                    }
+                }
                 if (usuario.rol == Rol.USUARIO_FINAL) {
                     val vigentes = datos.compromisosVigentes(usuario.idUsuario)
                     TarjetaSeccion(titulo = "Resumen") {

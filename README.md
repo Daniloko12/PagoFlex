@@ -59,7 +59,7 @@ Los permisos están centralizados en `model/PermisosRol.kt`. El ViewModel revisa
 
 ### Recuperar la contraseña en 3 pasos
 
-1. La persona escribe su correo y su RUT. Por seguridad la app no dice si la cuenta existe.
+1. La persona escribe solo el correo de su cuenta, como en cualquier app. Por seguridad la app no dice si ese correo está registrado.
 2. Se genera un **código de 6 dígitos** con `SecureRandom`. En la base de datos se guarda solo su hash. El código **dura 10 minutos**, permite **3 intentos** y al pedir uno nuevo el anterior deja de servir. Llega como notificación (simula el correo que se enviaría en producción).
 3. Con el código correcto se crea la contraseña nueva, que también debe cumplir los 5 requisitos. El código se marca como usado y queda el movimiento "Contraseña recuperada con código".
 
@@ -72,6 +72,7 @@ Los permisos están centralizados en `model/PermisosRol.kt`. El ViewModel revisa
 
 - **MVVM** con Jetpack Compose y Navigation Compose.
 - **Capa de datos con Flow**: `PagoFlexRepositorio` expone `StateFlow` (datos, usuario actual, búsqueda, preferencias). Cada vez que se guarda algo en SQLite, el repositorio vuelve a leer la base y emite los datos nuevos, y la interfaz se actualiza sola con `collectAsStateWithLifecycle`.
+- **Sincronización automática**: no hay botón "Actualizar". El ViewModel tiene un `Flow` que sincroniza al abrir la app y luego cada minuto (`stateIn` con `SharingStarted.WhileSubscribed`), así que solo trabaja mientras la app está en pantalla. Al volver la conexión también se sincroniza sola.
 - **SQLite** con `SQLiteOpenHelper` (versión 6, 26 tablas). Las escrituras van en transacciones y las versiones nuevas se migran sin perder datos:
   - v4: contraseñas de prueba con los nuevos requisitos.
   - v5: tabla `codigo_recuperacion`.
@@ -112,7 +113,7 @@ Todas usan la contraseña **`Pago#2026`**. En la pantalla de inicio de sesión s
 | Administrador | alagos@pagoflex.ejemplo |
 | Administrador | dortiz@pagoflex.ejemplo |
 
-Para probar la recuperación usar, por ejemplo, `crojas@correo.ejemplo` con el RUT `15.834.207-3`.
+Para probar la recuperación usar, por ejemplo, `crojas@correo.ejemplo`.
 
 ### Pruebas
 

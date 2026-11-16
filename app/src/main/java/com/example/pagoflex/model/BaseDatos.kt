@@ -443,8 +443,7 @@ fun BaseDatos.validarPersona(
     )
 }
 
-fun BaseDatos.cuentaParaRecuperar(correo: String, rut: String): Usuario? =
-    usuarioPorCorreo(correo)?.takeIf { validarRut(rut) && normalizarRut(it.rut) == normalizarRut(rut) }
+fun BaseDatos.cuentaParaRecuperar(correo: String): Usuario? = usuarioPorCorreo(correo)?.takeIf { it.activo }
 
 fun BaseDatos.siguienteCuota(compromiso: Compromiso, fecha: LocalDateTime): Compromiso? {
     val numero = compromiso.numeroCuota ?: return null

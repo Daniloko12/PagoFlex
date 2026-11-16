@@ -112,7 +112,6 @@ fun RecuperarClaveScreen(
     RecuperarClaveContent(
         uiState = uiState,
         onCorreoCambia = viewModel::onCorreoCambia,
-        onRutCambia = viewModel::onRutCambia,
         onCodigoCambia = viewModel::onCodigoCambia,
         onClaveNuevaCambia = viewModel::onClaveNuevaCambia,
         onConfirmacionCambia = viewModel::onConfirmacionCambia,
@@ -121,7 +120,7 @@ fun RecuperarClaveScreen(
         onVerificarCodigo = {
             viewModel.onVerificarCodigo()?.let { codigo ->
                 val estado = viewModel.uiState.value
-                val error = onVerificarCodigo(DatosRecuperacion(estado.correo, estado.rut.trim()), codigo)
+                val error = onVerificarCodigo(DatosRecuperacion(estado.correo), codigo)
                 if (error == null) viewModel.onCodigoCorrecto() else viewModel.onErrorCodigo(error)
             }
         },
@@ -160,7 +159,6 @@ private fun CodigoSinNotificacion(codigo: String, onCerrar: () -> Unit) {
 fun RecuperarClaveContent(
     uiState: RecuperarClaveUiState,
     onCorreoCambia: (String) -> Unit,
-    onRutCambia: (String) -> Unit,
     onCodigoCambia: (String) -> Unit,
     onClaveNuevaCambia: (String) -> Unit,
     onConfirmacionCambia: (String) -> Unit,
@@ -211,7 +209,7 @@ fun RecuperarClaveContent(
                 label = "pasoRecuperacion"
             ) { paso ->
                 when (paso) {
-                    PasoRecuperacion.DATOS -> PasoDatos(uiState, onCorreoCambia, onRutCambia, onSolicitarCodigo)
+                    PasoRecuperacion.DATOS -> PasoDatos(uiState, onCorreoCambia, onSolicitarCodigo)
                     PasoRecuperacion.CODIGO -> PasoCodigo(uiState, onCodigoCambia, onVerificarCodigo, onReenviarCodigo, onCambiarDatos)
                     PasoRecuperacion.CLAVE -> PasoClave(uiState, onClaveNuevaCambia, onConfirmacionCambia, onGuardar, onCambiarDatos)
                 }
@@ -262,10 +260,9 @@ private fun IndicadorPasos(pasoActual: PasoRecuperacion) {
 private fun PasoDatos(
     uiState: RecuperarClaveUiState,
     onCorreoCambia: (String) -> Unit,
-    onRutCambia: (String) -> Unit,
     onSolicitarCodigo: () -> Unit
 ) {
-    TarjetaSeccion(titulo = "1. ${PasoRecuperacion.DATOS.titulo}", subtitulo = "Usa el correo y el RUT con los que te registraste") {
+    TarjetaSeccion(titulo = "1. ${PasoRecuperacion.DATOS.titulo}", subtitulo = "Usa el correo con el que te registraste") {
         CampoTexto(
             valor = uiState.correo,
             onValorCambia = onCorreoCambia,
@@ -274,14 +271,6 @@ private fun PasoDatos(
             error = uiState.errorCorreo,
             ayuda = stringResource(R.string.ayuda_correo),
             tipoTeclado = KeyboardType.Email
-        )
-        CampoTexto(
-            valor = uiState.rut,
-            onValorCambia = onRutCambia,
-            etiqueta = "RUT",
-            icono = R.drawable.ic_persona,
-            error = uiState.errorRut,
-            ayuda = "Ej: 12.345.678-5"
         )
         BotonPrincipal(
             texto = "Enviar código",
@@ -322,7 +311,7 @@ private fun PasoCodigo(
             modifier = Modifier.fillMaxWidth()
         )
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = onCambiarDatos) { Text("Cambiar correo o RUT") }
+            TextButton(onClick = onCambiarDatos) { Text("Cambiar correo") }
             TextButton(onClick = onReenviarCodigo) { Text("Reenviar código") }
         }
     }
@@ -367,7 +356,7 @@ private fun RecuperarClavePreview() {
     PagoFlexTheme {
         RecuperarClaveContent(
             uiState = RecuperarClaveUiState(correo = "crojas@correo.ejemplo"),
-            onCorreoCambia = {}, onRutCambia = {}, onCodigoCambia = {}, onClaveNuevaCambia = {}, onConfirmacionCambia = {},
+            onCorreoCambia = {}, onCodigoCambia = {}, onClaveNuevaCambia = {}, onConfirmacionCambia = {},
             onSolicitarCodigo = {}, onReenviarCodigo = {}, onVerificarCodigo = {}, onCambiarDatos = {}, onGuardar = {}
         )
     }
@@ -379,10 +368,10 @@ private fun RecuperarClaveCodigoPreview() {
     PagoFlexTheme(modoOscuro = false) {
         RecuperarClaveContent(
             uiState = RecuperarClaveUiState(
-                paso = PasoRecuperacion.CODIGO, correo = "crojas@correo.ejemplo", rut = "15.834.207-3",
+                paso = PasoRecuperacion.CODIGO, correo = "crojas@correo.ejemplo",
                 codigo = "4829", errorCodigo = "El código no es correcto. Te quedan 2 intentos."
             ),
-            onCorreoCambia = {}, onRutCambia = {}, onCodigoCambia = {}, onClaveNuevaCambia = {}, onConfirmacionCambia = {},
+            onCorreoCambia = {}, onCodigoCambia = {}, onClaveNuevaCambia = {}, onConfirmacionCambia = {},
             onSolicitarCodigo = {}, onReenviarCodigo = {}, onVerificarCodigo = {}, onCambiarDatos = {}, onGuardar = {}
         )
     }
@@ -394,10 +383,10 @@ private fun RecuperarClaveNuevaPreview() {
     PagoFlexTheme(modoOscuro = false) {
         RecuperarClaveContent(
             uiState = RecuperarClaveUiState(
-                paso = PasoRecuperacion.CLAVE, correo = "crojas@correo.ejemplo", rut = "15.834.207-3",
+                paso = PasoRecuperacion.CLAVE, correo = "crojas@correo.ejemplo",
                 claveNueva = "pago2026", errorClaveNueva = "Te faltan 2 de los 5 requisitos de seguridad"
             ),
-            onCorreoCambia = {}, onRutCambia = {}, onCodigoCambia = {}, onClaveNuevaCambia = {}, onConfirmacionCambia = {},
+            onCorreoCambia = {}, onCodigoCambia = {}, onClaveNuevaCambia = {}, onConfirmacionCambia = {},
             onSolicitarCodigo = {}, onReenviarCodigo = {}, onVerificarCodigo = {}, onCambiarDatos = {}, onGuardar = {}
         )
     }

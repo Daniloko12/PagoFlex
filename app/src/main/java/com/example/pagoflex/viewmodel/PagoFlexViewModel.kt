@@ -4,6 +4,7 @@ import android.app.Application
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.pagoflex.data.ConvertidorImagen
 import com.example.pagoflex.data.PagoFlexRepositorio
 import com.example.pagoflex.model.Accion
@@ -82,7 +83,6 @@ import com.example.pagoflex.model.tarjetaPorId
 import com.example.pagoflex.model.tarjetasGuardadas
 import com.example.pagoflex.model.totalAPagar
 import com.example.pagoflex.model.usuarioPorId
-import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -527,6 +527,39 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         val anulado = compromiso.copy(estado = EstadoCompromiso.ANULADO, fechaCambioEstado = fecha)
         if (!repositorio.anularCompromiso(anulacion, anulado, movimientoAnulacion(anulacion, anulado))) return "No pudimos guardar la anulación. Inténtalo de nuevo."
         return null
+    }
+
+    fun registrarMiCompromiso(nuevo: NuevoCompromiso, fotoBoleta: ByteArray? = null): Compromiso? {
+        val usuario = conPermiso(Accion.AGREGAR_MIS_COMPROMISOS) ?: return null
+        if (nuevo.idPersona != usuario.idUsuario || nuevo.personaNueva != null) return null
+        val datos = datos.value
+        val fecha = ahora()
+        val nuevoId = datos.compromisos.maxOf { it.idCompromiso } + 1
+        val compromiso = Compromiso(
+            idCompromiso = nuevoId,
+            folio = "CP-%d-%04d".format(datos.fechaHoy.year, nuevoId),
+            idUsuarioFinal = usuario.idUsuario,
+            idEmpresa = nuevo.idEmpresa,
+            concepto = nuevo.concepto,
+            numeroCuota = nuevo.numeroCuota,
+            totalCuotas = nuevo.totalCuotas,
+            monto = nuevo.monto,
+            fechaVencimiento = nuevo.fechaVencimiento,
+            estado = EstadoCompromiso.PENDIENTE,
+            recargoAplicado = 0,
+            fechaCambioEstado = fecha,
+            idAdminRegistro = null,
+            fechaRegistro = fecha
+        )
+        val registro = movimientoRegistro(compromiso, usuario.idUsuario, fecha)
+        if (!repositorio.registrarCompromiso(compromiso, null, listOf(registro), fotoBoleta)) return null
+        return compromiso
+    }
+
+    fun boletaDe(idCompromiso: Int): ByteArray? {
+        val compromiso = datos.value.compromisoPorId(idCompromiso) ?: return null
+        if (!puedeVerCompromiso(usuarioActual.value, compromiso)) return null
+        return repositorio.boletaDe(idCompromiso)
     }
 
     fun registrarCompromiso(nuevo: NuevoCompromiso): Compromiso? {

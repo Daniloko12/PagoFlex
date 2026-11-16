@@ -72,6 +72,7 @@ fun PerfilScreen(
     onImagenElegida: (Uri) -> Unit,
     onEditarDatos: () -> Unit,
     onCambiarClave: () -> Unit,
+    onEscribirSoporte: () -> Unit = {},
     menu: MenuSesion = MenuSesion(),
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
@@ -147,6 +148,7 @@ fun PerfilScreen(
         },
         onEditarDatos = onEditarDatos,
         onCambiarClave = onCambiarClave,
+        onEscribirSoporte = onEscribirSoporte,
         menu = menu,
         snackbarHostState = snackbarHostState
     )
@@ -161,6 +163,7 @@ fun PerfilContent(
     onAbrirGaleria: () -> Unit = {},
     onEditarDatos: () -> Unit = {},
     onCambiarClave: () -> Unit = {},
+    onEscribirSoporte: () -> Unit = {},
     menu: MenuSesion = MenuSesion(),
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
@@ -244,6 +247,16 @@ fun PerfilContent(
                         FilaDato("Compromisos por pagar", vigentes.count { it.estado != EstadoCompromiso.EN_REVISION }.toString())
                         FilaDato("Tarjetas guardadas", datos.tarjetasGuardadas(usuario.idUsuario).size.toString())
                     }
+                }
+                TarjetaSeccion(
+                    titulo = "¿Necesitas ayuda?",
+                    subtitulo = "Escríbenos y te respondemos a ${usuario.correo}"
+                ) {
+                    BotonSecundario(
+                        texto = "Escribir a soporte",
+                        onClick = onEscribirSoporte,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }

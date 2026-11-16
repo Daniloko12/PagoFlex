@@ -2,11 +2,12 @@ package com.example.pagoflex.model
 
 enum class Accion(val descripcion: String) {
     VER_MIS_COMPROMISOS("Ver sus compromisos, su avance y su historial"),
+    AGREGAR_MIS_COMPROMISOS("Agregar sus propias cuentas o boletas por pagar"),
     PAGAR_COMPROMISO("Pagar sus propios compromisos"),
     REPORTAR_COBRO("Reportar un cobro que no reconoce"),
     RECOMENDAR_ORGANIZACION("Recomendar una organización"),
     VER_TODOS_LOS_COMPROMISOS("Buscar y ver los compromisos de todos los clientes"),
-    CREAR_COMPROMISO("Registrar compromisos de pago para un cliente"),
+    CREAR_COMPROMISO("Registrar compromisos de pago para cualquier cliente"),
     EDITAR_COMPROMISO("Modificar concepto, monto, vencimiento y cuotas"),
     ANULAR_COMPROMISO("Anular compromisos indicando el motivo"),
     GESTIONAR_REPORTES("Tomar y resolver los reportes de los clientes"),
@@ -17,6 +18,7 @@ enum class Accion(val descripcion: String) {
 
 private val accionesUsuario = setOf(
     Accion.VER_MIS_COMPROMISOS,
+    Accion.AGREGAR_MIS_COMPROMISOS,
     Accion.PAGAR_COMPROMISO,
     Accion.REPORTAR_COBRO,
     Accion.RECOMENDAR_ORGANIZACION

@@ -123,6 +123,13 @@ fun BaseDatos.historialFiltrado(idUsuario: Int, idEmpresa: Int?, anio: Int?, mes
             (mes == null || m.fecha.monthValue == mes)
     }
 
+fun BaseDatos.registradoPorElCliente(compromiso: Compromiso): Boolean =
+    compromiso.idAdminRegistro == null && movimientos.any {
+        it.idCompromiso == compromiso.idCompromiso &&
+            it.tipo == TipoMovimiento.COMPROMISO_REGISTRADO &&
+            it.idAutor == compromiso.idUsuarioFinal
+    }
+
 fun BaseDatos.movimientosDe(idUsuario: Int, grupo: GrupoMovimiento? = null): List<Movimiento> =
     movimientos
         .filter { it.idUsuario == idUsuario && (grupo == null || it.tipo.grupo == grupo) }

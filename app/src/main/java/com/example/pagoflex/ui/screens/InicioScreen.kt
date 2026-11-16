@@ -55,6 +55,7 @@ import com.example.pagoflex.model.formatoPesos
 import com.example.pagoflex.model.primerNombre
 import com.example.pagoflex.model.resumenSituacion
 import com.example.pagoflex.model.totalAPagar
+import com.example.pagoflex.ui.components.BotonSecundario
 import com.example.pagoflex.ui.components.ListaDesplegable
 import com.example.pagoflex.ui.components.TarjetaLista
 import com.example.pagoflex.ui.components.TarjetaMensaje
@@ -73,6 +74,7 @@ fun InicioScreen(
     ultimaActualizacion: LocalDateTime,
     onVerCompromiso: (Int) -> Unit,
     onVerAvance: () -> Unit = {},
+    onAgregarPago: () -> Unit = {},
     menu: MenuSesion = MenuSesion(),
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
@@ -99,11 +101,18 @@ fun InicioScreen(
             contentPadding = PaddingValues(Dimens.espacioPantalla),
             verticalArrangement = Arrangement.spacedBy(Dimens.espacioChico)
         ) {
-            item { EstadoConexion(sinConexion, ultimaActualizacion) }
+            if (sinConexion) item { AvisoSinConexion(ultimaActualizacion) }
             if (avisoDeHoy != null) {
                 item { TarjetaMensaje(texto = avisoDeHoy.mensaje, icono = R.drawable.ic_campana) }
             }
             item { ResumenDelMes(datos = datos, resumen = resumen) }
+            item {
+                BotonSecundario(
+                    texto = "+ Agregar una cuenta por pagar",
+                    onClick = onAgregarPago,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
             item {
                 TarjetaSeccion(

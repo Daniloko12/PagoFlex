@@ -47,14 +47,14 @@ class PagoFlexDbHelper(context: Context) :
     SQLiteOpenHelper(context, NOMBRE_BD, null, VERSION_BD) {
     companion object {
         const val NOMBRE_BD = "pagoflex.db"
-        private const val VERSION_BD = 6
+        private const val VERSION_BD = 7
 
         private val TABLAS = listOf(
             "rol", "comuna", "rubro", "estado_compromiso", "motivo_anulacion", "canal",
             "medio_pago", "marca_tarjeta", "motivo_reporte", "estado_reporte", "estado_recomendacion", "tipo_movimiento",
             "reconocimiento", "empresa_cliente", "usuario", "tarjeta", "compromiso", "anulacion",
             "pago", "reporte", "recomendacion", "contacto_recomendacion", "historial_recomendacion",
-            "usuario_reconocimiento", "codigo_recuperacion", "movimiento"
+            "usuario_reconocimiento", "codigo_recuperacion", "movimiento", "boleta"
         )
 
         private val TABLAS_ANTIGUAS = listOf("area")
@@ -86,6 +86,12 @@ class PagoFlexDbHelper(context: Context) :
 
         private const val SQL_INDICE_MOVIMIENTO =
             "CREATE INDEX ix_movimiento_usuario ON movimiento (id_usuario, fecha)"
+
+        private const val SQL_CREAR_BOLETA =
+            "CREATE TABLE boleta (" +
+                "id_compromiso INTEGER PRIMARY KEY REFERENCES compromiso(id_compromiso), " +
+                "imagen BLOB NOT NULL, " +
+                "fecha_registro TEXT NOT NULL)"
 
         private val SQL_CREAR_TABLAS = listOf(
             "CREATE TABLE rol (id_rol INTEGER PRIMARY KEY, codigo TEXT NOT NULL UNIQUE, " +
@@ -227,7 +233,8 @@ class PagoFlexDbHelper(context: Context) :
             SQL_CREAR_CODIGO_RECUPERACION,
             SQL_CREAR_TIPO_MOVIMIENTO,
             SQL_CREAR_MOVIMIENTO,
-            SQL_INDICE_MOVIMIENTO
+            SQL_INDICE_MOVIMIENTO,
+            SQL_CREAR_BOLETA
         )
 
         private const val SQL_SELECT_USUARIOS =
@@ -267,6 +274,9 @@ class PagoFlexDbHelper(context: Context) :
             val actuales = cargarDatos(db)
             movimientosIniciales(actuales.compromisos, actuales.pagos, actuales.anulaciones, actuales.reportes)
                 .forEach { insertarMovimiento(db, it) }
+        }
+        if (oldVersion < 7) {
+            db.execSQL(SQL_CREAR_BOLETA)
         }
     }
 
@@ -462,7 +472,12 @@ class PagoFlexDbHelper(context: Context) :
             movimientos.forEach { insertarMovimiento(db, it) }
         }
 
-    fun registrarCompromiso(compromiso: Compromiso, personaNueva: Usuario?, movimientos: List<Movimiento> = emptyList()): Boolean =
+    fun registrarCompromiso(
+        compromiso: Compromiso,
+        personaNueva: Usuario?,
+        movimientos: List<Movimiento> = emptyList(),
+        fotoBoleta: ByteArray? = null
+    ): Boolean =
         enTransaccion { db ->
             if (personaNueva != null) {
                 db.insertOrThrow("usuario", null, valoresDe(personaNueva).apply {
@@ -470,8 +485,20 @@ class PagoFlexDbHelper(context: Context) :
                 })
             }
             db.insertOrThrow("compromiso", null, valoresDe(compromiso))
+            if (fotoBoleta != null) {
+                db.insertOrThrow("boleta", null, ContentValues().apply {
+                    put("id_compromiso", compromiso.idCompromiso)
+                    put("imagen", fotoBoleta)
+                    put("fecha_registro", compromiso.fechaRegistro.toString())
+                })
+            }
             movimientos.forEach { insertarMovimiento(db, it) }
         }
+
+    fun boletaDe(idCompromiso: Int): ByteArray? =
+        consultar("SELECT imagen FROM boleta WHERE id_compromiso = ?", arrayOf(idCompromiso.toString())) { cursor ->
+            cursor.getBlob(cursor.getColumnIndexOrThrow("imagen"))
+        }.firstOrNull()
 
     fun registrarUsuario(usuario: Usuario, clave: String, movimientos: List<Movimiento> = emptyList()): Boolean =
         enTransaccion { db ->

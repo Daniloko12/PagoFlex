@@ -30,6 +30,10 @@ data class FormularioUiState(
     val errorCuota: String? = null,
     val errorDuplicado: String? = null,
 
+    val leyendoBoleta: Boolean = false,
+    val mensajeBoleta: String? = null,
+    val boletaConDatos: Boolean = false,
+
     val registroExitoso: Boolean = false
 )
 

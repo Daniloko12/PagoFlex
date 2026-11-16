@@ -5,11 +5,14 @@ import com.example.pagoflex.model.BaseDatos
 import com.example.pagoflex.model.EmpresaCliente
 import com.example.pagoflex.model.EstadoCompromiso
 import com.example.pagoflex.model.FormularioUiState
+import com.example.pagoflex.model.LecturaBoleta
 import com.example.pagoflex.model.NuevoCompromiso
 import com.example.pagoflex.model.PersonaNueva
 import com.example.pagoflex.model.Rol
 import com.example.pagoflex.model.correoValido
+import com.example.pagoflex.model.empresaPorId
 import com.example.pagoflex.model.formatoFecha
+import com.example.pagoflex.model.mensajeLectura
 import com.example.pagoflex.model.nombreCompleto
 import com.example.pagoflex.model.parsearFecha
 import com.example.pagoflex.model.telefonoValido
@@ -23,6 +26,9 @@ import kotlinx.coroutines.flow.update
 class FormularioViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(FormularioUiState())
     val uiState: StateFlow<FormularioUiState> = _uiState.asStateFlow()
+
+    private val _imagenBoleta = MutableStateFlow<ByteArray?>(null)
+    val imagenBoleta: StateFlow<ByteArray?> = _imagenBoleta.asStateFlow()
 
     fun onEmpresaSeleccionada(empresa: EmpresaCliente) {
         _uiState.update { it.copy(empresa = empresa, errorEmpresa = null, errorDuplicado = null, registroExitoso = false) }
@@ -185,6 +191,32 @@ class FormularioViewModel : ViewModel() {
             numeroCuota = if (usaCuotas) numeroCuota else null,
             totalCuotas = if (usaCuotas) totalCuotas else null
         )
+    }
+
+    fun onLeyendoBoleta() {
+        _uiState.update { it.copy(leyendoBoleta = true, mensajeBoleta = null, boletaConDatos = false) }
+    }
+
+    fun onBoletaLeida(lectura: LecturaBoleta?, imagen: ByteArray?, datos: BaseDatos) {
+        if (imagen != null) _imagenBoleta.value = imagen
+        _uiState.update { estado ->
+            val empresa = lectura?.idEmpresa?.let { datos.empresaPorId(it) }
+            val concepto = estado.concepto.ifBlank { lectura?.concepto.orEmpty() }
+            estado.copy(
+                empresa = empresa ?: estado.empresa,
+                concepto = concepto,
+                monto = lectura?.monto?.toString() ?: estado.monto,
+                fechaVencimiento = lectura?.vencimiento?.let { formatoFecha(it) } ?: estado.fechaVencimiento,
+                errorEmpresa = if (empresa != null) null else estado.errorEmpresa,
+                errorConcepto = if (concepto.isNotBlank()) null else estado.errorConcepto,
+                errorMonto = if (lectura?.monto != null) null else estado.errorMonto,
+                errorFechaVencimiento = if (lectura?.vencimiento != null) null else estado.errorFechaVencimiento,
+                errorDuplicado = null,
+                leyendoBoleta = false,
+                mensajeBoleta = mensajeLectura(lectura, datos.empresas),
+                boletaConDatos = lectura?.encontroAlgo == true
+            )
+        }
     }
 
     fun onUsarRut(rut: String, datos: BaseDatos) {

@@ -16,6 +16,7 @@ sealed class Ruta(val ruta: String) {
     data object Avisos : Ruta("avisos")
     data object Recomendar : Ruta("recomendar")
 
+    data object AgregarPago : Ruta("agregar-pago")
     data object DetalleCompromiso : Ruta("compromiso/{idCompromiso}") {
         fun crear(idCompromiso: Int) = "compromiso/$idCompromiso"
     }

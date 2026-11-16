@@ -6,6 +6,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -32,6 +33,7 @@ import com.example.pagoflex.model.reportePorId
 import com.example.pagoflex.model.textoTarjeta
 import com.example.pagoflex.model.usuarioDeReporte
 import com.example.pagoflex.model.usuarioPorId
+import com.example.pagoflex.notificaciones.ProgramadorRecordatorios
 import com.example.pagoflex.ui.screens.AgregarTarjetaScreen
 import com.example.pagoflex.ui.screens.AvanceScreen
 import com.example.pagoflex.ui.screens.AvisosScreen
@@ -133,6 +135,16 @@ fun AppNavegacion(
         if (usuarioActual == null && rutaActual != null &&
             ruta != Ruta.Ingreso.ruta && ruta != Ruta.Registro.ruta && ruta != Ruta.RecuperarClave.ruta
         ) irAlIngreso()
+    }
+
+    val context = LocalContext.current
+    LaunchedEffect(usuarioActual?.idUsuario, usuarioActual?.avisosActivos) {
+        val usuario = usuarioActual
+        if (usuario != null && usuario.rol == Rol.USUARIO_FINAL && usuario.avisosActivos != false) {
+            ProgramadorRecordatorios.programar(context)
+        } else {
+            ProgramadorRecordatorios.cancelar(context)
+        }
     }
 
     val pantallaInicial = remember { usuarioActual?.let { rutaInicialDe(it.rol).ruta } ?: Ruta.Ingreso.ruta }

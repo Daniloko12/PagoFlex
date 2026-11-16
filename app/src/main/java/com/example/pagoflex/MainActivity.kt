@@ -11,12 +11,14 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.pagoflex.navigation.AppNavegacion
+import com.example.pagoflex.notificaciones.Notificaciones
 import com.example.pagoflex.ui.theme.PagoFlexTheme
 import com.example.pagoflex.viewmodel.PagoFlexViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Notificaciones.crearCanales(this)
         setContent {
             val pagoFlexViewModel: PagoFlexViewModel = viewModel()
             val modoOscuro by pagoFlexViewModel.modoOscuro.collectAsStateWithLifecycle()

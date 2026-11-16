@@ -168,6 +168,17 @@ fun BaseDatos.avisosProgramados(
         .sortedBy { it.fechaEntrega }
 }
 
+fun BaseDatos.avisosDelUsuario(usuario: Usuario): List<AvisoProgramado> {
+    if (usuario.rol != Rol.USUARIO_FINAL || usuario.avisosActivos == false) return emptyList()
+    val anticipacion = DiasAnticipacion.entries.find { it.dias == usuario.diasAnticipacion } ?: DiasAnticipacion.TRES
+    return avisosProgramados(usuario, true, anticipacion)
+}
+
+fun BaseDatos.recordatoriosDeHoy(usuario: Usuario): List<AvisoProgramado> =
+    avisosDelUsuario(usuario).filter { it.fechaEntrega.toLocalDate() == fechaHoy }
+
+fun BaseDatos.proximoRecordatorio(usuario: Usuario): AvisoProgramado? = avisosDelUsuario(usuario).firstOrNull()
+
 fun BaseDatos.reportesOrdenados(filtro: EstadoReporte?): List<Reporte> =
     reportes
         .filter { filtro == null || it.estado == filtro }

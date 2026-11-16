@@ -123,7 +123,7 @@ class PagoFlexBaseDatosTest {
         assertEquals(BaseDatos().movimientos.size, app.datos.value.movimientos.size)
         assertEquals(DatosAnexo9.compromisos.size, app.datos.value.compromisos.size)
         app.cerrarSesion()
-        assertNotNull(app.solicitarCodigo(DatosRecuperacion("crojas@correo.ejemplo", "15.834.207-3")))
+        assertNotNull(app.solicitarCodigo(DatosRecuperacion("crojas@correo.ejemplo")))
     }
 
     @Test
@@ -338,9 +338,9 @@ class PagoFlexBaseDatosTest {
         assertEquals(TipoMovimiento.COMPROMISO_ANULADO, app.datos.value.movimientosDelCompromiso(102).last().tipo)
 
         app.cerrarSesion()
-        val datos = DatosRecuperacion("crojas@correo.ejemplo", "15.834.207-3")
+        val datos = DatosRecuperacion("crojas@correo.ejemplo")
         val codigo = app.solicitarCodigo(datos)!!
-        assertNull(app.recuperarClave(ClaveRecuperada(datos.correo, datos.rut, codigo, "Nueva#2027")))
+        assertNull(app.recuperarClave(ClaveRecuperada(datos.correo, codigo, "Nueva#2027")))
         assertEquals(TipoMovimiento.CLAVE_RECUPERADA, app.datos.value.movimientosDe(1).first().tipo)
     }
 
@@ -456,9 +456,9 @@ class PagoFlexBaseDatosTest {
     @Test
     fun recuperarClave_conCodigoDeVerificacion() {
         val app = nuevaApp()
-        assertNull(app.solicitarCodigo(DatosRecuperacion("crojas@correo.ejemplo", "12.476.318-5")))
-        assertNull(app.solicitarCodigo(DatosRecuperacion("rsalinas@pagoflex.ejemplo", "13.907.264-2")))
-        val datos = DatosRecuperacion("crojas@correo.ejemplo", "15834207-3")
+        assertNull(app.solicitarCodigo(DatosRecuperacion("nadie@correo.ejemplo")))
+        assertNull(app.solicitarCodigo(DatosRecuperacion("rsalinas@pagoflex.ejemplo")))
+        val datos = DatosRecuperacion("crojas@correo.ejemplo")
         val anterior = app.solicitarCodigo(datos)!!
         val codigo = app.solicitarCodigo(datos)!!
         val db = PagoFlexDbHelper(contexto)
@@ -470,10 +470,10 @@ class PagoFlexBaseDatosTest {
         val incorrecto = if (codigo == "000000") "111111" else "000000"
         assertEquals("El código no es correcto. Te quedan 2 intentos.", app.verificarCodigo(datos, incorrecto))
         assertNull(app.verificarCodigo(datos, codigo))
-        assertNotNull(app.recuperarClave(ClaveRecuperada(datos.correo, datos.rut, codigo, "nueva2027")))
-        assertNotNull(app.recuperarClave(ClaveRecuperada(datos.correo, datos.rut, codigo, CLAVE_DE_PRUEBA)))
-        assertNull(app.recuperarClave(ClaveRecuperada(datos.correo, datos.rut, codigo, "Nueva#2027")))
-        assertNotNull(app.recuperarClave(ClaveRecuperada(datos.correo, datos.rut, codigo, "Otra#2028")))
+        assertNotNull(app.recuperarClave(ClaveRecuperada(datos.correo, codigo, "nueva2027")))
+        assertNotNull(app.recuperarClave(ClaveRecuperada(datos.correo, codigo, CLAVE_DE_PRUEBA)))
+        assertNull(app.recuperarClave(ClaveRecuperada(datos.correo, codigo, "Nueva#2027")))
+        assertNotNull(app.recuperarClave(ClaveRecuperada(datos.correo, codigo, "Otra#2028")))
         assertNull(db.codigoVigenteDe(1))
         db.close()
 
@@ -504,18 +504,18 @@ class PagoFlexBaseDatosTest {
     @Test
     fun recuperarClave_bloqueaTrasTresIntentos() {
         val app = nuevaApp()
-        val datos = DatosRecuperacion("lmunoz@correo.ejemplo", "12.476.318-5")
+        val datos = DatosRecuperacion("lmunoz@correo.ejemplo")
         val codigo = app.solicitarCodigo(datos)!!
         val incorrecto = if (codigo == "000000") "111111" else "000000"
         assertEquals("El código no es correcto. Te quedan 2 intentos.", app.verificarCodigo(datos, incorrecto))
         assertEquals("El código no es correcto. Te queda 1 intento.", app.verificarCodigo(datos, incorrecto))
         assertNotNull(app.verificarCodigo(datos, incorrecto))
         assertEquals(mensajeCodigo(ResultadoCodigo.SIN_INTENTOS), app.verificarCodigo(datos, codigo))
-        assertNotNull(app.recuperarClave(ClaveRecuperada(datos.correo, datos.rut, codigo, "Nueva#2027")))
+        assertNotNull(app.recuperarClave(ClaveRecuperada(datos.correo, codigo, "Nueva#2027")))
 
         val nuevo = app.solicitarCodigo(datos)!!
         assertNull(app.verificarCodigo(datos, nuevo))
-        assertNull(app.recuperarClave(ClaveRecuperada(datos.correo, datos.rut, nuevo, "Nueva#2027")))
+        assertNull(app.recuperarClave(ClaveRecuperada(datos.correo, nuevo, "Nueva#2027")))
         entrar(app, "lmunoz@correo.ejemplo", clave = "Nueva#2027")
     }
 

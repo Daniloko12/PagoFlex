@@ -11,7 +11,6 @@ import com.example.pagoflex.model.correoValido
 import com.example.pagoflex.model.errorClaveNueva
 import com.example.pagoflex.model.errorConfirmacionClave
 import com.example.pagoflex.model.errorFormatoCodigo
-import com.example.pagoflex.model.validarRut
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,10 +22,6 @@ class RecuperarClaveViewModel : ViewModel() {
 
     fun onCorreoCambia(valor: String) {
         _uiState.update { it.copy(correo = valor.trim(), errorCorreo = null, errorRecuperacion = null) }
-    }
-
-    fun onRutCambia(valor: String) {
-        _uiState.update { it.copy(rut = valor, errorRut = null, errorRecuperacion = null) }
     }
 
     fun onCodigoCambia(valor: String) {
@@ -58,13 +53,8 @@ class RecuperarClaveViewModel : ViewModel() {
             !correoValido(estado.correo) -> "Ingresa un correo válido, por ejemplo nombre@gmail.com"
             else -> null
         }
-        val errorRut = when {
-            estado.rut.isBlank() -> "Ingresa tu RUT"
-            !validarRut(estado.rut) -> "El RUT no es válido: revisa el dígito verificador"
-            else -> null
-        }
-        _uiState.update { it.copy(errorCorreo = errorCorreo, errorRut = errorRut, errorRecuperacion = null) }
-        return if (errorCorreo != null || errorRut != null) null else DatosRecuperacion(estado.correo, estado.rut.trim())
+        _uiState.update { it.copy(errorCorreo = errorCorreo, errorRecuperacion = null) }
+        return if (errorCorreo != null) null else DatosRecuperacion(estado.correo)
     }
 
     fun onCodigoEnviado() {
@@ -94,7 +84,7 @@ class RecuperarClaveViewModel : ViewModel() {
         val errorConfirmacion = errorConfirmacionClave(estado.claveNueva, estado.confirmacionClave)
         _uiState.update { it.copy(errorClaveNueva = errorClave, errorConfirmacion = errorConfirmacion, errorRecuperacion = null) }
         if (estado.paso != PasoRecuperacion.CLAVE || errorClave != null || errorConfirmacion != null) return null
-        return ClaveRecuperada(estado.correo, estado.rut.trim(), estado.codigo, estado.claveNueva)
+        return ClaveRecuperada(estado.correo, estado.codigo, estado.claveNueva)
     }
 
     fun onLimpiar() {

@@ -59,7 +59,7 @@ Los permisos están centralizados en `model/PermisosRol.kt`. El ViewModel revisa
 
 ### Recuperar la contraseña en 3 pasos
 
-1. La persona escribe su correo y su RUT. Por seguridad la app no dice si la cuenta existe.
+1. La persona escribe solo el correo de su cuenta, como en cualquier app. Por seguridad la app no dice si ese correo está registrado.
 2. Se genera un **código de 6 dígitos** con `SecureRandom`. En la base de datos se guarda solo su hash. El código **dura 10 minutos**, permite **3 intentos** y al pedir uno nuevo el anterior deja de servir. Llega como notificación (simula el correo que se enviaría en producción).
 3. Con el código correcto se crea la contraseña nueva, que también debe cumplir los 5 requisitos. El código se marca como usado y queda el movimiento "Contraseña recuperada con código".
 
@@ -112,7 +112,7 @@ Todas usan la contraseña **`Pago#2026`**. En la pantalla de inicio de sesión s
 | Administrador | alagos@pagoflex.ejemplo |
 | Administrador | dortiz@pagoflex.ejemplo |
 
-Para probar la recuperación usar, por ejemplo, `crojas@correo.ejemplo` con el RUT `15.834.207-3`.
+Para probar la recuperación usar, por ejemplo, `crojas@correo.ejemplo`.
 
 ### Pruebas
 

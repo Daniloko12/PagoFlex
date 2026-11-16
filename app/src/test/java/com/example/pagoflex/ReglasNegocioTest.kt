@@ -7,6 +7,7 @@ import com.example.pagoflex.model.CambioClave
 import com.example.pagoflex.model.CategoriaCumplimiento
 import com.example.pagoflex.model.ClaveRecuperada
 import com.example.pagoflex.model.DatosAnexo9
+import com.example.pagoflex.model.DatosRecuperacion
 import com.example.pagoflex.model.EstadoCompromiso
 import com.example.pagoflex.model.EstadoRecomendacion
 import com.example.pagoflex.model.EstadoReporte
@@ -516,16 +517,16 @@ class ReglasNegocioTest {
         assertNotNull(errorConfirmacionClave("Nueva#2027", "Nueva#2028"))
         assertNull(errorConfirmacionClave("Nueva#2027", "Nueva#2027"))
 
-        assertEquals(1, datos.cuentaParaRecuperar("crojas@correo.ejemplo", "15834207-3")?.idUsuario)
-        assertNull(datos.cuentaParaRecuperar("crojas@correo.ejemplo", "12.476.318-5"))
+        assertEquals(1, datos.cuentaParaRecuperar("CRojas@correo.ejemplo")?.idUsuario)
+        assertNull(datos.cuentaParaRecuperar("nadie@correo.ejemplo"))
+        assertNull(datos.cuentaParaRecuperar("rsalinas@pagoflex.ejemplo"))
 
         val recuperar = RecuperarClaveViewModel()
-        recuperar.onCorreoCambia("crojas@correo.ejemplo")
-        recuperar.onRutCambia("15.834.207-4")
+        recuperar.onCorreoCambia("crojas@correo")
         assertNull(recuperar.onSolicitarCodigo())
-        assertNotNull(recuperar.uiState.value.errorRut)
-        recuperar.onRutCambia("15.834.207-3")
-        assertEquals("15.834.207-3", recuperar.onSolicitarCodigo()?.rut)
+        assertNotNull(recuperar.uiState.value.errorCorreo)
+        recuperar.onCorreoCambia("crojas@correo.ejemplo")
+        assertEquals(DatosRecuperacion("crojas@correo.ejemplo"), recuperar.onSolicitarCodigo())
         assertNull(recuperar.onVerificarCodigo())
         recuperar.onCodigoEnviado()
         assertEquals(PasoRecuperacion.CODIGO, recuperar.uiState.value.paso)
@@ -540,7 +541,7 @@ class ReglasNegocioTest {
         assertNull(recuperar.onGuardarClave())
         recuperar.onCodigoCorrecto()
         assertEquals(
-            ClaveRecuperada("crojas@correo.ejemplo", "15.834.207-3", "482913", "Nueva#2027"),
+            ClaveRecuperada("crojas@correo.ejemplo", "482913", "Nueva#2027"),
             recuperar.onGuardarClave()
         )
         recuperar.onCambiarDatos()

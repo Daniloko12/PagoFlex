@@ -151,7 +151,7 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun cuentaActivaPara(datosRecuperacion: DatosRecuperacion): Usuario? =
-        datos.value.cuentaParaRecuperar(datosRecuperacion.correo, datosRecuperacion.rut)?.takeIf { it.activo }
+        datos.value.cuentaParaRecuperar(datosRecuperacion.correo)
 
     fun solicitarCodigo(datosRecuperacion: DatosRecuperacion): String? {
         val cuenta = cuentaActivaPara(datosRecuperacion) ?: return null
@@ -173,7 +173,7 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         validarCodigo(cuentaActivaPara(datosRecuperacion), codigo)
 
     fun recuperarClave(recuperada: ClaveRecuperada): String? {
-        val cuenta = cuentaActivaPara(DatosRecuperacion(recuperada.correo, recuperada.rut))
+        val cuenta = cuentaActivaPara(DatosRecuperacion(recuperada.correo))
         validarCodigo(cuenta, recuperada.codigo)?.let { return it }
         val vigente = cuenta?.let { repositorio.codigoVigenteDe(it.idUsuario) } ?: return mensajeCodigo(ResultadoCodigo.SIN_CODIGO)
         if (!claveValida(recuperada.claveNueva)) return MENSAJE_CLAVE_INSEGURA

@@ -2,6 +2,7 @@ package com.example.pagoflex.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -70,6 +71,7 @@ fun DetalleCompromisoEmpresaScreen(
     onEditar: () -> Unit = {},
     onVerCliente: (Int) -> Unit = {},
     fotoBoleta: ByteArray? = null,
+    onEscribirCliente: () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
     val persona = datos.usuarioPorId(compromiso.idUsuarioFinal)
@@ -166,11 +168,18 @@ fun DetalleCompromisoEmpresaScreen(
                     FilaDato("RUT", ocultarRut(persona.rut))
                     FilaDato("Correo", persona.correo)
                     persona.telefono?.let { FilaDato("Teléfono", it) }
-                    BotonSecundario(
-                        texto = "Ver cliente",
-                        onClick = { onVerCliente(persona.idUsuario) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.espacioChico)) {
+                        BotonSecundario(
+                            texto = "Ver cliente",
+                            onClick = { onVerCliente(persona.idUsuario) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        BotonSecundario(
+                            texto = "Escribir correo",
+                            onClick = onEscribirCliente,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
             if (pago != null) {

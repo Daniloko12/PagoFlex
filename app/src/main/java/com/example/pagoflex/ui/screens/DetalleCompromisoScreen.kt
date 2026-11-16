@@ -55,6 +55,7 @@ fun DetalleCompromisoScreen(
     onReportar: () -> Unit,
     onVerComprobante: (String) -> Unit,
     fotoBoleta: ByteArray? = null,
+    onEscribirEmpresa: () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
     val empresa = datos.empresaPorId(compromiso.idEmpresa)
@@ -152,6 +153,11 @@ fun DetalleCompromisoScreen(
                 TarjetaSeccion(titulo = "Contacto de ${empresa.nombreFantasia}") {
                     FilaDato("Correo", empresa.correoAtencion)
                     FilaDato("Teléfono", empresa.telefonoAtencion)
+                    BotonSecundario(
+                        texto = "Escribir un correo",
+                        onClick = onEscribirEmpresa,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
 

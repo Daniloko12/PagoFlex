@@ -17,12 +17,18 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.pagoflex.R
+import com.example.pagoflex.contacto.Correo
 import com.example.pagoflex.model.Accion
 import com.example.pagoflex.model.CLAVE_DE_PRUEBA
+import com.example.pagoflex.model.CorreoArmado
 import com.example.pagoflex.model.EstadoRecomendacion
 import com.example.pagoflex.model.Rol
 import com.example.pagoflex.model.codigoConfirmacionDe
 import com.example.pagoflex.model.compromisoPorId
+import com.example.pagoflex.model.correoParaCliente
+import com.example.pagoflex.model.correoParaEmpresa
+import com.example.pagoflex.model.correoParaSoporte
+import com.example.pagoflex.model.empresaPorId
 import com.example.pagoflex.model.formatoFecha
 import com.example.pagoflex.model.nombreCompleto
 import com.example.pagoflex.model.pagoPorComprobante
@@ -142,6 +148,11 @@ fun AppNavegacion(
     }
 
     val context = LocalContext.current
+
+    fun escribirCorreo(correo: CorreoArmado) {
+        if (!Correo.escribir(context, correo)) avisar("No encontramos una app de correo. Escribe a ${correo.para}.")
+    }
+
     LaunchedEffect(usuarioActual?.idUsuario, usuarioActual?.avisosActivos) {
         val usuario = usuarioActual
         if (usuario != null && usuario.rol == Rol.USUARIO_FINAL && usuario.avisosActivos != false) {
@@ -211,7 +222,8 @@ fun AppNavegacion(
                     error
                 },
                 onVolver = { navController.navigateUp() },
-                snackbarHostState = snackbarHostState
+                snackbarHostState = snackbarHostState,
+                onPedirAyuda = { correo -> escribirCorreo(correoParaSoporte(null, correo)) }
             )
         }
 
@@ -262,6 +274,7 @@ fun AppNavegacion(
                 },
                 onEditarDatos = { navController.navigate(Ruta.EditarPerfil.ruta) },
                 onCambiarClave = { navController.navigate(Ruta.CambiarClave.ruta) },
+                onEscribirSoporte = { escribirCorreo(correoParaSoporte(usuario)) },
                 menu = menuEn(Ruta.Perfil),
                 snackbarHostState = snackbarHostState
             )
@@ -300,6 +313,11 @@ fun AppNavegacion(
                 onReportar = { navController.navigate(Ruta.Reportar.crear(idCompromiso)) },
                 onVerComprobante = { numero -> navController.navigate(Ruta.Comprobante.crear(numero)) },
                 fotoBoleta = remember(idCompromiso) { pagoFlexViewModel.boletaDe(idCompromiso) },
+                onEscribirEmpresa = {
+                    datos.empresaPorId(compromiso.idEmpresa)?.let { empresa ->
+                        escribirCorreo(correoParaEmpresa(empresa, compromiso, usuario))
+                    }
+                },
                 snackbarHostState = snackbarHostState
             )
         }
@@ -563,6 +581,11 @@ fun AppNavegacion(
                 onVerCliente = { idUsuario -> navController.navigate(Ruta.DetalleCliente.crear(idUsuario)) },
                 onVolver = { navController.navigateUp() },
                 fotoBoleta = remember(idCompromiso) { pagoFlexViewModel.boletaDe(idCompromiso) },
+                onEscribirCliente = {
+                    datos.usuarioPorId(compromiso.idUsuarioFinal)?.let { persona ->
+                        escribirCorreo(correoParaCliente(persona, compromiso, datos.empresaPorId(compromiso.idEmpresa)))
+                    }
+                },
                 snackbarHostState = snackbarHostState
             )
         }

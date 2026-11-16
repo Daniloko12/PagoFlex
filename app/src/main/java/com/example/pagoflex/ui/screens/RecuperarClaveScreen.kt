@@ -75,6 +75,7 @@ fun RecuperarClaveScreen(
     onClaveValida: (ClaveRecuperada) -> String?,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
+    onPedirAyuda: (String) -> Unit = {},
     viewModel: RecuperarClaveViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -131,6 +132,7 @@ fun RecuperarClaveScreen(
             }
         },
         onVolver = onVolver,
+        onPedirAyuda = { onPedirAyuda(viewModel.uiState.value.correo) },
         snackbarHostState = snackbarHostState
     )
 
@@ -168,6 +170,7 @@ fun RecuperarClaveContent(
     onCambiarDatos: () -> Unit,
     onGuardar: () -> Unit,
     onVolver: () -> Unit = {},
+    onPedirAyuda: () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
     Scaffold(
@@ -222,6 +225,10 @@ fun RecuperarClaveContent(
                 onClick = onVolver,
                 modifier = Modifier.fillMaxWidth()
             )
+
+            TextButton(onClick = onPedirAyuda, modifier = Modifier.fillMaxWidth()) {
+                Text("¿Sigues sin poder entrar? Escríbenos a soporte")
+            }
         }
     }
 }

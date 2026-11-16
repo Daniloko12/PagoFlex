@@ -54,6 +54,7 @@ fun DetalleCompromisoScreen(
     onPagar: () -> Unit,
     onReportar: () -> Unit,
     onVerComprobante: (String) -> Unit,
+    fotoBoleta: ByteArray? = null,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
     val empresa = datos.empresaPorId(compromiso.idEmpresa)
@@ -105,6 +106,8 @@ fun DetalleCompromisoScreen(
             }
 
             if (sePuedePagar && motivoNoPagar != null) TarjetaMensaje(texto = motivoNoPagar)
+
+            TarjetaBoleta(foto = fotoBoleta)
 
             if (pago != null) {
                 TarjetaSeccion(titulo = "Pago registrado") {

@@ -1,28 +1,33 @@
 package com.example.pagoflex.ui.screens
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.pagoflex.R
 import com.example.pagoflex.data.ConvertidorImagen
-import com.example.pagoflex.model.Canal
 import com.example.pagoflex.model.BaseDatos
+import com.example.pagoflex.model.Canal
 import com.example.pagoflex.model.CategoriaCumplimiento
 import com.example.pagoflex.model.Compromiso
 import com.example.pagoflex.model.DiasAnticipacion
@@ -41,6 +46,7 @@ import com.example.pagoflex.model.pagoATiempo
 import com.example.pagoflex.model.primerNombre
 import com.example.pagoflex.model.tarjetaPorId
 import com.example.pagoflex.model.textoTarjeta
+import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.styles.EstilosTarjeta
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.coloresExtra
@@ -52,6 +58,22 @@ val ESPACIO_BOTON_FLOTANTE = 88.dp
 @Composable
 fun fotoDe(avatar: ByteArray?): ImageBitmap? = remember(avatar) {
     avatar?.let { bytes -> ConvertidorImagen.aBitmap(bytes)?.asImageBitmap() }
+}
+
+@Composable
+fun TarjetaBoleta(foto: ByteArray?) {
+    val imagen = fotoDe(foto) ?: return
+    TarjetaSeccion(titulo = "Boleta escaneada", subtitulo = "Foto que se adjuntó al agregar este pago") {
+        Image(
+            bitmap = imagen,
+            contentDescription = "Foto de la boleta",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 360.dp)
+                .clip(RoundedCornerShape(Dimens.radioCampo))
+        )
+    }
 }
 
 @Composable

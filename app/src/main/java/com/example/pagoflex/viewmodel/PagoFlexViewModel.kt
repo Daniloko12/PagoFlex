@@ -4,6 +4,7 @@ import android.app.Application
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.pagoflex.data.ConvertidorImagen
 import com.example.pagoflex.data.PagoFlexRepositorio
 import com.example.pagoflex.model.Accion
@@ -82,7 +83,6 @@ import com.example.pagoflex.model.tarjetaPorId
 import com.example.pagoflex.model.tarjetasGuardadas
 import com.example.pagoflex.model.totalAPagar
 import com.example.pagoflex.model.usuarioPorId
-import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -529,7 +529,7 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         return null
     }
 
-    fun registrarMiCompromiso(nuevo: NuevoCompromiso): Compromiso? {
+    fun registrarMiCompromiso(nuevo: NuevoCompromiso, fotoBoleta: ByteArray? = null): Compromiso? {
         val usuario = conPermiso(Accion.AGREGAR_MIS_COMPROMISOS) ?: return null
         if (nuevo.idPersona != usuario.idUsuario || nuevo.personaNueva != null) return null
         val datos = datos.value
@@ -552,8 +552,14 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
             fechaRegistro = fecha
         )
         val registro = movimientoRegistro(compromiso, usuario.idUsuario, fecha)
-        if (!repositorio.registrarCompromiso(compromiso, null, listOf(registro))) return null
+        if (!repositorio.registrarCompromiso(compromiso, null, listOf(registro), fotoBoleta)) return null
         return compromiso
+    }
+
+    fun boletaDe(idCompromiso: Int): ByteArray? {
+        val compromiso = datos.value.compromisoPorId(idCompromiso) ?: return null
+        if (!puedeVerCompromiso(usuarioActual.value, compromiso)) return null
+        return repositorio.boletaDe(idCompromiso)
     }
 
     fun registrarCompromiso(nuevo: NuevoCompromiso): Compromiso? {

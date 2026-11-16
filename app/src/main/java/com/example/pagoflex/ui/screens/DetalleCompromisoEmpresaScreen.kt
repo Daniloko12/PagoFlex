@@ -69,6 +69,7 @@ fun DetalleCompromisoEmpresaScreen(
     onVolver: () -> Unit,
     onEditar: () -> Unit = {},
     onVerCliente: (Int) -> Unit = {},
+    fotoBoleta: ByteArray? = null,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
     val persona = datos.usuarioPorId(compromiso.idUsuarioFinal)
@@ -156,6 +157,8 @@ fun DetalleCompromisoEmpresaScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+
+            TarjetaBoleta(foto = fotoBoleta)
 
             if (persona != null) {
                 TarjetaSeccion(titulo = "Persona") {

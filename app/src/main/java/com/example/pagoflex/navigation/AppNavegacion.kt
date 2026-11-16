@@ -299,6 +299,7 @@ fun AppNavegacion(
                 onPagar = { navController.navigate(Ruta.Pagar.crear(idCompromiso)) },
                 onReportar = { navController.navigate(Ruta.Reportar.crear(idCompromiso)) },
                 onVerComprobante = { numero -> navController.navigate(Ruta.Comprobante.crear(numero)) },
+                fotoBoleta = remember(idCompromiso) { pagoFlexViewModel.boletaDe(idCompromiso) },
                 snackbarHostState = snackbarHostState
             )
         }
@@ -309,8 +310,8 @@ fun AppNavegacion(
             AgregarPagoScreen(
                 datos = datos,
                 usuario = usuario,
-                onAgregar = { nuevo ->
-                    val compromiso = pagoFlexViewModel.registrarMiCompromiso(nuevo)
+                onAgregar = { nuevo, fotoBoleta ->
+                    val compromiso = pagoFlexViewModel.registrarMiCompromiso(nuevo, fotoBoleta)
                     if (compromiso == null) {
                         avisar("No pudimos agregar el pago. Inténtalo de nuevo.")
                     } else {
@@ -561,6 +562,7 @@ fun AppNavegacion(
                 onEditar = { navController.navigate(Ruta.EditarCompromiso.crear(idCompromiso)) },
                 onVerCliente = { idUsuario -> navController.navigate(Ruta.DetalleCliente.crear(idUsuario)) },
                 onVolver = { navController.navigateUp() },
+                fotoBoleta = remember(idCompromiso) { pagoFlexViewModel.boletaDe(idCompromiso) },
                 snackbarHostState = snackbarHostState
             )
         }

@@ -79,7 +79,7 @@ import java.time.LocalDate
 fun AgregarPagoScreen(
     datos: BaseDatos,
     usuario: Usuario,
-    onAgregar: (NuevoCompromiso) -> Unit,
+    onAgregar: (NuevoCompromiso, ByteArray?) -> Unit,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
     viewModel: FormularioViewModel = viewModel()
@@ -169,7 +169,7 @@ fun AgregarPagoScreen(
         onFechaVencimientoCambia = viewModel::onFechaVencimientoCambia,
         onNumeroCuotaCambia = viewModel::onNumeroCuotaCambia,
         onTotalCuotasCambia = viewModel::onTotalCuotasCambia,
-        onAgregar = { viewModel.onRegistrar(datos)?.let { nuevo -> onAgregar(nuevo) } },
+        onAgregar = { viewModel.onRegistrar(datos)?.let { nuevo -> onAgregar(nuevo, viewModel.imagenBoleta.value) } },
         onVolver = onVolver,
         snackbarHostState = snackbarHostState
     )

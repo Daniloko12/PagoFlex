@@ -50,6 +50,7 @@ import com.example.pagoflex.model.tarjetasGuardadas
 import com.example.pagoflex.model.usuarioPorId
 import com.example.pagoflex.viewmodel.FormularioViewModel
 import com.example.pagoflex.viewmodel.PagoFlexViewModel
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -104,6 +105,7 @@ class PagoFlexBaseDatosTest {
         }
         val ruta = contexto.getDatabasePath(PagoFlexDbHelper.NOMBRE_BD).path
         SQLiteDatabase.openDatabase(ruta, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
+            db.execSQL("DROP TABLE boleta")
             db.execSQL("DROP TABLE movimiento")
             db.execSQL("DROP TABLE tipo_movimiento")
             db.execSQL("DROP TABLE codigo_recuperacion")
@@ -126,6 +128,40 @@ class PagoFlexBaseDatosTest {
         assertEquals(DatosAnexo9.compromisos.size, app.datos.value.compromisos.size)
         app.cerrarSesion()
         assertNotNull(app.solicitarCodigo(DatosRecuperacion("crojas@correo.ejemplo")))
+    }
+
+    @Test
+    fun boletaEscaneada_seGuardaConElPagoYSoloLaVenQuienCorresponde() {
+        val app = nuevaApp()
+        entrar(app, "crojas@correo.ejemplo")
+        val foto = ConvertidorImagen.aBytes(
+            Bitmap.createBitmap(1600, 1200, Bitmap.Config.ARGB_8888),
+            ConvertidorImagen.LADO_BOLETA
+        )
+        assertEquals(ConvertidorImagen.LADO_BOLETA, ConvertidorImagen.aBitmap(foto)?.width)
+
+        val nuevo = NuevoCompromiso(
+            idEmpresa = 6, idPersona = 1, personaNueva = null, concepto = "Boleta de noviembre 2026",
+            monto = 45_990, fechaVencimiento = LocalDate.of(2026, 11, 15), numeroCuota = null, totalCuotas = null
+        )
+        val conFoto = app.registrarMiCompromiso(nuevo, foto)!!
+        val sinFoto = app.registrarMiCompromiso(nuevo.copy(concepto = "Cuota social"))!!
+        assertArrayEquals(foto, app.boletaDe(conFoto.idCompromiso))
+        assertNull(app.boletaDe(sinFoto.idCompromiso))
+        val directo = PagoFlexDbHelper(contexto)
+        assertArrayEquals(foto, directo.boletaDe(conFoto.idCompromiso))
+        directo.close()
+
+        app.cerrarSesion()
+        entrar(app, "lmunoz@correo.ejemplo")
+        assertNull(app.boletaDe(conFoto.idCompromiso))
+
+        app.cerrarSesion()
+        entrar(app, "alagos@pagoflex.ejemplo")
+        assertArrayEquals(foto, app.boletaDe(conFoto.idCompromiso))
+
+        app.restablecerDatos()
+        assertNull(app.boletaDe(conFoto.idCompromiso))
     }
 
     @Test

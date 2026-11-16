@@ -158,8 +158,14 @@ class PagoFlexRepositorio(context: Context) {
     fun anularCompromiso(anulacion: Anulacion, compromiso: Compromiso, movimiento: Movimiento): Boolean =
         guardar(db.anularCompromiso(anulacion, compromiso, listOf(movimiento)))
 
-    fun registrarCompromiso(compromiso: Compromiso, personaNueva: Usuario?, movimientos: List<Movimiento>): Boolean =
-        guardar(db.registrarCompromiso(compromiso, personaNueva, movimientos))
+    fun registrarCompromiso(
+        compromiso: Compromiso,
+        personaNueva: Usuario?,
+        movimientos: List<Movimiento>,
+        fotoBoleta: ByteArray? = null
+    ): Boolean = guardar(db.registrarCompromiso(compromiso, personaNueva, movimientos, fotoBoleta))
+
+    fun boletaDe(idCompromiso: Int): ByteArray? = db.boletaDe(idCompromiso)
 
     fun actualizarCompromisos(compromisos: List<Compromiso>, movimientos: List<Movimiento>): Boolean =
         guardar(db.actualizarCompromisos(compromisos, movimientos))

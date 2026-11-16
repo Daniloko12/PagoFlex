@@ -10,6 +10,9 @@ import com.example.pagoflex.model.DatosAnexo9
 import com.example.pagoflex.model.EstadoCompromiso
 import com.example.pagoflex.model.EstadoRecomendacion
 import com.example.pagoflex.model.EstadoReporte
+import com.example.pagoflex.model.FiltroEstado
+import com.example.pagoflex.model.FiltroVencimiento
+import com.example.pagoflex.model.FiltrosCompromiso
 import com.example.pagoflex.model.GrupoMovimiento
 import com.example.pagoflex.model.INTENTOS_MAXIMOS_CODIGO
 import com.example.pagoflex.model.LARGO_CODIGO_RECUPERACION
@@ -34,9 +37,12 @@ import com.example.pagoflex.model.claveValida
 import com.example.pagoflex.model.clientes
 import com.example.pagoflex.model.codigoConfirmacionDe
 import com.example.pagoflex.model.compromisoPorId
+import com.example.pagoflex.model.compromisosDe
+import com.example.pagoflex.model.compromisosFiltrados
 import com.example.pagoflex.model.conceptoSiguiente
 import com.example.pagoflex.model.cuentaParaRecuperar
 import com.example.pagoflex.model.cumpleRequisito
+import com.example.pagoflex.model.cumpleVencimiento
 import com.example.pagoflex.model.deudaDe
 import com.example.pagoflex.model.errorClaveNueva
 import com.example.pagoflex.model.errorConfirmacionClave
@@ -616,6 +622,34 @@ class ReglasNegocioTest {
         assertEquals(2, cambios.size)
         assertTrue(cambios.first().startsWith("Monto:"))
         assertTrue(datos.movimientosFiltrados(null, "camila").all { it.idUsuario == 1 })
+    }
+
+    @Test
+    fun inicio_filtrosPorEstadoOrganizacionYVencimiento() {
+        val porPagar = datos.compromisosFiltrados(1, FiltrosCompromiso())
+        assertTrue(porPagar.isNotEmpty())
+        assertTrue(porPagar.all { it.estado in FiltroEstado.POR_PAGAR.estados })
+        assertEquals(datos.compromisosDe(1).size, datos.compromisosFiltrados(1, FiltrosCompromiso(estado = FiltroEstado.TODOS)).size)
+        assertTrue(datos.compromisosFiltrados(1, FiltrosCompromiso(estado = FiltroEstado.VENCIDOS)).all { it.estado == EstadoCompromiso.VENCIDO })
+        assertTrue(datos.compromisosFiltrados(1, FiltrosCompromiso(estado = FiltroEstado.PAGADOS)).all { it.estado == EstadoCompromiso.PAGADO })
+
+        val idEmpresa = porPagar.first().idEmpresa
+        val deUnaEmpresa = datos.compromisosFiltrados(1, FiltrosCompromiso(idEmpresa = idEmpresa))
+        assertTrue(deUnaEmpresa.isNotEmpty())
+        assertTrue(deUnaEmpresa.all { it.idEmpresa == idEmpresa })
+
+        val hoy = datos.fechaHoy
+        val base = porPagar.first()
+        assertTrue(cumpleVencimiento(base.copy(fechaVencimiento = hoy.minusDays(1)), FiltroVencimiento.YA_VENCIO, hoy))
+        assertFalse(cumpleVencimiento(base.copy(fechaVencimiento = hoy), FiltroVencimiento.YA_VENCIO, hoy))
+        assertTrue(cumpleVencimiento(base.copy(fechaVencimiento = hoy.plusDays(7)), FiltroVencimiento.PROXIMOS_7_DIAS, hoy))
+        assertFalse(cumpleVencimiento(base.copy(fechaVencimiento = hoy.plusDays(8)), FiltroVencimiento.PROXIMOS_7_DIAS, hoy))
+        assertTrue(cumpleVencimiento(base.copy(fechaVencimiento = hoy.withDayOfMonth(1)), FiltroVencimiento.ESTE_MES, hoy))
+        assertTrue(cumpleVencimiento(base.copy(fechaVencimiento = hoy.plusMonths(1)), FiltroVencimiento.PROXIMO_MES, hoy))
+        assertFalse(cumpleVencimiento(base.copy(fechaVencimiento = hoy.plusMonths(2)), FiltroVencimiento.PROXIMO_MES, hoy))
+
+        assertEquals(0, FiltrosCompromiso().cantidadActivos)
+        assertEquals(2, FiltrosCompromiso(estado = FiltroEstado.PAGADOS, idEmpresa = idEmpresa).cantidadActivos)
     }
 
     @Test

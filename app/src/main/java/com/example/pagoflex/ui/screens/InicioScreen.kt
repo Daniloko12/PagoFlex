@@ -1,8 +1,8 @@
 package com.example.pagoflex.ui.screens
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,48 +10,48 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Card
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.pagoflex.R
-import com.example.pagoflex.model.AvanceEmpresa
 import com.example.pagoflex.model.BaseDatos
 import com.example.pagoflex.model.DatosAnexo9
-import com.example.pagoflex.model.EstadoCompromiso
+import com.example.pagoflex.model.FiltroEstado
+import com.example.pagoflex.model.FiltroVencimiento
+import com.example.pagoflex.model.FiltrosCompromiso
+import com.example.pagoflex.model.ResumenSituacion
 import com.example.pagoflex.model.Usuario
-import com.example.pagoflex.model.avancePorEmpresa
 import com.example.pagoflex.model.avisosProgramados
+import com.example.pagoflex.model.compromisosFiltrados
 import com.example.pagoflex.model.empresaPorId
+import com.example.pagoflex.model.empresasDelUsuario
 import com.example.pagoflex.model.formatoFecha
 import com.example.pagoflex.model.formatoPesos
-import com.example.pagoflex.model.formatoPorcentaje
-import com.example.pagoflex.model.indicadorDe
-import com.example.pagoflex.model.mensajeCategoria
-import com.example.pagoflex.model.nombreMes
 import com.example.pagoflex.model.primerNombre
 import com.example.pagoflex.model.resumenSituacion
 import com.example.pagoflex.model.totalAPagar
-import com.example.pagoflex.ui.components.AvatarIniciales
-import com.example.pagoflex.ui.components.EtiquetaInteres
-import com.example.pagoflex.ui.components.ImagenEncabezado
-import com.example.pagoflex.ui.components.TarjetaEstadistica
+import com.example.pagoflex.ui.components.ListaDesplegable
+import com.example.pagoflex.ui.components.TarjetaLista
 import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.styles.EstilosTarjeta
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
-import com.example.pagoflex.ui.theme.coloresExtra
-import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
@@ -63,12 +63,17 @@ fun InicioScreen(
     ultimaActualizacion: LocalDateTime,
     onVerCompromiso: (Int) -> Unit,
     onActualizar: () -> Unit,
+    onVerAvance: () -> Unit = {},
     menu: MenuSesion = MenuSesion(),
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
+    var estado by rememberSaveable { mutableStateOf(FiltroEstado.POR_PAGAR) }
+    var idEmpresa by rememberSaveable { mutableStateOf<Int?>(null) }
+    var vencimiento by rememberSaveable { mutableStateOf(FiltroVencimiento.CUALQUIERA) }
+    val filtros = FiltrosCompromiso(estado, idEmpresa, vencimiento)
+
     val resumen = datos.resumenSituacion(usuario.idUsuario)
-    val avances = datos.avancePorEmpresa(usuario.idUsuario)
-    val indicador = indicadorDe(usuario.idUsuario)
+    val compromisos = datos.compromisosFiltrados(usuario.idUsuario, filtros)
     val avisoDeHoy = datos.avisosProgramados(usuario, usuario.avisosActivos ?: true, anticipacionDe(usuario), LocalTime.now())
         .firstOrNull { it.fechaEntrega.toLocalDate() == datos.fechaHoy }
 
@@ -82,198 +87,143 @@ fun InicioScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
             contentPadding = PaddingValues(Dimens.espacioPantalla),
-            verticalArrangement = Arrangement.spacedBy(Dimens.espacioMedio)
+            verticalArrangement = Arrangement.spacedBy(Dimens.espacioChico)
         ) {
-            item {
-                ImagenEncabezado(
-                    imagen = R.drawable.banner_pagoflex,
-                    descripcion = stringResource(R.string.cd_banner),
-                    titulo = "Tu mes de ${nombreMes(datos.fechaHoy.monthValue).lowercase()}",
-                    subtitulo = "Todos tus compromisos, en un solo lugar",
-                    modifier = Modifier.clip(EstilosTarjeta.forma)
-                )
-            }
             item { EstadoConexion(sinConexion, ultimaActualizacion, onActualizar) }
             if (avisoDeHoy != null) {
                 item { TarjetaMensaje(texto = avisoDeHoy.mensaje, icono = R.drawable.ic_campana) }
             }
+            item { ResumenDelMes(datos = datos, resumen = resumen) }
 
             item {
-                TarjetaEstadistica(
-                    valor = formatoPesos(resumen.totalPorPagar),
-                    etiqueta = "Total por pagar este mes",
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(Dimens.espacioChico)) {
-                    val proximo = resumen.proximoVencimiento
-                    TarjetaEstadistica(
-                        valor = if (proximo != null) formatoFecha(proximo.fechaVencimiento).take(5) else "—",
-                        etiqueta = if (proximo != null)
-                            "Próximo vencimiento\n${datos.empresaPorId(proximo.idEmpresa)?.nombreFantasia ?: ""}"
-                        else "Sin próximos vencimientos",
-                        modifier = Modifier.weight(1f)
+                TarjetaSeccion(
+                    titulo = "Filtrar compromisos",
+                    subtitulo = if (filtros.cantidadActivos == 0) "Mostrando lo que tienes por pagar"
+                    else "${filtros.cantidadActivos} filtro(s) activo(s)"
+                ) {
+                    Text(text = "Estado", style = MaterialTheme.typography.labelLarge)
+                    FilaChips(
+                        opciones = FiltroEstado.entries,
+                        seleccionada = estado,
+                        textoDe = { it.etiqueta },
+                        onSeleccionar = { estado = it }
                     )
-                    TarjetaEstadistica(
-                        valor = resumen.cantidadVencidos.toString(),
-                        etiqueta = if (resumen.cantidadVencidos == 1) "Compromiso vencido" else "Compromisos vencidos",
-                        modifier = Modifier.weight(1f)
+                    ListaDesplegable(
+                        etiqueta = "Organización",
+                        opciones = listOf<Int?>(null) + datos.empresasDelUsuario(usuario.idUsuario).map { it.idEmpresa },
+                        seleccionada = idEmpresa,
+                        onSeleccionar = { idEmpresa = it },
+                        textoDe = { id -> if (id == null) "Todas" else datos.empresaPorId(id)?.nombreFantasia ?: "" },
+                        icono = R.drawable.ic_empresa,
+                        textoVacio = "Todas"
                     )
-                }
-            }
-
-            item {
-                TarjetaSeccion(titulo = "Tu cumplimiento") {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = indicador.porcentaje?.let { formatoPorcentaje(it) } ?: "—",
-                            style = MaterialTheme.typography.titleLarge,
-                            modifier = Modifier.padding(end = Dimens.espacioChico)
-                        )
-                        EtiquetaInteres(texto = indicador.categoria.etiqueta, color = colorCategoria(indicador.categoria))
+                    Text(text = "Vencimiento", style = MaterialTheme.typography.labelLarge)
+                    FilaChips(
+                        opciones = FiltroVencimiento.entries,
+                        seleccionada = vencimiento,
+                        textoDe = { it.etiqueta },
+                        onSeleccionar = { vencimiento = it }
+                    )
+                    if (filtros.cantidadActivos > 0) {
+                        TextButton(
+                            onClick = {
+                                estado = FiltroEstado.POR_PAGAR
+                                idEmpresa = null
+                                vencimiento = FiltroVencimiento.CUALQUIERA
+                            },
+                            modifier = Modifier.align(Alignment.End)
+                        ) { Text("Limpiar filtros") }
                     }
-                    Text(text = mensajeCategoria(indicador.categoria), style = MaterialTheme.typography.bodySmall)
                 }
             }
 
             item {
                 TituloLista(
-                    texto = "Tus empresas",
-                    subtitulo = "La cuota que te toca pagar en cada una. Toca una para ver el detalle o pagarla."
+                    texto = "Tus compromisos (${compromisos.size})",
+                    subtitulo = "Toca uno para ver el detalle o pagarlo."
                 )
             }
-            if (avances.isEmpty()) {
-                item { MensajeVacio("Todavía no tienes compromisos registrados.") }
-            } else if (avances.all { it.alDia }) {
-                item { TarjetaMensaje(texto = "¡Estás al día! No tienes compromisos por pagar.", exito = true) }
+            if (compromisos.isEmpty()) {
+                item {
+                    if (filtros.cantidadActivos == 0) {
+                        TarjetaMensaje(texto = "¡Estás al día! No tienes compromisos por pagar.", exito = true)
+                    } else {
+                        MensajeVacio("No hay compromisos con estos filtros.")
+                    }
+                }
             }
-            items(avances, key = { it.empresa.idEmpresa }) { avance ->
-                TarjetaAvanceEmpresa(
-                    avance = avance,
-                    hoy = datos.fechaHoy,
-                    onClick = avance.actual?.let { actual -> { onVerCompromiso(actual.idCompromiso) } }
+            items(compromisos, key = { it.idCompromiso }) { compromiso ->
+                val empresa = datos.empresaPorId(compromiso.idEmpresa)
+                TarjetaLista(
+                    iniciales = empresa?.let { inicialesEmpresa(it.nombreFantasia) },
+                    colorAvatar = colorAvatarDe(compromiso.idEmpresa),
+                    titulo = empresa?.nombreFantasia ?: "",
+                    datoDerecho = formatoPesos(totalAPagar(compromiso)),
+                    linea2 = conceptoConCuota(compromiso),
+                    lineaFinal = textoVencimiento(compromiso, datos.fechaHoy),
+                    etiqueta = compromiso.estado.etiqueta,
+                    colorEtiqueta = colorEstado(compromiso.estado),
+                    onClick = { onVerCompromiso(compromiso.idCompromiso) }
                 )
+            }
+            item {
+                TextButton(onClick = onVerAvance, modifier = Modifier.fillMaxWidth()) {
+                    Text("Ver el avance de tus cuotas y tu cumplimiento")
+                }
             }
         }
     }
 }
 
 @Composable
-private fun TarjetaAvanceEmpresa(
-    avance: AvanceEmpresa,
-    hoy: LocalDate,
-    onClick: (() -> Unit)?
-) {
-    val actual = avance.actual
-    val referencia = actual ?: avance.ultimoPagado
-    val colores = MaterialTheme.coloresExtra
-    val contenido: @Composable ColumnScope.() -> Unit = {
+private fun ResumenDelMes(datos: BaseDatos, resumen: ResumenSituacion) {
+    val proximo = resumen.proximoVencimiento
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = EstilosTarjeta.forma,
+        colors = EstilosTarjeta.coloresDestacada()
+    ) {
         Column(
             modifier = Modifier.padding(Dimens.espacioMedio),
-            verticalArrangement = Arrangement.spacedBy(Dimens.espacioChico)
+            verticalArrangement = Arrangement.spacedBy(Dimens.espacioMini)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                AvatarIniciales(
-                    iniciales = inicialesEmpresa(avance.empresa.nombreFantasia),
-                    color = colorAvatarDe(avance.empresa.idEmpresa)
-                )
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = Dimens.espacioChico)
-                ) {
-                    Text(text = avance.empresa.nombreFantasia, style = MaterialTheme.typography.titleMedium)
-                    referencia?.let {
-                        Text(
-                            text = it.concepto,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                if (actual != null) {
-                    Text(
-                        text = formatoPesos(totalAPagar(actual)),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                } else {
-                    EtiquetaInteres(texto = "Al día", color = colores.exito, seleccionada = true)
-                }
-            }
-
-            val numero = referencia?.numeroCuota
-            val total = referencia?.totalCuotas
-            if (numero != null && total != null) {
-                val pagadas = if (actual != null) numero - 1 else numero
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = if (actual != null) "Cuota $numero de $total" else "Cuotas pagadas",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = "$pagadas de $total pagadas",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                LinearProgressIndicator(
-                    progress = { pagadas / total.toFloat() },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = if (actual == null) colores.exito else MaterialTheme.colorScheme.primary
-                )
-            }
-
-            if (actual != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = textoVencimiento(actual, hoy),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (actual.estado == EstadoCompromiso.VENCIDO) colores.vencido
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f)
-                    )
-                    EtiquetaInteres(texto = actual.estado.etiqueta, color = colorEstado(actual.estado))
-                }
-                if (avance.porPagar > 1) {
-                    val otras = avance.porPagar - 1
-                    Text(
-                        text = if (otras == 1) "Después tienes 1 cuota más por pagar" else "Después tienes $otras cuotas más por pagar",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                Text(
-                    text = if (numero != null && numero == total) "¡Pagaste todas tus cuotas con esta empresa!"
-                    else "No tienes pagos pendientes con esta empresa",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colores.exito
-                )
-            }
+            Text(text = "Total por pagar este mes", style = MaterialTheme.typography.labelLarge)
+            Text(
+                text = formatoPesos(resumen.totalPorPagar),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = listOfNotNull(
+                    proximo?.let { "Próximo: ${formatoFecha(it.fechaVencimiento)} · ${datos.empresaPorId(it.idEmpresa)?.nombreFantasia ?: ""}" },
+                    if (resumen.cantidadVencidos > 0) "${resumen.cantidadVencidos} vencido(s)" else null
+                ).joinToString("  ·  ").ifEmpty { "Sin vencimientos próximos" },
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
+}
 
-    if (onClick != null) {
-        Card(
-            onClick = onClick,
-            shape = EstilosTarjeta.forma,
-            colors = EstilosTarjeta.colores(),
-            elevation = EstilosTarjeta.elevacion(),
-            border = EstilosTarjeta.borde(),
-            content = contenido
-        )
-    } else {
-        Card(
-            shape = EstilosTarjeta.forma,
-            colors = EstilosTarjeta.colores(),
-            elevation = EstilosTarjeta.elevacion(),
-            border = EstilosTarjeta.borde(),
-            content = contenido
-        )
+@Composable
+private fun <T> FilaChips(
+    opciones: List<T>,
+    seleccionada: T,
+    textoDe: (T) -> String,
+    onSeleccionar: (T) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(Dimens.espacioChico)
+    ) {
+        opciones.forEach { opcion ->
+            FilterChip(
+                selected = opcion == seleccionada,
+                onClick = { onSeleccionar(opcion) },
+                label = { Text(textoDe(opcion)) }
+            )
+        }
     }
 }
 

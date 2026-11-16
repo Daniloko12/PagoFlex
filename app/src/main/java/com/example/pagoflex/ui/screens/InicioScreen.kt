@@ -101,7 +101,7 @@ fun InicioScreen(
             contentPadding = PaddingValues(Dimens.espacioPantalla),
             verticalArrangement = Arrangement.spacedBy(Dimens.espacioChico)
         ) {
-            item { EstadoConexion(sinConexion, ultimaActualizacion) }
+            if (sinConexion) item { AvisoSinConexion(ultimaActualizacion) }
             if (avisoDeHoy != null) {
                 item { TarjetaMensaje(texto = avisoDeHoy.mensaje, icono = R.drawable.ic_campana) }
             }

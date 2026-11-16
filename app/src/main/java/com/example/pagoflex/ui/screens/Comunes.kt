@@ -210,8 +210,7 @@ fun MensajeVacio(texto: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun EstadoConexion(
-    sinConexion: Boolean,
+fun AvisoSinConexion(
     ultimaActualizacion: LocalDateTime,
     modifier: Modifier = Modifier
 ) {
@@ -219,8 +218,8 @@ fun EstadoConexion(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = EstilosTarjeta.forma,
-        color = if (sinConexion) colores.advertenciaFondo else MaterialTheme.colorScheme.surface,
-        contentColor = if (sinConexion) colores.advertencia else MaterialTheme.colorScheme.onSurfaceVariant
+        color = colores.advertenciaFondo,
+        contentColor = colores.advertencia
     ) {
         Row(
             modifier = Modifier.padding(horizontal = Dimens.espacioMedio, vertical = Dimens.espacioChico),
@@ -239,8 +238,7 @@ fun EstadoConexion(
                 label = "ultimaActualizacion"
             ) { hora ->
                 Text(
-                    text = if (sinConexion) "Sin conexión. Te mostramos tu última situación conocida, del $hora. Se actualizará sola al volver la conexión."
-                    else "Se actualiza sola · última vez $hora",
+                    text = "Sin conexión. Te mostramos tu última situación conocida, del $hora. Se actualizará sola al volver la conexión.",
                     style = MaterialTheme.typography.bodySmall
                 )
             }

@@ -45,6 +45,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -391,6 +392,25 @@ class PagoFlexBaseDatosTest {
         assertNotNull(app.iniciarSesion(Credenciales("crojas@correo.ejemplo", CLAVE_DE_PRUEBA)))
         entrar(app, "crojas@correo.ejemplo", clave = "Nueva#2027")
         assertEquals(Rol.USUARIO_FINAL, app.usuarioActual.value?.rol)
+    }
+
+    @Test
+    fun sincronizacion_laInterfazRecibeLosCambiosPorFlow() {
+        val app = nuevaApp()
+        entrar(app, "crojas@correo.ejemplo")
+        val datosAntes = app.datos.value
+        assertEquals(true, app.usuarioActual.value?.avisosActivos)
+        assertTrue(app.guardarAvisos(false, DiasAnticipacion.UNO))
+        assertNotSame(datosAntes, app.datos.value)
+        assertEquals(false, app.usuarioActual.value?.avisosActivos)
+
+        app.cerrarSesion()
+        entrar(app, "alagos@pagoflex.ejemplo")
+        app.buscarCompromisos("rojas")
+        assertEquals(EstadoCompromiso.PENDIENTE, app.compromisosEncontrados.value.first { it.idCompromiso == 101 }.estado)
+        assertNull(app.anularCompromiso(101, MotivoAnulacion.ERROR_REGISTRO, null))
+        assertEquals(EstadoCompromiso.ANULADO, app.compromisosEncontrados.value.first { it.idCompromiso == 101 }.estado)
+        assertEquals(EstadoCompromiso.ANULADO, app.datos.value.compromisoPorId(101)?.estado)
     }
 
     @Test

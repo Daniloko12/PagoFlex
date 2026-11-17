@@ -1,9 +1,30 @@
 package com.example.pagoflex.data
 
 import android.content.Context
+import com.example.pagoflex.data.remoto.ActualizacionCompromisos
+import com.example.pagoflex.data.remoto.ActualizacionReporte
+import com.example.pagoflex.data.remoto.ActualizacionUsuario
+import com.example.pagoflex.data.remoto.CambioEstadoRecomendacion
+import com.example.pagoflex.data.remoto.ErrorServidor
+import com.example.pagoflex.data.remoto.Ingreso
+import com.example.pagoflex.data.remoto.NuevaClave
+import com.example.pagoflex.data.remoto.NuevaFoto
+import com.example.pagoflex.data.remoto.RecuperacionClave
+import com.example.pagoflex.data.remoto.RegistroAnulacion
+import com.example.pagoflex.data.remoto.RegistroCompromiso
+import com.example.pagoflex.data.remoto.RegistroPago
+import com.example.pagoflex.data.remoto.RegistroRecomendacion
+import com.example.pagoflex.data.remoto.RegistroReporte
+import com.example.pagoflex.data.remoto.RegistroUsuario
+import com.example.pagoflex.data.remoto.ResultadoVerificacion
+import com.example.pagoflex.data.remoto.ServidorPagoFlex
+import com.example.pagoflex.data.remoto.SolicitudCodigo
+import com.example.pagoflex.data.remoto.VerificacionCodigo
+import com.example.pagoflex.data.remoto.cargarDatosDelServidor
+import com.example.pagoflex.data.remoto.mensajeDeError
 import com.example.pagoflex.model.Anulacion
 import com.example.pagoflex.model.BaseDatos
-import com.example.pagoflex.model.CodigoRecuperacion
+import com.example.pagoflex.model.CLAVE_DE_PRUEBA
 import com.example.pagoflex.model.Compromiso
 import com.example.pagoflex.model.ContactoRecomendacion
 import com.example.pagoflex.model.DatosAnexo9
@@ -16,22 +37,36 @@ import com.example.pagoflex.model.Rol
 import com.example.pagoflex.model.Tarjeta
 import com.example.pagoflex.model.Usuario
 import com.example.pagoflex.model.UsuarioReconocimiento
+import com.example.pagoflex.model.baseDatosVacia
+import com.example.pagoflex.model.compromisosQueCoinciden
 import com.example.pagoflex.model.usuarioPorId
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.time.LocalDateTime
 
+enum class EstadoCarga { CARGANDO, LISTA, FALLIDA }
+
 class PagoFlexRepositorio(context: Context) {
-    private val db = PagoFlexDbHelper(context)
+    private val usuariosApi = ServidorPagoFlex.usuarios
+    private val compromisosApi = ServidorPagoFlex.compromisos
+    private val pagosApi = ServidorPagoFlex.pagos
+    private val movimientosApi = ServidorPagoFlex.movimientos
 
     private val sesion = SesionPreferencias(context)
 
-    private val _datos = MutableStateFlow(db.cargarDatos())
+    private val _datos = MutableStateFlow(baseDatosVacia())
     val datos: StateFlow<BaseDatos> = _datos.asStateFlow()
 
-    private val _usuarioActual = MutableStateFlow(db.buscarUsuarioPorId(sesion.leer()))
+    private val _usuarioActual = MutableStateFlow<Usuario?>(null)
     val usuarioActual: StateFlow<Usuario?> = _usuarioActual.asStateFlow()
+
+    private val _cargaInicial = MutableStateFlow(EstadoCarga.CARGANDO)
+    val cargaInicial: StateFlow<EstadoCarga> = _cargaInicial.asStateFlow()
+
+    private val _servidorDisponible = MutableStateFlow(true)
+    val servidorDisponible: StateFlow<Boolean> = _servidorDisponible.asStateFlow()
 
     private val _sinConexion = MutableStateFlow(sesion.leerSinConexion())
     val sinConexion: StateFlow<Boolean> = _sinConexion.asStateFlow()
@@ -48,21 +83,43 @@ class PagoFlexRepositorio(context: Context) {
     private val _compromisosEncontrados = MutableStateFlow<List<Compromiso>>(emptyList())
     val compromisosEncontrados: StateFlow<List<Compromiso>> = _compromisosEncontrados.asStateFlow()
 
-    init {
-        buscarCompromisos("")
-    }
-
-    private fun refrescar() {
-        val nuevos = db.cargarDatos()
+    suspend fun refrescar(): Boolean = try {
+        val nuevos = cargarDatosDelServidor(DatosAnexo9.FECHA_HOY)
         _datos.value = nuevos
-        _usuarioActual.value = _usuarioActual.value?.let { nuevos.usuarioPorId(it.idUsuario) }
+        _usuarioActual.value = nuevos.usuarioPorId(sesion.leer())
         buscarCompromisos(_busqueda.value)
+        _servidorDisponible.value = true
+        _cargaInicial.value = EstadoCarga.LISTA
+        true
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        _servidorDisponible.value = false
+        if (_cargaInicial.value != EstadoCarga.LISTA) _cargaInicial.value = EstadoCarga.FALLIDA
+        false
     }
 
-    private fun guardar(cambio: Boolean): Boolean {
-        if (cambio) refrescar()
-        return cambio
+    suspend fun reintentarConexion(): Boolean {
+        _cargaInicial.value = EstadoCarga.CARGANDO
+        return refrescar()
     }
+
+    private suspend fun <T> pedir(operacion: suspend () -> T): Result<T> = try {
+        Result.success(operacion())
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Result.failure(ErrorServidor(mensajeDeError(e)))
+    }
+
+    private suspend fun enviar(operacion: suspend () -> Unit): String? {
+        val resultado = pedir(operacion)
+        if (resultado.isSuccess) refrescar()
+        return resultado.exceptionOrNull()?.message
+    }
+
+    suspend fun validarCredenciales(correo: String, clave: String): Result<Usuario> =
+        pedir { usuariosApi.iniciarSesion(Ingreso(correo.trim(), clave)) }
 
     fun iniciarSesion(usuario: Usuario) {
         _usuarioActual.value = usuario
@@ -80,7 +137,7 @@ class PagoFlexRepositorio(context: Context) {
     fun buscarCompromisos(texto: String) {
         _busqueda.value = texto
         val esAdmin = _usuarioActual.value?.rol == Rol.ADMINISTRADOR
-        _compromisosEncontrados.value = if (esAdmin) db.buscarCompromisos(texto) else emptyList()
+        _compromisosEncontrados.value = if (esAdmin) _datos.value.compromisosQueCoinciden(texto) else emptyList()
     }
 
     fun cambiarModoOscuro(oscuro: Boolean) {
@@ -98,79 +155,106 @@ class PagoFlexRepositorio(context: Context) {
         sesion.guardarUltimaActualizacion(fechaHora)
     }
 
-    fun restablecerDatos() {
-        db.restablecerDatos()
-        cambiarConexion(false)
-        registrarActualizacion(DatosAnexo9.ULTIMA_ACTUALIZACION)
-        refrescar()
+    suspend fun restablecerDatos(): String? {
+        val error = enviar {
+            movimientosApi.restablecer()
+            usuariosApi.restablecer()
+            compromisosApi.restablecer()
+            pagosApi.restablecer()
+        }
+        if (error == null) {
+            cambiarConexion(false)
+            registrarActualizacion(DatosAnexo9.ULTIMA_ACTUALIZACION)
+        }
+        return error
     }
 
-    fun buscarPorCredenciales(correo: String, clave: String): Usuario? = db.buscarPorCredenciales(correo, clave)
+    suspend fun solicitarCodigo(idUsuario: Int, codigo: String, ahora: LocalDateTime): String? =
+        pedir { usuariosApi.solicitarCodigo(SolicitudCodigo(idUsuario, codigo, ahora)) }.exceptionOrNull()?.message
 
-    fun codigoVigenteDe(idUsuario: Int): CodigoRecuperacion? = db.codigoVigenteDe(idUsuario)
+    suspend fun verificarCodigo(idUsuario: Int, codigo: String, ahora: LocalDateTime): Result<ResultadoVerificacion> =
+        pedir { usuariosApi.verificarCodigo(VerificacionCodigo(idUsuario, codigo, ahora)) }
 
-    fun guardarCodigoRecuperacion(codigo: CodigoRecuperacion): Boolean = db.guardarCodigoRecuperacion(codigo)
+    suspend fun recuperarClave(
+        idUsuario: Int,
+        codigo: String,
+        claveNueva: String,
+        ahora: LocalDateTime,
+        movimiento: Movimiento
+    ): Result<ResultadoVerificacion> =
+        pedir { usuariosApi.recuperarClave(RecuperacionClave(idUsuario, codigo, claveNueva, ahora, listOf(movimiento))) }
 
-    fun sumarIntentoCodigo(codigo: CodigoRecuperacion): Boolean = db.sumarIntentoCodigo(codigo)
+    suspend fun cambiarClave(usuario: Usuario, claveActual: String?, claveNueva: String, movimiento: Movimiento): String? =
+        enviar { usuariosApi.cambiarClave(usuario.idUsuario, NuevaClave(claveActual, claveNueva, listOf(movimiento))) }
 
-    fun cambiarClaveConCodigo(usuario: Usuario, codigo: CodigoRecuperacion, claveNueva: String, movimiento: Movimiento): Boolean =
-        guardar(db.cambiarClaveConCodigo(usuario, codigo, claveNueva, listOf(movimiento)))
+    suspend fun registrarUsuario(usuario: Usuario, clave: String, movimiento: Movimiento): String? =
+        enviar { usuariosApi.registrar(RegistroUsuario(usuario, clave, listOf(movimiento))) }
 
-    fun cambiarClave(usuario: Usuario, claveNueva: String, movimiento: Movimiento): Boolean =
-        guardar(db.cambiarClave(usuario, claveNueva, listOf(movimiento)))
+    suspend fun actualizarUsuario(usuario: Usuario, movimientos: List<Movimiento> = emptyList()): String? =
+        enviar { usuariosApi.actualizar(usuario.idUsuario, ActualizacionUsuario(usuario, movimientos)) }
 
-    fun registrarUsuario(usuario: Usuario, clave: String, movimiento: Movimiento): Boolean =
-        guardar(db.registrarUsuario(usuario, clave, listOf(movimiento)))
+    suspend fun actualizarAvatar(idUsuario: Int, avatar: ByteArray): String? =
+        enviar { usuariosApi.cambiarAvatar(idUsuario, NuevaFoto(avatar)) }
 
-    fun actualizarUsuario(usuario: Usuario, movimientos: List<Movimiento> = emptyList()): Boolean =
-        guardar(db.actualizarUsuario(usuario, movimientos))
-
-    fun actualizarAvatar(idUsuario: Int, avatar: ByteArray): Boolean = guardar(db.actualizarAvatar(idUsuario, avatar))
-
-    fun registrarPago(
+    suspend fun registrarPago(
         pago: Pago,
         compromiso: Compromiso,
         reconocimientos: List<UsuarioReconocimiento>,
         tarjetaNueva: Tarjeta?,
         siguienteCuota: Compromiso?,
         movimientos: List<Movimiento>
-    ): Boolean = guardar(db.registrarPago(pago, compromiso, reconocimientos, tarjetaNueva, siguienteCuota, movimientos))
+    ): String? = enviar {
+        pagosApi.registrarPago(RegistroPago(pago, tarjetaNueva, compromiso, siguienteCuota, reconocimientos, movimientos))
+    }
 
-    fun registrarTarjeta(tarjeta: Tarjeta): Boolean = guardar(db.registrarTarjeta(tarjeta))
+    suspend fun registrarTarjeta(tarjeta: Tarjeta): String? = enviar { pagosApi.registrarTarjeta(tarjeta) }
 
-    fun quitarTarjeta(idTarjeta: Int): Boolean = guardar(db.quitarTarjeta(idTarjeta))
+    suspend fun quitarTarjeta(idTarjeta: Int): String? = enviar { pagosApi.quitarTarjeta(idTarjeta) }
 
-    fun registrarReporte(reporte: Reporte, compromiso: Compromiso, movimiento: Movimiento): Boolean =
-        guardar(db.registrarReporte(reporte, compromiso, listOf(movimiento)))
+    suspend fun registrarReporte(reporte: Reporte, compromiso: Compromiso, movimiento: Movimiento): String? =
+        enviar { compromisosApi.registrarReporte(RegistroReporte(reporte, compromiso, listOf(movimiento))) }
 
-    fun actualizarReporte(reporte: Reporte, compromiso: Compromiso?, movimiento: Movimiento): Boolean =
-        guardar(db.actualizarReporte(reporte, compromiso, listOf(movimiento)))
+    suspend fun actualizarReporte(reporte: Reporte, compromiso: Compromiso?, movimiento: Movimiento): String? =
+        enviar { compromisosApi.actualizarReporte(reporte.idReporte, ActualizacionReporte(reporte, compromiso, listOf(movimiento))) }
 
-    fun registrarRecomendacion(recomendacion: Recomendacion, contacto: ContactoRecomendacion?): Boolean =
-        guardar(db.registrarRecomendacion(recomendacion, contacto))
+    suspend fun registrarRecomendacion(recomendacion: Recomendacion, contacto: ContactoRecomendacion?): String? =
+        enviar { compromisosApi.registrarRecomendacion(RegistroRecomendacion(recomendacion, contacto)) }
 
-    fun cambiarEstadoRecomendacion(
+    suspend fun cambiarEstadoRecomendacion(
         recomendacion: Recomendacion,
         historial: HistorialRecomendacion,
         reconocimiento: UsuarioReconocimiento?
-    ): Boolean = guardar(db.cambiarEstadoRecomendacion(recomendacion, historial, reconocimiento))
+    ): String? = enviar {
+        compromisosApi.cambiarEstadoRecomendacion(
+            recomendacion.idRecomendacion,
+            CambioEstadoRecomendacion(recomendacion, historial, reconocimiento)
+        )
+    }
 
-    fun anularCompromiso(anulacion: Anulacion, compromiso: Compromiso, movimiento: Movimiento): Boolean =
-        guardar(db.anularCompromiso(anulacion, compromiso, listOf(movimiento)))
+    suspend fun anularCompromiso(anulacion: Anulacion, compromiso: Compromiso, movimiento: Movimiento): String? =
+        enviar { compromisosApi.anular(RegistroAnulacion(anulacion, compromiso, listOf(movimiento))) }
 
-    fun registrarCompromiso(
+    suspend fun registrarCompromiso(
         compromiso: Compromiso,
         personaNueva: Usuario?,
-        movimientos: List<Movimiento>,
+        movimientoPersona: Movimiento?,
+        movimientoCompromiso: Movimiento,
         fotoBoleta: ByteArray? = null
-    ): Boolean = guardar(db.registrarCompromiso(compromiso, personaNueva, movimientos, fotoBoleta))
-
-    fun boletaDe(idCompromiso: Int): ByteArray? = db.boletaDe(idCompromiso)
-
-    fun actualizarCompromisos(compromisos: List<Compromiso>, movimientos: List<Movimiento>): Boolean =
-        guardar(db.actualizarCompromisos(compromisos, movimientos))
-
-    fun cerrar() {
-        db.close()
+    ): String? = enviar {
+        if (personaNueva != null) {
+            usuariosApi.registrar(RegistroUsuario(personaNueva, CLAVE_DE_PRUEBA, listOfNotNull(movimientoPersona)))
+        }
+        compromisosApi.registrar(RegistroCompromiso(compromiso, fotoBoleta, listOf(movimientoCompromiso)))
     }
+
+    suspend fun boletaDe(idCompromiso: Int): ByteArray? = try {
+        compromisosApi.boleta(idCompromiso).imagen
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
+    }
+
+    suspend fun actualizarCompromisos(compromisos: List<Compromiso>, movimientos: List<Movimiento>): String? =
+        enviar { compromisosApi.actualizar(ActualizacionCompromisos(compromisos, movimientos)) }
 }

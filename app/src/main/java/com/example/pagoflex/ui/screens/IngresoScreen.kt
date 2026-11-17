@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,11 +64,12 @@ import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
 import com.example.pagoflex.ui.theme.coloresExtra
 import com.example.pagoflex.viewmodel.IngresoViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun IngresoScreen(
     datos: BaseDatos,
-    onIngresar: (Credenciales) -> String?,
+    onIngresar: suspend (Credenciales) -> String?,
     onRestablecer: () -> Unit,
     onCrearCuenta: () -> Unit,
     onRecuperarClave: () -> Unit,
@@ -77,6 +79,7 @@ fun IngresoScreen(
     viewModel: IngresoViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     IngresoContent(
         uiState = uiState,
@@ -85,7 +88,7 @@ fun IngresoScreen(
         onClaveCambia = viewModel::onClaveCambia,
         onIngresar = {
             viewModel.onIngresar()?.let { credenciales ->
-                onIngresar(credenciales)?.let { error -> viewModel.onErrorIngreso(error) }
+                scope.launch { onIngresar(credenciales)?.let { error -> viewModel.onErrorIngreso(error) } }
             }
         },
         onUsarCuentaDePrueba = { usuario -> viewModel.onUsarCuentaDePrueba(usuario.correo) },

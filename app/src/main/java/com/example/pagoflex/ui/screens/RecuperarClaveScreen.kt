@@ -70,9 +70,9 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun RecuperarClaveScreen(
-    onSolicitarCodigo: (DatosRecuperacion) -> String?,
-    onVerificarCodigo: (DatosRecuperacion, String) -> String?,
-    onClaveValida: (ClaveRecuperada) -> String?,
+    onSolicitarCodigo: suspend (DatosRecuperacion) -> String?,
+    onVerificarCodigo: suspend (DatosRecuperacion, String) -> String?,
+    onClaveValida: suspend (ClaveRecuperada) -> String?,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
     onPedirAyuda: (String) -> Unit = {},
@@ -96,18 +96,20 @@ fun RecuperarClaveScreen(
     }
 
     fun enviarCodigo(datos: DatosRecuperacion, esReenvio: Boolean) {
-        val codigo = onSolicitarCodigo(datos)
-        viewModel.onCodigoEnviado()
-        if (codigo != null) {
-            val permiso = Permisos.NOTIFICACIONES
-            if (permiso != null && !Permisos.tiene(context, permiso)) {
-                codigoPendiente = codigo
-                pedirPermiso.launch(permiso)
-            } else {
-                entregarCodigo(codigo)
+        scope.launch {
+            val codigo = onSolicitarCodigo(datos)
+            viewModel.onCodigoEnviado()
+            if (codigo != null) {
+                val permiso = Permisos.NOTIFICACIONES
+                if (permiso != null && !Permisos.tiene(context, permiso)) {
+                    codigoPendiente = codigo
+                    pedirPermiso.launch(permiso)
+                } else {
+                    entregarCodigo(codigo)
+                }
             }
+            if (esReenvio) snackbarHostState.showSnackbar("Te enviamos un código nuevo. El anterior ya no sirve.")
         }
-        if (esReenvio) scope.launch { snackbarHostState.showSnackbar("Te enviamos un código nuevo. El anterior ya no sirve.") }
     }
 
     RecuperarClaveContent(
@@ -121,14 +123,16 @@ fun RecuperarClaveScreen(
         onVerificarCodigo = {
             viewModel.onVerificarCodigo()?.let { codigo ->
                 val estado = viewModel.uiState.value
-                val error = onVerificarCodigo(DatosRecuperacion(estado.correo), codigo)
-                if (error == null) viewModel.onCodigoCorrecto() else viewModel.onErrorCodigo(error)
+                scope.launch {
+                    val error = onVerificarCodigo(DatosRecuperacion(estado.correo), codigo)
+                    if (error == null) viewModel.onCodigoCorrecto() else viewModel.onErrorCodigo(error)
+                }
             }
         },
         onCambiarDatos = viewModel::onCambiarDatos,
         onGuardar = {
             viewModel.onGuardarClave()?.let { recuperada ->
-                onClaveValida(recuperada)?.let { error -> viewModel.onErrorRecuperacion(error) }
+                scope.launch { onClaveValida(recuperada)?.let { error -> viewModel.onErrorRecuperacion(error) } }
             }
         },
         onVolver = onVolver,

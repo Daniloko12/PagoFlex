@@ -17,6 +17,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -39,16 +40,18 @@ import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
 import com.example.pagoflex.viewmodel.RegistroViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun RegistroScreen(
     datos: BaseDatos,
-    onCuentaValida: (NuevaCuenta) -> String?,
+    onCuentaValida: suspend (NuevaCuenta) -> String?,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
     viewModel: RegistroViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     RegistroContent(
         uiState = uiState,
@@ -62,7 +65,7 @@ fun RegistroScreen(
         onAceptaTerminosCambia = viewModel::onAceptaTerminosCambia,
         onCrearCuenta = {
             viewModel.onCrearCuenta(datos)?.let { nueva ->
-                onCuentaValida(nueva)?.let { error -> viewModel.onErrorRegistro(error) }
+                scope.launch { onCuentaValida(nueva)?.let { error -> viewModel.onErrorRegistro(error) } }
             }
         },
         onVolver = onVolver,

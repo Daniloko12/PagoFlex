@@ -122,7 +122,6 @@
     <string name="btn_galeria">Galería</string>
     <string name="texto_cambiar_foto">Cambia tu foto de perfil</string>
     <string name="snackbar_foto_actualizada">Listo, actualizamos tu foto de perfil</string>
-    <string name="snackbar_foto_error">No pudimos usar esa imagen. Prueba con otra.</string>
 
     <string name="permiso_camara_denegado">Sin permiso de cámara no se puede tomar la foto</string>
     <string name="permiso_galeria_denegado">Sin permiso de fotos no se puede abrir la galería</string>

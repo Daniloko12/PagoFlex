@@ -552,3 +552,35 @@ fun BaseDatos.resumenPanel(meses: Int = 4): ResumenPanel {
             .take(5)
     )
 }
+
+fun baseDatosVacia(fechaHoy: LocalDate = DatosAnexo9.FECHA_HOY): BaseDatos = BaseDatos(
+    usuarios = emptyList(),
+    empresas = emptyList(),
+    compromisos = emptyList(),
+    pagos = emptyList(),
+    anulaciones = emptyList(),
+    reportes = emptyList(),
+    recomendaciones = emptyList(),
+    contactosRecomendacion = emptyList(),
+    historialRecomendaciones = emptyList(),
+    reconocimientosObtenidos = emptyList(),
+    tarjetas = emptyList(),
+    rubros = emptyList(),
+    comunas = emptyList(),
+    reconocimientos = emptyList(),
+    movimientos = emptyList(),
+    fechaHoy = fechaHoy
+)
+
+fun BaseDatos.compromisosQueCoinciden(texto: String): List<Compromiso> {
+    val buscado = texto.trim()
+    val rutBuscado = texto.filter { it.isLetterOrDigit() }
+    return compromisos.filter { compromiso ->
+        val persona = usuarioPorId(compromiso.idUsuarioFinal) ?: return@filter false
+        val empresa = empresaPorId(compromiso.idEmpresa) ?: return@filter false
+        "${persona.nombres} ${persona.apellidos}".contains(buscado, ignoreCase = true) ||
+            persona.rut.filter { it.isLetterOrDigit() }.contains(rutBuscado, ignoreCase = true) ||
+            compromiso.concepto.contains(buscado, ignoreCase = true) ||
+            empresa.nombreFantasia.contains(buscado, ignoreCase = true)
+    }.sortedWith(compareBy<Compromiso>({ it.fechaVencimiento }, { it.idCompromiso }))
+}

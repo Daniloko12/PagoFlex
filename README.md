@@ -8,8 +8,8 @@ La app tiene dos roles que entran por el mismo inicio de sesión: el **usuario f
 
 | Integrante | GitHub | Aporte principal |
 |---|---|---|
-| Jose Veliz | [velizntd](https://github.com/velizntd) | Cámara y galería, contraseña segura, recuperación con código, sincronización con Flow, permisos por rol, historial de movimientos, inicio con filtros, pagos agregados por el cliente, fotos de boletas en SQLite, animaciones y pruebas |
-| (nombre del compañero) | [Daniloko12](https://github.com/Daniloko12) | Base del proyecto, base de datos SQLite, navegación por rol, panel del administrador, notificaciones de recordatorio, escáner de boletas y contacto por correo |
+| Jose Veliz | [velizntd](https://github.com/velizntd) | Cámara y galería, contraseña segura, recuperación con código, sincronización con Flow, permisos por rol, historial de movimientos, inicio con filtros, pagos agregados por el cliente, fotos de boletas, microservicios de usuarios y pagos, animaciones y pruebas |
+| (nombre del compañero) | [Daniloko12](https://github.com/Daniloko12) | Base del proyecto, base de datos, navegación por rol, panel del administrador, notificaciones de recordatorio, escáner de boletas, contacto por correo, microservicios de compromisos y movimientos, Docker y conexión de la app con Retrofit |
 
 ## Funcionalidades
 
@@ -68,18 +68,18 @@ Los permisos están centralizados en `model/PermisosRol.kt`. El ViewModel revisa
    - **Vencimiento**: la fecha junto a "Vence" o "Vencimiento", en formatos `25-10-2026`, `25/10/2026`, `05.12.26` o `15 de noviembre de 2026`.
    - **Organización**: por su nombre, razón social o RUT.
 4. Se completan los campos y se muestra qué se leyó. La persona revisa antes de agregar, y lo que no se leyó lo escribe a mano.
-5. La foto se guarda en la tabla `boleta` (JPEG de máximo 1280 px) junto al compromiso, en la misma transacción. El cliente y el administrador la ven en el detalle como "Boleta escaneada".
+5. La foto se envía a `ms-compromisos` en Base64 y se guarda en la tabla `boleta` (JPEG de máximo 1280 px) junto al compromiso, en la misma transacción. El cliente y el administrador la ven en el detalle como "Boleta escaneada".
 
 ## Seguridad de la contraseña
 
 - La contraseña debe cumplir **5 requisitos**: al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial. Mientras se escribe se ve una lista que se marca en verde y una barra de seguridad.
 - Cada campo de contraseña tiene **su propio ícono de ojo**, así se puede mostrar u ocultar cada una por separado.
-- Se guarda como hash SHA-256 con el RUT, nunca en texto plano.
+- `ms-usuarios` la guarda como hash SHA-256 con el RUT, nunca en texto plano, y la revisa al iniciar sesión. El hash nunca sale del servidor.
 
 ### Recuperar la contraseña en 3 pasos
 
 1. La persona escribe solo el correo de su cuenta, como en cualquier app. Por seguridad la app no dice si ese correo está registrado.
-2. Se genera un **código de 6 dígitos** con `SecureRandom`. En la base de datos se guarda solo su hash. El código **dura 10 minutos**, permite **3 intentos** y al pedir uno nuevo el anterior deja de servir. Llega como notificación (simula el correo que se enviaría en producción).
+2. Se genera un **código de 6 dígitos** con `SecureRandom`. `ms-usuarios` guarda solo su hash y es el que revisa el código. El código **dura 10 minutos**, permite **3 intentos** y al pedir uno nuevo el anterior deja de servir. Llega como notificación (simula el correo que se enviaría en producción).
 3. Con el código correcto se crea la contraseña nueva, que también debe cumplir los 5 requisitos. El código se marca como usado y queda el movimiento "Contraseña recuperada con código".
 
 ## Recursos nativos
@@ -92,20 +92,18 @@ Los permisos están centralizados en `model/PermisosRol.kt`. El ViewModel revisa
 ## Arquitectura
 
 - **MVVM** con Jetpack Compose y Navigation Compose.
-- **Capa de datos con Flow**: `PagoFlexRepositorio` expone `StateFlow` (datos, usuario actual, búsqueda, preferencias). Cada vez que se guarda algo en SQLite, el repositorio vuelve a leer la base y emite los datos nuevos, y la interfaz se actualiza sola con `collectAsStateWithLifecycle`.
-- **Sincronización automática**: no hay botón "Actualizar". El ViewModel tiene un `Flow` que sincroniza al abrir la app y luego cada minuto (`stateIn` con `SharingStarted.WhileSubscribed`), así que solo trabaja mientras la app está en pantalla. Al volver la conexión también se sincroniza sola.
-- **SQLite** con `SQLiteOpenHelper` (versión 7, 27 tablas). Las escrituras van en transacciones y las versiones nuevas se migran sin perder datos:
-  - v4: contraseñas de prueba con los nuevos requisitos.
-  - v5: tabla `codigo_recuperacion`.
-  - v6: tablas `tipo_movimiento` y `movimiento`.
-  - v7: tabla `boleta` con la foto de la boleta escaneada (`BLOB`).
+- **Datos en microservicios**: la app ya no tiene base de datos local. Todo se lee y se guarda en los 4 microservicios del backend (ver [Microservicios](#microservicios)) con **Retrofit** y **Gson**. Hay una interfaz por microservicio en `data/remoto` (`UsuariosApi`, `CompromisosApi`, `PagosApi`, `MovimientosApi`) con funciones `suspend`, y `ServidorPagoFlex` arma los clientes con la dirección del servidor y los adaptadores de fechas y fotos (Base64).
+- **Capa de datos con Flow**: `PagoFlexRepositorio` expone `StateFlow` (datos, usuario actual, búsqueda, preferencias). Cada vez que se guarda algo, el repositorio vuelve a pedir los datos a los microservicios y emite los nuevos, y la interfaz se actualiza sola con `collectAsStateWithLifecycle`. Si el servidor responde con un error, la app muestra su mensaje ("Ese correo ya está registrado", "Ese compromiso ya está pagado").
+- **Corrutinas**: las llamadas al servidor son `suspend` y se lanzan desde la interfaz con `rememberCoroutineScope`, así la pantalla nunca se congela.
+- **Sincronización automática**: no hay botón "Actualizar". El ViewModel tiene un `Flow` que sincroniza con el servidor al abrir la app y luego cada minuto (`stateIn` con `SharingStarted.WhileSubscribed`), así que lo que registra otra persona aparece solo. Si el servidor no responde, la app avisa "Sin conexión" y muestra la última información conocida.
+- **Pantalla de conexión**: al abrir la app se ve "Conectando con los servicios de PagoFlex…" mientras llegan los datos. Si el servidor está apagado aparece un botón **Reintentar**.
 - **SharedPreferences** para la sesión, el modo oscuro y la última actualización.
 - **Animaciones**: `AnimatedVisibility` en mensajes de error y filtros, `animateColorAsState` y `animateFloatAsState` en los requisitos de la contraseña, `AnimatedContent` en los pasos de recuperación, `animateIntAsState` en el total por pagar, `Crossfade` en el ojo de la contraseña y `animateItem` en las listas.
 
 ```
 app/src/main/java/com/example/pagoflex
 ├── contacto        Correo con Intent ACTION_SENDTO
-├── data            SQLite, repositorio con Flow y SharedPreferences
+├── data            Repositorio con Flow, SharedPreferences y data/remoto con Retrofit
 ├── escaner         Foto de la boleta y lectura de texto con ML Kit
 ├── model           Modelos, reglas de negocio, permisos, movimientos, lector de boletas y correos
 ├── navigation      Rutas y navegación según el rol
@@ -164,7 +162,10 @@ Comandos útiles:
    ```
 3. Abrir la carpeta en Android Studio y esperar a que termine **Gradle Sync** (necesita internet la primera vez para descargar las librerías, incluida ML Kit).
 4. Crear o abrir un emulador con **Android 8.0 (API 26) o superior**. Para ver la solicitud de permiso de notificaciones conviene uno con Android 13 o superior.
-5. Presionar **Run 'app'**.
+5. Levantar el backend con Docker (ver [Levantar el backend](#levantar-el-backend)).
+6. Presionar **Run 'app'**.
+
+La app se conecta a `10.0.2.2`, que es la dirección del PC visto desde el emulador. Para usar un teléfono real hay que cambiar `HOST` en `data/remoto/ServidorPagoFlex.kt` por la IP del PC en la red wifi.
 
 ### Cuentas de prueba
 
@@ -183,16 +184,12 @@ Para probar el escáner en el emulador: arrastrar una imagen de una boleta a la 
 
 ### Pruebas
 
-- Pruebas unitarias (reglas de negocio, contraseña, código de recuperación, filtros, permisos, movimientos, lector de boletas y mensajes de correo):
+- Pruebas unitarias (reglas de negocio, contraseña, código de recuperación, filtros, permisos, movimientos, búsqueda, lector de boletas, mensajes de correo y formato JSON del servidor):
   ```
   ./gradlew test
   ```
-- Pruebas instrumentadas de la base de datos (necesitan un emulador encendido):
-  ```
-  ./gradlew connectedAndroidTest
-  ```
 
-En Windows se usa `gradlew.bat` en lugar de `./gradlew`, o se ejecutan desde Android Studio con clic derecho en la carpeta `test` o `androidTest` → **Run Tests**.
+En Windows se usa `gradlew.bat` en lugar de `./gradlew`, o se ejecutan desde Android Studio con clic derecho en la carpeta `test` → **Run Tests**.
 
 ## Trabajo en equipo
 

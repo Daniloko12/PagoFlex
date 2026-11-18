@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pagoflex.data.ConvertidorImagen
+import com.example.pagoflex.data.EstadoCarga
 import com.example.pagoflex.data.PagoFlexRepositorio
 import com.example.pagoflex.model.Accion
 import com.example.pagoflex.model.Anulacion
@@ -26,7 +27,6 @@ import com.example.pagoflex.model.EstadoCompromiso
 import com.example.pagoflex.model.EstadoRecomendacion
 import com.example.pagoflex.model.EstadoReporte
 import com.example.pagoflex.model.HistorialRecomendacion
-import com.example.pagoflex.model.INTENTOS_MAXIMOS_CODIGO
 import com.example.pagoflex.model.MedioPago
 import com.example.pagoflex.model.MisDatos
 import com.example.pagoflex.model.MotivoAnulacion
@@ -71,13 +71,11 @@ import com.example.pagoflex.model.movimientoRegistro
 import com.example.pagoflex.model.movimientoReporte
 import com.example.pagoflex.model.movimientoVencimiento
 import com.example.pagoflex.model.normalizarRut
-import com.example.pagoflex.model.nuevoCodigoRecuperacion
 import com.example.pagoflex.model.puede
 import com.example.pagoflex.model.puedeVerCompromiso
 import com.example.pagoflex.model.recomendacionPorId
 import com.example.pagoflex.model.reconocimientoPorId
 import com.example.pagoflex.model.reportePorId
-import com.example.pagoflex.model.revisarCodigo
 import com.example.pagoflex.model.siguienteCuota
 import com.example.pagoflex.model.tarjetaPorId
 import com.example.pagoflex.model.tarjetasGuardadas
@@ -90,6 +88,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.LocalTime
 
@@ -97,6 +96,8 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
     companion object {
         const val MENSAJE_CLAVE_INSEGURA = "La contraseña no cumple los 5 requisitos de seguridad"
         const val INTERVALO_SINCRONIZACION_MS = 60_000L
+        const val MENSAJE_FOTO_ILEGIBLE = "No pudimos leer esa imagen. Prueba con otra."
+        const val MENSAJE_PAGO_FALLIDO = "No pudimos confirmar el pago. No se hizo ningún cobro."
     }
 
     private val repositorio = PagoFlexRepositorio(application)
@@ -105,7 +106,12 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
 
     val usuarioActual: StateFlow<Usuario?> = repositorio.usuarioActual
 
-    val sinConexion: StateFlow<Boolean> = repositorio.sinConexion
+    val cargaInicial: StateFlow<EstadoCarga> = repositorio.cargaInicial
+
+    val sinConexion: StateFlow<Boolean> =
+        combine(repositorio.sinConexion, repositorio.servidorDisponible) { modoSinConexion, disponible ->
+            modoSinConexion || !disponible
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, repositorio.sinConexion.value)
 
     private val sincronizacionAutomatica: Flow<Unit> = flow {
         while (true) {
@@ -125,6 +131,14 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
 
     val compromisosEncontrados: StateFlow<List<Compromiso>> = repositorio.compromisosEncontrados
 
+    init {
+        viewModelScope.launch { repositorio.refrescar() }
+    }
+
+    fun reintentarConexion() {
+        viewModelScope.launch { repositorio.reintentarConexion() }
+    }
+
     private fun sinPermiso(accion: Accion): String? = motivoSinPermiso(usuarioActual.value, accion)
 
     private fun conPermiso(accion: Accion): Usuario? = usuarioActual.value?.takeIf { puede(it, accion) }
@@ -132,19 +146,16 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
     private fun ahora(): LocalDateTime =
         LocalDateTime.of(datos.value.fechaHoy, LocalTime.now().withSecond(0).withNano(0))
 
-    fun iniciarSesion(credenciales: Credenciales): String? {
-        val usuario = repositorio.buscarPorCredenciales(credenciales.correo, credenciales.clave)
-        return when {
-            usuario == null -> "Correo o contraseña incorrectos"
-            !usuario.activo -> "Esta cuenta no está activa. Consulta con PagoFlex."
-            else -> {
-                repositorio.iniciarSesion(usuario)
-                null
-            }
-        }
+    private fun <T> fallo(mensaje: String): Result<T> = Result.failure(IllegalStateException(mensaje))
+
+    suspend fun iniciarSesion(credenciales: Credenciales): String? {
+        val usuario = repositorio.validarCredenciales(credenciales.correo, credenciales.clave).getOrElse { return it.message }
+        if (!usuario.activo) return "Esta cuenta no está activa. Consulta con PagoFlex."
+        repositorio.iniciarSesion(usuario)
+        return null
     }
 
-    fun crearCuenta(nueva: NuevaCuenta): String? {
+    suspend fun crearCuenta(nueva: NuevaCuenta): String? {
         if (!claveValida(nueva.clave)) return MENSAJE_CLAVE_INSEGURA
         val datos = datos.value
         val fecha = ahora()
@@ -162,7 +173,7 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
             diasAnticipacion = 3
         )
         val registro = movimientoCuenta(TipoMovimiento.CUENTA_CREADA, usuario.idUsuario, usuario.idUsuario, fecha, "Creaste tu cuenta desde la app")
-        if (!repositorio.registrarUsuario(usuario, nueva.clave, registro)) return "No pudimos crear tu cuenta. Revisa que tu RUT y tu correo no estén registrados."
+        repositorio.registrarUsuario(usuario, nueva.clave, registro)?.let { return it }
         repositorio.iniciarSesion(this.datos.value.usuarioPorId(usuario.idUsuario) ?: usuario)
         return null
     }
@@ -170,42 +181,31 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
     private fun cuentaActivaPara(datosRecuperacion: DatosRecuperacion): Usuario? =
         datos.value.cuentaParaRecuperar(datosRecuperacion.correo)
 
-    fun solicitarCodigo(datosRecuperacion: DatosRecuperacion): String? {
+    suspend fun solicitarCodigo(datosRecuperacion: DatosRecuperacion): String? {
         val cuenta = cuentaActivaPara(datosRecuperacion) ?: return null
         val codigo = generarCodigoRecuperacion()
-        return if (repositorio.guardarCodigoRecuperacion(nuevoCodigoRecuperacion(cuenta.idUsuario, codigo, ahora()))) codigo else null
+        return if (repositorio.solicitarCodigo(cuenta.idUsuario, codigo, ahora()) == null) codigo else null
     }
 
-    private fun validarCodigo(cuenta: Usuario?, codigo: String): String? {
-        val vigente = cuenta?.let { repositorio.codigoVigenteDe(it.idUsuario) }
-        val resultado = revisarCodigo(vigente, codigo, ahora())
-        if (resultado == ResultadoCodigo.INCORRECTO && vigente != null) {
-            repositorio.sumarIntentoCodigo(vigente)
-            return mensajeCodigo(resultado, INTENTOS_MAXIMOS_CODIGO - vigente.intentos - 1)
-        }
-        return mensajeCodigo(resultado)
+    suspend fun verificarCodigo(datosRecuperacion: DatosRecuperacion, codigo: String): String? {
+        val cuenta = cuentaActivaPara(datosRecuperacion) ?: return mensajeCodigo(ResultadoCodigo.SIN_CODIGO)
+        val verificacion = repositorio.verificarCodigo(cuenta.idUsuario, codigo, ahora()).getOrElse { return it.message }
+        return mensajeCodigo(verificacion.resultado, verificacion.intentosRestantes)
     }
 
-    fun verificarCodigo(datosRecuperacion: DatosRecuperacion, codigo: String): String? =
-        validarCodigo(cuentaActivaPara(datosRecuperacion), codigo)
-
-    fun recuperarClave(recuperada: ClaveRecuperada): String? {
-        val cuenta = cuentaActivaPara(DatosRecuperacion(recuperada.correo))
-        validarCodigo(cuenta, recuperada.codigo)?.let { return it }
-        val vigente = cuenta?.let { repositorio.codigoVigenteDe(it.idUsuario) } ?: return mensajeCodigo(ResultadoCodigo.SIN_CODIGO)
+    suspend fun recuperarClave(recuperada: ClaveRecuperada): String? {
+        val cuenta = cuentaActivaPara(DatosRecuperacion(recuperada.correo)) ?: return mensajeCodigo(ResultadoCodigo.SIN_CODIGO)
         if (!claveValida(recuperada.claveNueva)) return MENSAJE_CLAVE_INSEGURA
-        if (repositorio.buscarPorCredenciales(cuenta.correo, recuperada.claveNueva) != null) {
-            return "Esa ya es tu contraseña. Puedes ingresar con ella o elegir otra."
-        }
         val registro = movimientoCuenta(
             TipoMovimiento.CLAVE_RECUPERADA, cuenta.idUsuario, cuenta.idUsuario, ahora(),
             "Verificaste tu identidad con un código de un solo uso"
         )
-        return if (repositorio.cambiarClaveConCodigo(cuenta, vigente, recuperada.claveNueva, registro)) null
-        else "No pudimos cambiar la contraseña. Inténtalo de nuevo."
+        val verificacion = repositorio.recuperarClave(cuenta.idUsuario, recuperada.codigo, recuperada.claveNueva, ahora(), registro)
+            .getOrElse { return it.message }
+        return mensajeCodigo(verificacion.resultado, verificacion.intentosRestantes)
     }
 
-    fun actualizarMisDatos(misDatos: MisDatos): String? {
+    suspend fun actualizarMisDatos(misDatos: MisDatos): String? {
         val usuario = usuarioActual.value ?: return "Inicia sesión"
         val editado = usuario.copy(
             nombres = misDatos.nombres,
@@ -216,32 +216,29 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         )
         if (editado == usuario) return "No cambiaste ningún dato"
         val registro = movimientoCuenta(TipoMovimiento.DATOS_ACTUALIZADOS, usuario.idUsuario, usuario.idUsuario, ahora(), cambiosDeUsuario(usuario, editado))
-        if (!repositorio.actualizarUsuario(editado, listOf(registro))) return "No pudimos guardar tus datos. Revisa que el correo no esté registrado."
-        return null
+        return repositorio.actualizarUsuario(editado, listOf(registro))
     }
 
-    fun cambiarMiClave(cambio: CambioClave): String? {
+    suspend fun cambiarMiClave(cambio: CambioClave): String? {
         val usuario = usuarioActual.value ?: return "Inicia sesión"
-        if (repositorio.buscarPorCredenciales(usuario.correo, cambio.claveActual) == null) return "Tu contraseña actual no es correcta"
         if (!claveValida(cambio.claveNueva)) return MENSAJE_CLAVE_INSEGURA
         val registro = movimientoCuenta(TipoMovimiento.CLAVE_CAMBIADA, usuario.idUsuario, usuario.idUsuario, ahora(), "Cambiaste tu contraseña desde Mi perfil")
-        return if (repositorio.cambiarClave(usuario, cambio.claveNueva, registro)) null else "No pudimos cambiar la contraseña. Inténtalo de nuevo."
+        return repositorio.cambiarClave(usuario, cambio.claveActual, cambio.claveNueva, registro)
     }
 
     private fun siguienteIdUsuario(datos: BaseDatos): Int = (datos.usuarios.maxOfOrNull { it.idUsuario } ?: 0) + 1
 
-    fun cambiarAvatarDesdeCamara(foto: Bitmap): Boolean =
+    suspend fun cambiarAvatarDesdeCamara(foto: Bitmap): String? =
         guardarAvatar(ConvertidorImagen.aBytes(foto))
 
-    fun cambiarAvatarDesdeGaleria(uri: Uri): Boolean {
-        val imagen = ConvertidorImagen.desdeUri(getApplication(), uri) ?: return false
+    suspend fun cambiarAvatarDesdeGaleria(uri: Uri): String? {
+        val imagen = ConvertidorImagen.desdeUri(getApplication(), uri) ?: return MENSAJE_FOTO_ILEGIBLE
         return guardarAvatar(ConvertidorImagen.aBytes(imagen))
     }
 
-    private fun guardarAvatar(bytes: ByteArray): Boolean {
-        val usuario = usuarioActual.value ?: return false
-        if (!repositorio.actualizarAvatar(usuario.idUsuario, bytes)) return false
-        return true
+    private suspend fun guardarAvatar(bytes: ByteArray): String? {
+        val usuario = usuarioActual.value ?: return "Inicia sesión"
+        return repositorio.actualizarAvatar(usuario.idUsuario, bytes)
     }
 
     fun cambiarModoOscuro(oscuro: Boolean) {
@@ -252,9 +249,7 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         repositorio.cerrarSesion()
     }
 
-    fun restablecerDatos() {
-        repositorio.restablecerDatos()
-    }
+    suspend fun restablecerDatos(): String? = repositorio.restablecerDatos()
 
     private fun motivoCompromisoAjeno(idCompromiso: Int): String? {
         val compromiso = datos.value.compromisoPorId(idCompromiso) ?: return null
@@ -266,23 +261,23 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
             ?: motivoCompromisoAjeno(idCompromiso)
             ?: datos.value.motivoParaNoPagar(idCompromiso, sinConexion = revisarConexion && sinConexion.value)
 
-    fun pagar(idCompromiso: Int, solicitud: SolicitudPago): ResultadoPago? {
-        val usuario = conPermiso(Accion.PAGAR_COMPROMISO) ?: return null
-        if (motivoParaNoPagar(idCompromiso) != null) return null
+    suspend fun pagar(idCompromiso: Int, solicitud: SolicitudPago): Result<ResultadoPago> {
+        val usuario = conPermiso(Accion.PAGAR_COMPROMISO) ?: return fallo(sinPermiso(Accion.PAGAR_COMPROMISO) ?: MENSAJE_PAGO_FALLIDO)
+        motivoParaNoPagar(idCompromiso)?.let { return fallo(it) }
         val datos = datos.value
-        val compromiso = datos.compromisoPorId(idCompromiso) ?: return null
+        val compromiso = datos.compromisoPorId(idCompromiso) ?: return fallo(MENSAJE_PAGO_FALLIDO)
         val fechaPago = ahora()
 
         val tarjetaGuardada = solicitud.idTarjeta?.let { id ->
             datos.tarjetaPorId(id)?.takeIf {
                 it.idUsuario == usuario.idUsuario && it.guardada && it.medioPago == solicitud.medioPago
-            } ?: return null
+            } ?: return fallo(MENSAJE_PAGO_FALLIDO)
         }
         val tarjetaNueva = solicitud.tarjetaNueva?.let {
             crearTarjeta(datos, usuario.idUsuario, it, guardada = solicitud.guardarTarjeta, fecha = fechaPago)
         }
         val conTarjeta = solicitud.medioPago == MedioPago.DEBITO || solicitud.medioPago == MedioPago.CREDITO
-        if (conTarjeta && tarjetaGuardada == null && tarjetaNueva == null) return null
+        if (conTarjeta && tarjetaGuardada == null && tarjetaNueva == null) return fallo(MENSAJE_PAGO_FALLIDO)
 
         val pago = Pago(
             idPago = (datos.pagos.maxOfOrNull { it.idPago } ?: 0) + 1,
@@ -319,12 +314,14 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         }
 
         val registros = listOfNotNull(movimientoPago(pago, compromiso), siguiente?.let { movimientoCuotaGenerada(it, fechaPago) })
-        if (!repositorio.registrarPago(pago, pagado, nuevos, tarjetaNueva, siguiente, registros)) return null
+        repositorio.registrarPago(pago, pagado, nuevos, tarjetaNueva, siguiente, registros)?.let { return fallo(it) }
         repositorio.registrarActualizacion(fechaPago)
-        return ResultadoPago(
-            pago = pago,
-            reconocimientos = nuevos.mapNotNull { this.datos.value.reconocimientoPorId(it.idReconocimiento)?.nombre },
-            siguienteCuota = siguiente
+        return Result.success(
+            ResultadoPago(
+                pago = pago,
+                reconocimientos = nuevos.mapNotNull { this.datos.value.reconocimientoPorId(it.idReconocimiento)?.nombre },
+                siguienteCuota = siguiente
+            )
         )
     }
 
@@ -348,20 +345,19 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun agregarTarjeta(nueva: TarjetaNueva): Tarjeta? {
-        val usuario = conPermiso(Accion.PAGAR_COMPROMISO) ?: return null
-        if (tarjetaRepetida(nueva)) return null
+    suspend fun agregarTarjeta(nueva: TarjetaNueva): Result<Tarjeta> {
+        val usuario = conPermiso(Accion.PAGAR_COMPROMISO) ?: return fallo(sinPermiso(Accion.PAGAR_COMPROMISO) ?: "Inicia sesión")
+        if (tarjetaRepetida(nueva)) return fallo("Ya tienes guardada esa tarjeta")
         val tarjeta = crearTarjeta(datos.value, usuario.idUsuario, nueva, guardada = true, fecha = ahora())
-        if (!repositorio.registrarTarjeta(tarjeta)) return null
-        return tarjeta
+        repositorio.registrarTarjeta(tarjeta)?.let { return fallo(it) }
+        return Result.success(tarjeta)
     }
 
-    fun quitarTarjeta(idTarjeta: Int): String? {
+    suspend fun quitarTarjeta(idTarjeta: Int): String? {
         val usuario = usuarioActual.value ?: return "Inicia sesión"
         val tarjeta = datos.value.tarjetaPorId(idTarjeta)
             ?.takeIf { it.idUsuario == usuario.idUsuario && it.guardada } ?: return "No encontramos esa tarjeta"
-        if (!repositorio.quitarTarjeta(tarjeta.idTarjeta)) return "No pudimos quitar la tarjeta. Inténtalo de nuevo."
-        return null
+        return repositorio.quitarTarjeta(tarjeta.idTarjeta)
     }
 
     private fun siguienteComprobante(pagos: List<Pago>): String {
@@ -374,10 +370,10 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
             ?: motivoCompromisoAjeno(idCompromiso)
             ?: datos.value.motivoParaNoReportar(idCompromiso)
 
-    fun reportar(idCompromiso: Int, solicitud: SolicitudReporte): Reporte? {
-        if (motivoParaNoReportar(idCompromiso) != null) return null
+    suspend fun reportar(idCompromiso: Int, solicitud: SolicitudReporte): Result<Reporte> {
+        motivoParaNoReportar(idCompromiso)?.let { return fallo(it) }
         val datos = datos.value
-        val compromiso = datos.compromisoPorId(idCompromiso) ?: return null
+        val compromiso = datos.compromisoPorId(idCompromiso) ?: return fallo("No encontramos el compromiso")
         val fecha = ahora()
         val nuevoId = (datos.reportes.maxOfOrNull { it.idReporte } ?: 0) + 1
         val reporte = Reporte(
@@ -391,12 +387,13 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         )
         val enRevision = compromiso.copy(estado = EstadoCompromiso.EN_REVISION, fechaCambioEstado = fecha)
         val registro = movimientoReporte(TipoMovimiento.REPORTE_ENVIADO, reporte, compromiso, compromiso.idUsuarioFinal, fecha)
-        if (!repositorio.registrarReporte(reporte, enRevision, registro)) return null
-        return reporte
+        repositorio.registrarReporte(reporte, enRevision, registro)?.let { return fallo(it) }
+        return Result.success(reporte)
     }
 
-    fun registrarRecomendacion(nueva: NuevaRecomendacion): Recomendacion? {
-        val usuario = conPermiso(Accion.RECOMENDAR_ORGANIZACION) ?: return null
+    suspend fun registrarRecomendacion(nueva: NuevaRecomendacion): Result<Recomendacion> {
+        val usuario = conPermiso(Accion.RECOMENDAR_ORGANIZACION)
+            ?: return fallo(sinPermiso(Accion.RECOMENDAR_ORGANIZACION) ?: "Inicia sesión")
         val datos = datos.value
         val nuevoId = (datos.recomendaciones.maxOfOrNull { it.idRecomendacion } ?: 0) + 1
         val recomendacion = Recomendacion(
@@ -413,33 +410,33 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         val contacto = nueva.contacto?.let {
             ContactoRecomendacion(nuevoId, it.nombre, it.correo, it.telefono, autorizaContacto = true)
         }
-        if (!repositorio.registrarRecomendacion(recomendacion, contacto)) return null
-        return recomendacion
+        repositorio.registrarRecomendacion(recomendacion, contacto)?.let { return fallo(it) }
+        return Result.success(recomendacion)
     }
 
-    fun guardarAvisos(activos: Boolean, anticipacion: DiasAnticipacion): Boolean {
-        val usuario = usuarioActual.value ?: return false
-        val ok = repositorio.actualizarUsuario(usuario.copy(avisosActivos = activos, diasAnticipacion = anticipacion.dias))
-        return ok
+    suspend fun guardarAvisos(activos: Boolean, anticipacion: DiasAnticipacion): String? {
+        val usuario = usuarioActual.value ?: return "Inicia sesión"
+        return repositorio.actualizarUsuario(usuario.copy(avisosActivos = activos, diasAnticipacion = anticipacion.dias))
     }
 
     fun cambiarConexion(sinConexion: Boolean) {
         repositorio.cambiarConexion(sinConexion)
-        if (!sinConexion) sincronizar()
+        if (!sinConexion) viewModelScope.launch { sincronizar() }
     }
 
-    fun sincronizar(): Boolean {
-        if (sinConexion.value) return false
+    suspend fun sincronizar(): Boolean {
+        if (repositorio.sinConexion.value) return false
+        if (!repositorio.refrescar()) return false
         val datos = datos.value
         val cambiados = actualizarVencimientos(datos.compromisos, datos.empresas, datos.fechaHoy)
             .filter { nuevo -> datos.compromisoPorId(nuevo.idCompromiso) != nuevo }
         val vencidos = cambiados.filter { it.estado == EstadoCompromiso.VENCIDO }.map { movimientoVencimiento(it) }
-        if (cambiados.isNotEmpty()) repositorio.actualizarCompromisos(cambiados, vencidos)
+        if (cambiados.isNotEmpty() && repositorio.actualizarCompromisos(cambiados, vencidos) != null) return false
         repositorio.registrarActualizacion(ahora())
         return true
     }
 
-    fun tomarReporte(idReporte: Int): String? {
+    suspend fun tomarReporte(idReporte: Int): String? {
         val admin = conPermiso(Accion.GESTIONAR_REPORTES) ?: return sinPermiso(Accion.GESTIONAR_REPORTES)
         val datos = datos.value
         datos.motivoParaNoTomar(idReporte, admin)?.let { return it }
@@ -448,11 +445,10 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         val fecha = ahora()
         val tomado = reporte.copy(estado = EstadoReporte.EN_GESTION, idAdministrador = admin.idUsuario, fechaToma = fecha)
         val registro = movimientoReporte(TipoMovimiento.REPORTE_EN_GESTION, tomado, compromiso, admin.idUsuario, fecha)
-        if (!repositorio.actualizarReporte(tomado, null, registro)) return "No pudimos guardar el cambio. Inténtalo de nuevo."
-        return null
+        return repositorio.actualizarReporte(tomado, null, registro)
     }
 
-    fun resolverReporte(idReporte: Int, respuesta: String): String? {
+    suspend fun resolverReporte(idReporte: Int, respuesta: String): String? {
         val admin = conPermiso(Accion.GESTIONAR_REPORTES) ?: return sinPermiso(Accion.GESTIONAR_REPORTES)
         val datos = datos.value
         datos.motivoParaNoResolver(idReporte, admin, respuesta)?.let { return it }
@@ -473,11 +469,10 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         val resuelto = reporte.copy(estado = EstadoReporte.RESUELTO, respuesta = respuesta.trim(), fechaResolucion = fecha)
         val delReporte = compromiso ?: datos.compromisoPorId(reporte.idCompromiso) ?: return "No encontramos el compromiso del reporte"
         val registro = movimientoReporte(TipoMovimiento.REPORTE_RESUELTO, resuelto, delReporte, admin.idUsuario, fecha)
-        if (!repositorio.actualizarReporte(resuelto, compromiso, registro)) return "No pudimos guardar el cambio. Inténtalo de nuevo."
-        return null
+        return repositorio.actualizarReporte(resuelto, compromiso, registro)
     }
 
-    fun cambiarEstadoRecomendacion(idRecomendacion: Int, nuevo: EstadoRecomendacion, motivo: String?): String? {
+    suspend fun cambiarEstadoRecomendacion(idRecomendacion: Int, nuevo: EstadoRecomendacion, motivo: String?): String? {
         val admin = conPermiso(Accion.GESTIONAR_RECOMENDACIONES) ?: return sinPermiso(Accion.GESTIONAR_RECOMENDACIONES)
         val datos = datos.value
         datos.motivoParaNoCambiarEstado(idRecomendacion, nuevo, motivo)?.let { return it }
@@ -499,13 +494,10 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
                 "${recomendacion.nombreOrganizacion} se unió a PagoFlex gracias a tu recomendación")
         else null
 
-        if (!repositorio.cambiarEstadoRecomendacion(recomendacion.copy(estado = nuevo), historial, reconocimiento)) {
-            return "No pudimos guardar el cambio. Inténtalo de nuevo."
-        }
-        return null
+        return repositorio.cambiarEstadoRecomendacion(recomendacion.copy(estado = nuevo), historial, reconocimiento)
     }
 
-    fun avanzarRecomendacion(idRecomendacion: Int): String? {
+    suspend fun avanzarRecomendacion(idRecomendacion: Int): String? {
         val recomendacion = datos.value.recomendacionPorId(idRecomendacion) ?: return "No encontramos la recomendación"
         val siguiente = EstadoRecomendacion.entries.firstOrNull {
             it != EstadoRecomendacion.DESCARTADA && it.orden == recomendacion.estado.orden + 1
@@ -517,7 +509,7 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         repositorio.buscarCompromisos(texto)
     }
 
-    fun anularCompromiso(idCompromiso: Int, motivo: MotivoAnulacion, comentario: String?): String? {
+    suspend fun anularCompromiso(idCompromiso: Int, motivo: MotivoAnulacion, comentario: String?): String? {
         val admin = conPermiso(Accion.ANULAR_COMPROMISO) ?: return sinPermiso(Accion.ANULAR_COMPROMISO)
         val datos = datos.value
         datos.motivoParaNoAnular(admin, idCompromiso, motivo, comentario)?.let { return it }
@@ -525,13 +517,13 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         val fecha = ahora()
         val anulacion = Anulacion(idCompromiso, admin.idUsuario, motivo, comentario?.trim()?.ifBlank { null }, fecha)
         val anulado = compromiso.copy(estado = EstadoCompromiso.ANULADO, fechaCambioEstado = fecha)
-        if (!repositorio.anularCompromiso(anulacion, anulado, movimientoAnulacion(anulacion, anulado))) return "No pudimos guardar la anulación. Inténtalo de nuevo."
-        return null
+        return repositorio.anularCompromiso(anulacion, anulado, movimientoAnulacion(anulacion, anulado))
     }
 
-    fun registrarMiCompromiso(nuevo: NuevoCompromiso, fotoBoleta: ByteArray? = null): Compromiso? {
-        val usuario = conPermiso(Accion.AGREGAR_MIS_COMPROMISOS) ?: return null
-        if (nuevo.idPersona != usuario.idUsuario || nuevo.personaNueva != null) return null
+    suspend fun registrarMiCompromiso(nuevo: NuevoCompromiso, fotoBoleta: ByteArray? = null): Result<Compromiso> {
+        val usuario = conPermiso(Accion.AGREGAR_MIS_COMPROMISOS)
+            ?: return fallo(sinPermiso(Accion.AGREGAR_MIS_COMPROMISOS) ?: "Inicia sesión")
+        if (nuevo.idPersona != usuario.idUsuario || nuevo.personaNueva != null) return fallo("Solo puedes agregar pagos a tu nombre")
         val datos = datos.value
         val fecha = ahora()
         val nuevoId = datos.compromisos.maxOf { it.idCompromiso } + 1
@@ -552,18 +544,18 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
             fechaRegistro = fecha
         )
         val registro = movimientoRegistro(compromiso, usuario.idUsuario, fecha)
-        if (!repositorio.registrarCompromiso(compromiso, null, listOf(registro), fotoBoleta)) return null
-        return compromiso
+        repositorio.registrarCompromiso(compromiso, null, null, registro, fotoBoleta)?.let { return fallo(it) }
+        return Result.success(compromiso)
     }
 
-    fun boletaDe(idCompromiso: Int): ByteArray? {
+    suspend fun boletaDe(idCompromiso: Int): ByteArray? {
         val compromiso = datos.value.compromisoPorId(idCompromiso) ?: return null
         if (!puedeVerCompromiso(usuarioActual.value, compromiso)) return null
         return repositorio.boletaDe(idCompromiso)
     }
 
-    fun registrarCompromiso(nuevo: NuevoCompromiso): Compromiso? {
-        val admin = conPermiso(Accion.CREAR_COMPROMISO) ?: return null
+    suspend fun registrarCompromiso(nuevo: NuevoCompromiso): Result<Compromiso> {
+        val admin = conPermiso(Accion.CREAR_COMPROMISO) ?: return fallo(sinPermiso(Accion.CREAR_COMPROMISO) ?: "Inicia sesión")
         val datos = datos.value
         val fecha = ahora()
 
@@ -582,7 +574,7 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
                 diasAnticipacion = 3
             )
         }
-        val idPersona = nuevo.idPersona ?: personaNueva?.idUsuario ?: return null
+        val idPersona = nuevo.idPersona ?: personaNueva?.idUsuario ?: return fallo("Elige a la persona a la que se le cobra")
 
         val nuevoId = datos.compromisos.maxOf { it.idCompromiso } + 1
         val compromiso = Compromiso(
@@ -601,17 +593,15 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
             idAdminRegistro = admin.idUsuario,
             fechaRegistro = fecha
         )
-        val registros = listOfNotNull(
-            personaNueva?.let {
-                movimientoCuenta(TipoMovimiento.CUENTA_CREADA, it.idUsuario, admin.idUsuario, fecha, "Un administrador creó la cuenta al registrar un compromiso")
-            },
-            movimientoRegistro(compromiso, admin.idUsuario, fecha)
-        )
-        if (!repositorio.registrarCompromiso(compromiso, personaNueva, registros)) return null
-        return compromiso
+        val registroPersona = personaNueva?.let {
+            movimientoCuenta(TipoMovimiento.CUENTA_CREADA, it.idUsuario, admin.idUsuario, fecha, "Un administrador creó la cuenta al registrar un compromiso")
+        }
+        val registro = movimientoRegistro(compromiso, admin.idUsuario, fecha)
+        repositorio.registrarCompromiso(compromiso, personaNueva, registroPersona, registro)?.let { return fallo(it) }
+        return Result.success(compromiso)
     }
 
-    fun editarCompromiso(idCompromiso: Int, cambios: CambiosCompromiso): String? {
+    suspend fun editarCompromiso(idCompromiso: Int, cambios: CambiosCompromiso): String? {
         val admin = conPermiso(Accion.EDITAR_COMPROMISO) ?: return sinPermiso(Accion.EDITAR_COMPROMISO)
         val datos = datos.value
         datos.motivoParaNoEditar(idCompromiso)?.let { return it }
@@ -635,12 +625,11 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         )
         if (editado == actual) return "No cambiaste ningún dato"
         val registro = movimientoModificacion(actual, editado, admin.idUsuario, ahora())
-        if (!repositorio.actualizarCompromisos(listOf(editado), listOf(registro))) return "No pudimos guardar los cambios. Revisa que no esté repetido."
-        return null
+        return repositorio.actualizarCompromisos(listOf(editado), listOf(registro))
     }
 
-    fun crearCliente(datosCliente: DatosCliente): Usuario? {
-        val admin = conPermiso(Accion.GESTIONAR_CLIENTES) ?: return null
+    suspend fun crearCliente(datosCliente: DatosCliente): Result<Usuario> {
+        val admin = conPermiso(Accion.GESTIONAR_CLIENTES) ?: return fallo(sinPermiso(Accion.GESTIONAR_CLIENTES) ?: "Inicia sesión")
         val datos = datos.value
         val cliente = Usuario(
             idUsuario = siguienteIdUsuario(datos),
@@ -658,11 +647,11 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
             diasAnticipacion = 3
         )
         val registro = movimientoCuenta(TipoMovimiento.CUENTA_CREADA, cliente.idUsuario, admin.idUsuario, cliente.fechaCreacion, "Cuenta creada por un administrador")
-        if (!repositorio.registrarUsuario(cliente, CLAVE_DE_PRUEBA, registro)) return null
-        return cliente
+        repositorio.registrarUsuario(cliente, CLAVE_DE_PRUEBA, registro)?.let { return fallo(it) }
+        return Result.success(cliente)
     }
 
-    fun editarCliente(idUsuario: Int, datosCliente: DatosCliente): String? {
+    suspend fun editarCliente(idUsuario: Int, datosCliente: DatosCliente): String? {
         val admin = conPermiso(Accion.GESTIONAR_CLIENTES) ?: return sinPermiso(Accion.GESTIONAR_CLIENTES)
         val cliente = datos.value.usuarioPorId(idUsuario)
             ?.takeIf { it.rol == Rol.USUARIO_FINAL } ?: return "No encontramos al cliente"
@@ -675,20 +664,14 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
             activo = datosCliente.activo
         )
         val registro = movimientoCuenta(TipoMovimiento.DATOS_ACTUALIZADOS, cliente.idUsuario, admin.idUsuario, ahora(), cambiosDeUsuario(cliente, editado))
-        if (!repositorio.actualizarUsuario(editado, listOf(registro))) return "No pudimos guardar los cambios. Revisa que el correo no esté registrado."
-        return null
+        return repositorio.actualizarUsuario(editado, listOf(registro))
     }
 
-    fun restablecerClaveCliente(idUsuario: Int): String? {
+    suspend fun restablecerClaveCliente(idUsuario: Int): String? {
         val admin = conPermiso(Accion.GESTIONAR_CLIENTES) ?: return sinPermiso(Accion.GESTIONAR_CLIENTES)
         val cliente = datos.value.usuarioPorId(idUsuario)
             ?.takeIf { it.rol == Rol.USUARIO_FINAL } ?: return "No encontramos al cliente"
         val registro = movimientoCuenta(TipoMovimiento.CLAVE_RESTABLECIDA, cliente.idUsuario, admin.idUsuario, ahora(), "Se asignó la contraseña de prueba")
-        return if (repositorio.cambiarClave(cliente, CLAVE_DE_PRUEBA, registro)) null else "No pudimos restablecer la contraseña"
-    }
-
-    override fun onCleared() {
-        repositorio.cerrar()
-        super.onCleared()
+        return repositorio.cambiarClave(cliente, null, CLAVE_DE_PRUEBA, registro)
     }
 }

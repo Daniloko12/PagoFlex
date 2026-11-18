@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -41,17 +42,19 @@ import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
 import com.example.pagoflex.viewmodel.EditarPerfilViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun EditarPerfilScreen(
     datos: BaseDatos,
     usuario: Usuario,
-    onDatosValidos: (MisDatos) -> String?,
+    onDatosValidos: suspend (MisDatos) -> String?,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
     viewModel: EditarPerfilViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(usuario.idUsuario) { viewModel.onCargar(usuario, datos) }
 
@@ -66,7 +69,7 @@ fun EditarPerfilScreen(
         onComunaSeleccionada = viewModel::onComunaSeleccionada,
         onGuardar = {
             viewModel.onGuardar(usuario, datos)?.let { misDatos ->
-                onDatosValidos(misDatos)?.let { error -> viewModel.onErrorGuardar(error) }
+                scope.launch { onDatosValidos(misDatos)?.let { error -> viewModel.onErrorGuardar(error) } }
             }
         },
         onVolver = onVolver,

@@ -15,6 +15,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,15 +34,17 @@ import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
 import com.example.pagoflex.viewmodel.CambiarClaveViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun CambiarClaveScreen(
-    onCambioValido: (CambioClave) -> String?,
+    onCambioValido: suspend (CambioClave) -> String?,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
     viewModel: CambiarClaveViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     CambiarClaveContent(
         uiState = uiState,
@@ -50,7 +53,7 @@ fun CambiarClaveScreen(
         onConfirmacionCambia = viewModel::onConfirmacionCambia,
         onGuardar = {
             viewModel.onGuardar()?.let { cambio ->
-                onCambioValido(cambio)?.let { error -> viewModel.onErrorCambio(error) }
+                scope.launch { onCambioValido(cambio)?.let { error -> viewModel.onErrorCambio(error) } }
             }
         },
         onVolver = onVolver,

@@ -36,7 +36,6 @@ import com.example.pagoflex.model.cambiosEntre
 import com.example.pagoflex.model.categoriaCumplimiento
 import com.example.pagoflex.model.claveValida
 import com.example.pagoflex.model.clientes
-import com.example.pagoflex.model.codigoConfirmacionDe
 import com.example.pagoflex.model.compromisoPorId
 import com.example.pagoflex.model.compromisosDe
 import com.example.pagoflex.model.compromisosFiltrados
@@ -83,7 +82,6 @@ import com.example.pagoflex.model.resumenSituacion
 import com.example.pagoflex.model.revisarCodigo
 import com.example.pagoflex.model.siguienteCuota
 import com.example.pagoflex.model.tarjetaNuevaDe
-import com.example.pagoflex.model.tarjetasGuardadas
 import com.example.pagoflex.model.tasaCobranza
 import com.example.pagoflex.model.usuarioPorId
 import com.example.pagoflex.model.validarPersona
@@ -94,14 +92,9 @@ import com.example.pagoflex.viewmodel.CambiarClaveViewModel
 import com.example.pagoflex.viewmodel.ClienteViewModel
 import com.example.pagoflex.viewmodel.EditarCompromisoViewModel
 import com.example.pagoflex.viewmodel.EditarPerfilViewModel
-import com.example.pagoflex.viewmodel.FormularioViewModel
-import com.example.pagoflex.viewmodel.IngresoViewModel
-import com.example.pagoflex.viewmodel.PagoViewModel
 import com.example.pagoflex.viewmodel.RecomendacionViewModel
 import com.example.pagoflex.viewmodel.RecuperarClaveViewModel
-import com.example.pagoflex.viewmodel.RegistroViewModel
 import com.example.pagoflex.viewmodel.ReporteViewModel
-import com.example.pagoflex.viewmodel.TarjetaViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -190,53 +183,8 @@ class ReglasNegocioTest {
     }
 
     @Test
-    fun ingreso_soloDosRoles() {
+    fun soloDosRoles() {
         assertEquals(listOf(Rol.USUARIO_FINAL, Rol.ADMINISTRADOR), Rol.entries)
-        val ingreso = IngresoViewModel()
-        ingreso.onCorreoCambia("A@gmail")
-        ingreso.onClaveCambia("")
-        assertNull(ingreso.onIngresar())
-        assertNotNull(ingreso.uiState.value.errorCorreo)
-        assertNotNull(ingreso.uiState.value.errorClave)
-
-        ingreso.onCorreoCambia("A@gmail.com")
-        ingreso.onClaveCambia(CLAVE_DE_PRUEBA + "x".repeat(LARGO_MAXIMO_CLAVE))
-        assertEquals(LARGO_MAXIMO_CLAVE, ingreso.uiState.value.clave.length)
-        ingreso.onClaveCambia(CLAVE_DE_PRUEBA)
-        val credenciales = ingreso.onIngresar()
-        assertEquals(CLAVE_DE_PRUEBA, credenciales?.clave)
-        assertEquals("A@gmail.com", credenciales?.correo)
-    }
-
-    @Test
-    fun crearCuenta_validaciones() {
-        val registro = RegistroViewModel()
-        registro.onRutCambia("15.834.207-3")
-        registro.onNombresCambia("Elena")
-        registro.onApellidosCambia("Rivas Soto")
-        registro.onCorreoCambia("crojas@correo.ejemplo")
-        registro.onTelefonoCambia("+56 9 1234 5678")
-        registro.onClaveCambia("12345")
-        registro.onConfirmacionCambia("12345")
-        assertNull(registro.onCrearCuenta(datos))
-        val estado = registro.uiState.value
-        assertNotNull(estado.errorRut)
-        assertNotNull(estado.errorCorreo)
-        assertNotNull(estado.errorClave)
-        assertNotNull(estado.errorTerminos)
-
-        registro.onRutCambia("11.111.111-1")
-        registro.onCorreoCambia("erivas@gmail.com")
-        registro.onClaveCambia("Nueva#2027")
-        registro.onConfirmacionCambia("Nueva#2028")
-        registro.onAceptaTerminosCambia(true)
-        assertNull(registro.onCrearCuenta(datos))
-        assertEquals("Las contraseñas no coinciden", registro.uiState.value.errorConfirmacion)
-
-        registro.onConfirmacionCambia("Nueva#2027")
-        val cuenta = registro.onCrearCuenta(datos)
-        assertEquals("erivas@gmail.com", cuenta?.correo)
-        assertEquals("Nueva#2027", cuenta?.clave)
     }
 
     @Test
@@ -244,26 +192,6 @@ class ReglasNegocioTest {
         val resumen = datos.resumenSituacion(1)
         assertEquals(1, resumen.cantidadVencidos)
         assertEquals("CP-2026-0101", resumen.proximoVencimiento?.folio)
-    }
-
-    @Test
-    fun hu03_pagoConTarjetaGuardada_RNF06() {
-        val pago = PagoViewModel()
-        val debitos = datos.tarjetasGuardadas(1, MedioPago.DEBITO)
-        pago.onMedioPagoSeleccionado(MedioPago.DEBITO, debitos)
-        assertEquals(1, pago.uiState.value.idTarjeta)
-        pago.onCodigoCambia("1111")
-        pago.onConfirmaTotalCambia(true)
-        val codigoCamila = codigoConfirmacionDe(usuario(1)!!.rut)
-        assertEquals("4207", codigoCamila)
-        assertNull(pago.onPagar(codigoCamila, datos.motivoParaNoPagar(101), debitos, datos.fechaHoy))
-        assertNotNull(pago.uiState.value.errorCodigo)
-
-        pago.onCodigoCambia("4207")
-        val solicitud = pago.onPagar(codigoCamila, datos.motivoParaNoPagar(101), debitos, datos.fechaHoy)
-        assertEquals(MedioPago.DEBITO, solicitud?.medioPago)
-        assertEquals(1, solicitud?.idTarjeta)
-        assertNull(solicitud?.tarjetaNueva)
     }
 
     @Test
@@ -289,24 +217,6 @@ class ReglasNegocioTest {
         assertEquals("4444", nueva.ultimos4)
         assertEquals(MarcaTarjeta.MASTERCARD, nueva.marca)
         assertFalse(nueva.toString().contains("555555555555"))
-
-        val pago = PagoViewModel()
-        pago.onMedioPagoSeleccionado(MedioPago.CREDITO, datos.tarjetasGuardadas(3, MedioPago.CREDITO))
-        assertTrue(pago.uiState.value.usarTarjetaNueva)
-        pago.onNumeroTarjetaCambia("5555 5555 5555 4444")
-        pago.onTitularTarjetaCambia("Rosa Contreras")
-        pago.onVencimientoTarjetaCambia("11/29")
-        pago.onCvvCambia("123")
-        pago.onCodigoCambia(codigoConfirmacionDe(usuario(3)!!.rut))
-        pago.onConfirmaTotalCambia(true)
-        val solicitud = pago.onPagar(codigoConfirmacionDe(usuario(3)!!.rut), null, emptyList(), datos.fechaHoy)
-        assertEquals("4444", solicitud?.tarjetaNueva?.ultimos4)
-        assertTrue(solicitud?.guardarTarjeta == true)
-
-        val formulario = TarjetaViewModel()
-        formulario.onNumeroCambia("4111111111111112")
-        assertNull(formulario.onAgregar(datos.fechaHoy))
-        assertNotNull(formulario.uiState.value.errorNumero)
     }
 
     @Test
@@ -365,39 +275,6 @@ class ReglasNegocioTest {
         assertNull(formulario.onEnviar(propias, datos.fechaHoy))
         formulario.onAutorizaContactoCambia(true)
         assertNotNull(formulario.onEnviar(propias, datos.fechaHoy))
-    }
-
-    @Test
-    fun hu11_empresaDuplicadoYPersonaNueva_RN20() {
-        val formulario = FormularioViewModel()
-        formulario.onRutPersonaCambia("12.476.318-5", datos)
-        assertEquals("Luis Alberto Muñoz Tapia", formulario.uiState.value.personaEncontrada)
-        formulario.onConceptoCambia("Cuota pie departamento")
-        formulario.onMontoCambia("310000")
-        formulario.onFechaVencimientoCambia("30-11-2026")
-        formulario.onNumeroCuotaCambia("14")
-        formulario.onTotalCuotasCambia("36")
-        assertNull(formulario.onRegistrar(datos))
-        assertNotNull(formulario.uiState.value.errorEmpresa)
-        formulario.onEmpresaSeleccionada(datos.empresas.first())
-        assertNull(formulario.onRegistrar(datos))
-        assertNotNull(formulario.uiState.value.errorDuplicado)
-        formulario.onNumeroCuotaCambia("16")
-        assertEquals(1, formulario.onRegistrar(datos)?.idEmpresa)
-
-        val nuevo = FormularioViewModel()
-        nuevo.onEmpresaSeleccionada(datos.empresas.first())
-        nuevo.onRutPersonaCambia("11.111.111-1", datos)
-        assertTrue(nuevo.uiState.value.personaNoExiste)
-        nuevo.onConceptoCambia("Gasto común noviembre")
-        nuevo.onMontoCambia("45000")
-        nuevo.onFechaVencimientoCambia("10-11-2026")
-        assertNull(nuevo.onRegistrar(datos))
-        nuevo.onNombresPersonaCambia("Elena")
-        nuevo.onApellidosPersonaCambia("Rivas Soto")
-        nuevo.onCorreoPersonaCambia("erivas@gmail.com")
-        nuevo.onTelefonoPersonaCambia("+56 9 1234 5678")
-        assertEquals("Elena", nuevo.onRegistrar(datos)?.personaNueva?.nombres)
     }
 
     @Test

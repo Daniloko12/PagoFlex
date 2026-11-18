@@ -5,10 +5,13 @@ import com.example.pagoflex.data.remoto.ActualizacionCompromisos
 import com.example.pagoflex.data.remoto.ActualizacionReporte
 import com.example.pagoflex.data.remoto.ActualizacionUsuario
 import com.example.pagoflex.data.remoto.CambioEstadoRecomendacion
+import com.example.pagoflex.data.remoto.CompromisosApi
 import com.example.pagoflex.data.remoto.ErrorServidor
 import com.example.pagoflex.data.remoto.Ingreso
+import com.example.pagoflex.data.remoto.MovimientosApi
 import com.example.pagoflex.data.remoto.NuevaClave
 import com.example.pagoflex.data.remoto.NuevaFoto
+import com.example.pagoflex.data.remoto.PagosApi
 import com.example.pagoflex.data.remoto.RecuperacionClave
 import com.example.pagoflex.data.remoto.RegistroAnulacion
 import com.example.pagoflex.data.remoto.RegistroCompromiso
@@ -19,6 +22,7 @@ import com.example.pagoflex.data.remoto.RegistroUsuario
 import com.example.pagoflex.data.remoto.ResultadoVerificacion
 import com.example.pagoflex.data.remoto.ServidorPagoFlex
 import com.example.pagoflex.data.remoto.SolicitudCodigo
+import com.example.pagoflex.data.remoto.UsuariosApi
 import com.example.pagoflex.data.remoto.VerificacionCodigo
 import com.example.pagoflex.data.remoto.cargarDatosDelServidor
 import com.example.pagoflex.data.remoto.mensajeDeError
@@ -49,12 +53,15 @@ import java.time.LocalDateTime
 enum class EstadoCarga { CARGANDO, LISTA, FALLIDA }
 
 class PagoFlexRepositorio(context: Context) {
-    private val usuariosApi = ServidorPagoFlex.usuarios
-    private val compromisosApi = ServidorPagoFlex.compromisos
-    private val pagosApi = ServidorPagoFlex.pagos
-    private val movimientosApi = ServidorPagoFlex.movimientos
-
     private val sesion = SesionPreferencias(context)
+
+    private val usuariosApi: UsuariosApi get() = ServidorPagoFlex.usuarios
+    private val compromisosApi: CompromisosApi get() = ServidorPagoFlex.compromisos
+    private val pagosApi: PagosApi get() = ServidorPagoFlex.pagos
+    private val movimientosApi: MovimientosApi get() = ServidorPagoFlex.movimientos
+
+    private val _servidor = MutableStateFlow(sesion.leerServidor())
+    val servidor: StateFlow<String> = _servidor.asStateFlow()
 
     private val _datos = MutableStateFlow(baseDatosVacia())
     val datos: StateFlow<BaseDatos> = _datos.asStateFlow()
@@ -83,6 +90,10 @@ class PagoFlexRepositorio(context: Context) {
     private val _compromisosEncontrados = MutableStateFlow<List<Compromiso>>(emptyList())
     val compromisosEncontrados: StateFlow<List<Compromiso>> = _compromisosEncontrados.asStateFlow()
 
+    init {
+        ServidorPagoFlex.configurar(_servidor.value)
+    }
+
     suspend fun refrescar(): Boolean = try {
         val nuevos = cargarDatosDelServidor(DatosAnexo9.FECHA_HOY)
         _datos.value = nuevos
@@ -101,6 +112,15 @@ class PagoFlexRepositorio(context: Context) {
 
     suspend fun reintentarConexion(): Boolean {
         _cargaInicial.value = EstadoCarga.CARGANDO
+        return refrescar()
+    }
+
+    suspend fun cambiarServidor(direccion: String): Boolean {
+        _servidor.value = direccion
+        sesion.guardarServidor(direccion)
+        ServidorPagoFlex.configurar(direccion)
+        _cargaInicial.value = EstadoCarga.CARGANDO
+        _datos.value = baseDatosVacia()
         return refrescar()
     }
 

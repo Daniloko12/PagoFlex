@@ -1,10 +1,13 @@
 package com.example.pagoflex.viewmodel
 
-import android.app.Application
 import android.graphics.Bitmap
 import android.net.Uri
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.pagoflex.data.ConvertidorImagen
 import com.example.pagoflex.data.EstadoCarga
 import com.example.pagoflex.data.PagoFlexRepositorio
@@ -94,15 +97,23 @@ import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.LocalTime
 
-class PagoFlexViewModel(application: Application) : AndroidViewModel(application) {
+class PagoFlexViewModel(
+    private val repositorio: PagoFlexRepositorio,
+    private val leerImagen: (Uri) -> Bitmap?
+) : ViewModel() {
     companion object {
         const val MENSAJE_CLAVE_INSEGURA = "La contraseña no cumple los 5 requisitos de seguridad"
         const val INTERVALO_SINCRONIZACION_MS = 60_000L
         const val MENSAJE_FOTO_ILEGIBLE = "No pudimos leer esa imagen. Prueba con otra."
         const val MENSAJE_PAGO_FALLIDO = "No pudimos confirmar el pago. No se hizo ningún cobro."
-    }
 
-    private val repositorio = PagoFlexRepositorio(application)
+        val Factory: ViewModelProvider.Factory = viewModelFactory {
+            initializer {
+                val aplicacion = checkNotNull(this[APPLICATION_KEY])
+                PagoFlexViewModel(PagoFlexRepositorio(aplicacion)) { uri -> ConvertidorImagen.desdeUri(aplicacion, uri) }
+            }
+        }
+    }
 
     val datos: StateFlow<BaseDatos> = repositorio.datos
 
@@ -242,7 +253,7 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         guardarAvatar(ConvertidorImagen.aBytes(foto))
 
     suspend fun cambiarAvatarDesdeGaleria(uri: Uri): String? {
-        val imagen = ConvertidorImagen.desdeUri(getApplication(), uri) ?: return MENSAJE_FOTO_ILEGIBLE
+        val imagen = leerImagen(uri) ?: return MENSAJE_FOTO_ILEGIBLE
         return guardarAvatar(ConvertidorImagen.aBytes(imagen))
     }
 

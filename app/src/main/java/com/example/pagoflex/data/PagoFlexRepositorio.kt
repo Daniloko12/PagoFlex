@@ -52,8 +52,11 @@ import java.time.LocalDateTime
 
 enum class EstadoCarga { CARGANDO, LISTA, FALLIDA }
 
-class PagoFlexRepositorio(context: Context) {
-    private val sesion = SesionPreferencias(context)
+class PagoFlexRepositorio(
+    private val sesion: SesionPreferencias,
+    private val cargarDatos: suspend () -> BaseDatos = { cargarDatosDelServidor(DatosAnexo9.FECHA_HOY) }
+) {
+    constructor(context: Context) : this(SesionPreferencias(context))
 
     private val usuariosApi: UsuariosApi get() = ServidorPagoFlex.usuarios
     private val compromisosApi: CompromisosApi get() = ServidorPagoFlex.compromisos
@@ -95,7 +98,7 @@ class PagoFlexRepositorio(context: Context) {
     }
 
     suspend fun refrescar(): Boolean = try {
-        val nuevos = cargarDatosDelServidor(DatosAnexo9.FECHA_HOY)
+        val nuevos = cargarDatos()
         _datos.value = nuevos
         _usuarioActual.value = nuevos.usuarioPorId(sesion.leer())
         buscarCompromisos(_busqueda.value)

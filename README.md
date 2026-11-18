@@ -147,7 +147,7 @@ Cada microservicio sigue las capas `controller` → `service` → `repository` (
    - Swagger de cada uno: http://localhost:8081/swagger-ui.html, :8082, :8083 y :8084.
    - Consola de la base de datos: http://localhost:8081/h2-console, con JDBC URL `jdbc:h2:file:~/pagoflex-datos/usuarios`, usuario `sa` y sin contraseña (en cada puerto se cambia `usuarios` por el nombre de su base).
 
-Para volver a los datos de prueba: `POST /api/admin/restablecer` en cada microservicio, o el botón "Restablecer datos de prueba" de la app.
+Para volver a los datos de prueba: `POST /api/admin/restablecer` en cada microservicio, o en la app, en el inicio de sesión, el menú **⋮** (arriba a la derecha) → **Restablecer datos de demostración**.
 
 ### Presentar con varios PCs
 
@@ -158,7 +158,7 @@ Un PC levanta los 4 microservicios (el **servidor**) y los demás PCs abren la a
    - Linux (Fedora/Bazzite): `sudo firewall-cmd --permanent --add-port=8081-8084/tcp` y luego `sudo firewall-cmd --reload`.
    - Windows: al levantar los microservicios por primera vez, permitir Java en **redes privadas**, y que la red wifi esté como **privada**.
 3. **Desde otro PC**, abrir en el navegador `http://192.168.1.20:8082/api/empresas`. Si aparece el JSON, la red funciona.
-4. **En la app del otro PC**, en la pantalla de inicio de sesión tocar **Servidor: … · Cambiar**, escribir `192.168.1.20` y **Conectar**. La app lo recuerda.
+4. **En la app del otro PC**, en el inicio de sesión tocar el menú **⋮** (arriba a la derecha) → **Servidor**, escribir `192.168.1.20` y **Conectar**. La app lo recuerda.
 
 En el emulador del mismo PC que el servidor se usa `10.0.2.2`, que viene por defecto.
 
@@ -178,7 +178,7 @@ Con un MySQL encendido (por ejemplo XAMPP), cada microservicio crea su base al i
 5. Levantar el backend desde VS Code (ver [Levantar el backend](#levantar-el-backend)).
 6. Presionar **Run 'app'**.
 
-La app se conecta a `10.0.2.2`, que es la dirección del PC visto desde el emulador. Para usar otro PC o un teléfono real, en el inicio de sesión se toca **Servidor: … · Cambiar** y se escribe la IP del PC que tiene los microservicios.
+La app se conecta a `10.0.2.2`, que es la dirección del PC visto desde el emulador. Para usar otro PC o un teléfono real, en el inicio de sesión se toca el menú **⋮** → **Servidor** y se escribe la IP del PC que tiene los microservicios.
 
 ### Cuentas de prueba
 

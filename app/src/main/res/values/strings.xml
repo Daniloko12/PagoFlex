@@ -16,13 +16,11 @@
     <string name="btn_cuentas_prueba">Usar una cuenta de prueba</string>
     <string name="titulo_cuentas_prueba">Cuentas de prueba</string>
     <string name="texto_cuentas_prueba">Toca una cuenta para completar el correo y la contraseña. Todas usan la contraseña %1$s.</string>
-    <string name="aviso_confianza">Tu contraseña se guarda cifrada y de tus tarjetas solo guardamos los 4 últimos números.</string>
     <string name="texto_sin_cuenta">¿No tienes cuenta?</string>
     <string name="btn_crear_cuenta">Crear cuenta</string>
 
     <string name="titulo_registro">Crear cuenta</string>
     <string name="btn_ya_tengo_cuenta">Ya tengo cuenta: iniciar sesión</string>
-    <string name="aviso_demo">Versión de demostración con datos ficticios.</string>
 
     <string name="btn_restablecer_datos">Restablecer datos de demostración</string>
     <string name="dialogo_restablecer_titulo">¿Restablecer los datos?</string>
@@ -127,6 +125,7 @@
     <string name="permiso_galeria_denegado">Sin permiso de fotos no se puede abrir la galería</string>
     <string name="btn_ajustes">Ajustes</string>
 
+    <string name="cd_mas_opciones">Más opciones</string>
     <string name="cd_logo">Logo de PagoFlex</string>
     <string name="cd_banner">Ilustración de tarjetas de pago y un calendario</string>
     <string name="cd_avatar">Foto de perfil</string>

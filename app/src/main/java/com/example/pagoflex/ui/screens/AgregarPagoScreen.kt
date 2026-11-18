@@ -69,7 +69,7 @@ import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
-import com.example.pagoflex.viewmodel.FormularioViewModel
+import com.example.pagoflex.viewmodel.CompromisoViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -82,9 +82,9 @@ fun AgregarPagoScreen(
     onAgregar: (NuevoCompromiso, ByteArray?) -> Unit,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
-    viewModel: FormularioViewModel = viewModel()
+    viewModel: CompromisoViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.formulario.collectAsStateWithLifecycle()
     val imagenBoleta by viewModel.imagenBoleta.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()

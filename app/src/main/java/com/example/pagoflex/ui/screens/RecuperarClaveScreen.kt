@@ -65,7 +65,7 @@ import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
-import com.example.pagoflex.viewmodel.RecuperarClaveViewModel
+import com.example.pagoflex.viewmodel.CuentaViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -76,9 +76,9 @@ fun RecuperarClaveScreen(
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
     onPedirAyuda: (String) -> Unit = {},
-    viewModel: RecuperarClaveViewModel = viewModel()
+    viewModel: CuentaViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.recuperacion.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var codigoSinNotificar by remember { mutableStateOf<String?>(null) }
@@ -114,29 +114,29 @@ fun RecuperarClaveScreen(
 
     RecuperarClaveContent(
         uiState = uiState,
-        onCorreoCambia = viewModel::onCorreoCambia,
+        onCorreoCambia = viewModel::onCorreoRecuperacionCambia,
         onCodigoCambia = viewModel::onCodigoCambia,
-        onClaveNuevaCambia = viewModel::onClaveNuevaCambia,
-        onConfirmacionCambia = viewModel::onConfirmacionCambia,
+        onClaveNuevaCambia = viewModel::onClaveRecuperacionCambia,
+        onConfirmacionCambia = viewModel::onConfirmacionRecuperacionCambia,
         onSolicitarCodigo = { viewModel.onSolicitarCodigo()?.let { enviarCodigo(it, esReenvio = false) } },
         onReenviarCodigo = { viewModel.onSolicitarCodigo()?.let { enviarCodigo(it, esReenvio = true) } },
         onVerificarCodigo = {
             viewModel.onVerificarCodigo()?.let { codigo ->
-                val estado = viewModel.uiState.value
+                val estado = viewModel.recuperacion.value
                 scope.launch {
                     val error = onVerificarCodigo(DatosRecuperacion(estado.correo), codigo)
                     if (error == null) viewModel.onCodigoCorrecto() else viewModel.onErrorCodigo(error)
                 }
             }
         },
-        onCambiarDatos = viewModel::onCambiarDatos,
+        onCambiarDatos = viewModel::onCambiarDatosRecuperacion,
         onGuardar = {
-            viewModel.onGuardarClave()?.let { recuperada ->
+            viewModel.onGuardarClaveRecuperada()?.let { recuperada ->
                 scope.launch { onClaveValida(recuperada)?.let { error -> viewModel.onErrorRecuperacion(error) } }
             }
         },
         onVolver = onVolver,
-        onPedirAyuda = { onPedirAyuda(viewModel.uiState.value.correo) },
+        onPedirAyuda = { onPedirAyuda(viewModel.recuperacion.value.correo) },
         snackbarHostState = snackbarHostState
     )
 

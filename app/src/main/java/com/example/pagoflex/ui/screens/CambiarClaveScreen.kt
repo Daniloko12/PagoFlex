@@ -33,7 +33,7 @@ import com.example.pagoflex.ui.components.RequisitosClave
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
-import com.example.pagoflex.viewmodel.CambiarClaveViewModel
+import com.example.pagoflex.viewmodel.CuentaViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -41,19 +41,19 @@ fun CambiarClaveScreen(
     onCambioValido: suspend (CambioClave) -> String?,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
-    viewModel: CambiarClaveViewModel = viewModel()
+    viewModel: CuentaViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.cambioClave.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
     CambiarClaveContent(
         uiState = uiState,
         onClaveActualCambia = viewModel::onClaveActualCambia,
         onClaveNuevaCambia = viewModel::onClaveNuevaCambia,
-        onConfirmacionCambia = viewModel::onConfirmacionCambia,
+        onConfirmacionCambia = viewModel::onConfirmacionClaveNuevaCambia,
         onGuardar = {
-            viewModel.onGuardar()?.let { cambio ->
-                scope.launch { onCambioValido(cambio)?.let { error -> viewModel.onErrorCambio(error) } }
+            viewModel.onGuardarCambioClave()?.let { cambio ->
+                scope.launch { onCambioValido(cambio)?.let { error -> viewModel.onErrorCambioClave(error) } }
             }
         },
         onVolver = onVolver,

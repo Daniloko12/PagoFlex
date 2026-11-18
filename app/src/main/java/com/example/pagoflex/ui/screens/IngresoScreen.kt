@@ -64,7 +64,7 @@ import com.example.pagoflex.ui.components.OpcionCuenta
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
 import com.example.pagoflex.ui.theme.coloresExtra
-import com.example.pagoflex.viewmodel.IngresoViewModel
+import com.example.pagoflex.viewmodel.CuentaViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -79,16 +79,16 @@ fun IngresoScreen(
     snackbarHostState: SnackbarHostState,
     servidor: String = SERVIDOR_EMULADOR,
     onCambiarServidor: (String) -> Unit = {},
-    viewModel: IngresoViewModel = viewModel()
+    viewModel: CuentaViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.ingreso.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
     IngresoContent(
         uiState = uiState,
         cuentasDePrueba = datos.usuariosDelRol(Rol.USUARIO_FINAL) + datos.usuariosDelRol(Rol.ADMINISTRADOR),
-        onCorreoCambia = viewModel::onCorreoCambia,
-        onClaveCambia = viewModel::onClaveCambia,
+        onCorreoCambia = viewModel::onCorreoIngresoCambia,
+        onClaveCambia = viewModel::onClaveIngresoCambia,
         onIngresar = {
             viewModel.onIngresar()?.let { credenciales ->
                 scope.launch { onIngresar(credenciales)?.let { error -> viewModel.onErrorIngreso(error) } }

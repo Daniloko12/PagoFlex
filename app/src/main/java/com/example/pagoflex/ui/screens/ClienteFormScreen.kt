@@ -39,7 +39,7 @@ import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
-import com.example.pagoflex.viewmodel.ClienteViewModel
+import com.example.pagoflex.viewmodel.CuentaViewModel
 
 @Composable
 fun ClienteFormScreen(
@@ -48,25 +48,25 @@ fun ClienteFormScreen(
     onClienteValido: (DatosCliente) -> Unit,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
-    viewModel: ClienteViewModel = viewModel()
+    viewModel: CuentaViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.cliente.collectAsStateWithLifecycle()
 
     LaunchedEffect(cliente?.idUsuario) {
-        if (cliente != null) viewModel.onCargar(cliente, datos)
+        if (cliente != null) viewModel.onCargarCliente(cliente, datos)
     }
 
     ClienteFormContent(
         uiState = uiState,
         comunas = datos.comunas,
-        onRutCambia = viewModel::onRutCambia,
-        onNombresCambia = viewModel::onNombresCambia,
-        onApellidosCambia = viewModel::onApellidosCambia,
-        onCorreoCambia = viewModel::onCorreoCambia,
-        onTelefonoCambia = viewModel::onTelefonoCambia,
-        onComunaSeleccionada = viewModel::onComunaSeleccionada,
-        onActivoCambia = viewModel::onActivoCambia,
-        onGuardar = { viewModel.onGuardar(datos)?.let { datosCliente -> onClienteValido(datosCliente) } },
+        onRutCambia = viewModel::onRutClienteCambia,
+        onNombresCambia = viewModel::onNombresClienteCambia,
+        onApellidosCambia = viewModel::onApellidosClienteCambia,
+        onCorreoCambia = viewModel::onCorreoClienteCambia,
+        onTelefonoCambia = viewModel::onTelefonoClienteCambia,
+        onComunaSeleccionada = viewModel::onComunaClienteSeleccionada,
+        onActivoCambia = viewModel::onActivoClienteCambia,
+        onGuardar = { viewModel.onGuardarCliente(datos)?.let { datosCliente -> onClienteValido(datosCliente) } },
         onVolver = onVolver,
         snackbarHostState = snackbarHostState
     )

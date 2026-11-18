@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         Notificaciones.crearCanales(this)
         setContent {
-            val pagoFlexViewModel: PagoFlexViewModel = viewModel()
+            val pagoFlexViewModel: PagoFlexViewModel = viewModel(factory = PagoFlexViewModel.Factory)
             val modoOscuro by pagoFlexViewModel.modoOscuro.collectAsStateWithLifecycle()
 
             DisposableEffect(modoOscuro) {

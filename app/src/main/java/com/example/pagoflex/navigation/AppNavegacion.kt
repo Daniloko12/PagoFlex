@@ -86,7 +86,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun AppNavegacion(
-    pagoFlexViewModel: PagoFlexViewModel = viewModel()
+    pagoFlexViewModel: PagoFlexViewModel = viewModel(factory = PagoFlexViewModel.Factory)
 ) {
     val navController = rememberNavController()
 

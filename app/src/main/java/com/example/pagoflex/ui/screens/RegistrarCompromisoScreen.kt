@@ -38,7 +38,7 @@ import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
-import com.example.pagoflex.viewmodel.FormularioViewModel
+import com.example.pagoflex.viewmodel.CompromisoViewModel
 import java.time.LocalDate
 
 @Composable
@@ -48,9 +48,9 @@ fun RegistrarCompromisoScreen(
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
     rutInicial: String? = null,
-    viewModel: FormularioViewModel = viewModel()
+    viewModel: CompromisoViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.formulario.collectAsStateWithLifecycle()
 
     LaunchedEffect(rutInicial) {
         if (rutInicial != null) viewModel.onUsarRut(rutInicial, datos)
@@ -72,7 +72,7 @@ fun RegistrarCompromisoScreen(
         onNumeroCuotaCambia = viewModel::onNumeroCuotaCambia,
         onTotalCuotasCambia = viewModel::onTotalCuotasCambia,
         onRegistrar = { viewModel.onRegistrar(datos)?.let { nuevo -> onRegistroExitoso(nuevo) } },
-        onLimpiar = viewModel::onLimpiar,
+        onLimpiar = viewModel::onLimpiarFormulario,
         onVolver = onVolver,
         snackbarHostState = snackbarHostState
     )

@@ -1,12 +1,13 @@
 package com.example.pagoflex.data
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.example.pagoflex.model.SERVIDOR_EMULADOR
 import java.time.LocalDateTime
 
-class SesionPreferencias(context: Context) {
-    private val prefs = context.getSharedPreferences(NOMBRE_ARCHIVO, Context.MODE_PRIVATE)
+class SesionPreferencias(private val prefs: SharedPreferences) {
+    constructor(context: Context) : this(context.getSharedPreferences(NOMBRE_ARCHIVO, Context.MODE_PRIVATE))
 
     companion object {
         const val NOMBRE_ARCHIVO = "sesion"

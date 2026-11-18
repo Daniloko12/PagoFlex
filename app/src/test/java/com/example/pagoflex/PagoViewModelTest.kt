@@ -3,10 +3,8 @@ package com.example.pagoflex
 import com.example.pagoflex.model.BaseDatos
 import com.example.pagoflex.model.MarcaTarjeta
 import com.example.pagoflex.model.MedioPago
-import com.example.pagoflex.model.codigoConfirmacionDe
 import com.example.pagoflex.model.motivoParaNoPagar
 import com.example.pagoflex.model.tarjetasGuardadas
-import com.example.pagoflex.model.usuarioPorId
 import com.example.pagoflex.viewmodel.PagoViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -17,33 +15,28 @@ import java.time.YearMonth
 
 class PagoViewModelTest {
     private val datos = BaseDatos()
-    private val codigoCamila = codigoConfirmacionDe(datos.usuarioPorId(1)!!.rut)
     private val debitosCamila = datos.tarjetasGuardadas(1, MedioPago.DEBITO)
 
     @Test
-    fun pago_codigoIncorrectoYSinConfirmarElTotal_noSePaga() {
+    fun pago_sinMedioDePagoOSinConexion_noSePaga() {
         val viewModel = PagoViewModel()
+        assertNull(viewModel.onPagar(null, emptyList(), datos.fechaHoy))
+        assertEquals("Elige cómo quieres pagar", viewModel.pago.value.errorMedioPago)
+
         viewModel.onMedioPagoSeleccionado(MedioPago.DEBITO, debitosCamila)
-        viewModel.onCodigoCambia("1111")
-        assertNull(viewModel.onPagar(codigoCamila, datos.motivoParaNoPagar(101), debitosCamila, datos.fechaHoy))
-        assertEquals(
-            "El código no coincide. Son los 4 últimos números de tu RUT, antes del guion",
-            viewModel.pago.value.errorCodigo
-        )
-        assertEquals("Confirma que revisaste el total a pagar", viewModel.pago.value.errorConfirmacion)
+        val sinConexion = datos.motivoParaNoPagar(101, sinConexion = true)
+        assertNull(viewModel.onPagar(sinConexion, debitosCamila, datos.fechaHoy))
+        assertEquals(sinConexion, viewModel.pago.value.errorPago)
         assertFalse(viewModel.pago.value.pagoExitoso)
     }
 
     @Test
-    fun pago_conTarjetaGuardada_seEligeSolaYSeEntregaLaSolicitud() {
+    fun pago_conTarjetaGuardada_seEligeSolaYSePagaDeUnaVez() {
         val viewModel = PagoViewModel()
         viewModel.onMedioPagoSeleccionado(MedioPago.DEBITO, debitosCamila)
         assertEquals(1, viewModel.pago.value.idTarjeta)
-        viewModel.onCodigoCambia("42-07")
-        assertEquals("4207", viewModel.pago.value.codigo)
-        viewModel.onConfirmaTotalCambia(true)
 
-        val solicitud = viewModel.onPagar(codigoCamila, datos.motivoParaNoPagar(101), debitosCamila, datos.fechaHoy)
+        val solicitud = viewModel.onPagar(datos.motivoParaNoPagar(101), debitosCamila, datos.fechaHoy)
         assertEquals(MedioPago.DEBITO, solicitud?.medioPago)
         assertEquals(1, solicitud?.idTarjeta)
         assertNull(solicitud?.tarjetaNueva)
@@ -60,11 +53,8 @@ class PagoViewModelTest {
         viewModel.onVencimientoTarjetaCambia("11/29")
         viewModel.onCvvCambia("123")
         viewModel.onGuardarTarjetaCambia(true)
-        val codigoRosa = codigoConfirmacionDe(datos.usuarioPorId(3)!!.rut)
-        viewModel.onCodigoCambia(codigoRosa)
-        viewModel.onConfirmaTotalCambia(true)
 
-        val solicitud = viewModel.onPagar(codigoRosa, null, emptyList(), datos.fechaHoy)
+        val solicitud = viewModel.onPagar(null, emptyList(), datos.fechaHoy)
         assertEquals("4444", solicitud?.tarjetaNueva?.ultimos4)
         assertEquals(MarcaTarjeta.MASTERCARD, solicitud?.tarjetaNueva?.marca)
         assertFalse(solicitud.toString().contains("555555555555"))

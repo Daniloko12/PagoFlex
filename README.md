@@ -204,7 +204,7 @@ Para probar el escáner en el emulador: arrastrar una imagen de una boleta a la 
   | `PagoFlexViewModelTest` | Carga de datos y sesión guardada, cambio de contraseña sin sesión o insegura, compromiso ajeno o sin conexión, búsqueda del administrador y cierre de sesión |
   | `CuentaViewModelTest` | Inicio de sesión con errores, registro con RUT repetido y sin términos, cambio de contraseña rechazado y cambio de contraseña válido |
   | `CompromisoViewModelTest` | Registro sin organización o con cuota repetida, boleta escaneada, edición con fecha pasada o cuota repetida, reporte "Otro" sin comentario |
-  | `PagoViewModelTest` | Código incorrecto, pago con tarjeta guardada, pago con tarjeta nueva y agregar tarjeta vencida o válida |
+  | `PagoViewModelTest` | Pago sin medio de pago o sin conexión, pago con tarjeta guardada, pago con tarjeta nueva y agregar tarjeta vencida o válida |
 
   `PagoFlexViewModelTest` usa un repositorio con datos de prueba y `PreferenciasEnMemoria` en lugar del servidor y del teléfono, y `ReglaCorrutinas` con `kotlinx-coroutines-test` para las corrutinas.
 - Además hay pruebas del modelo: reglas de negocio, contraseña, código de recuperación, filtros, permisos, movimientos, búsqueda, IP del servidor, lector de boletas, mensajes de correo y formato JSON del servidor.

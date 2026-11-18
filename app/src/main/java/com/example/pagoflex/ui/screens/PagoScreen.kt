@@ -18,7 +18,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -40,7 +39,6 @@ import com.example.pagoflex.model.totalAPagar
 import com.example.pagoflex.ui.components.BarraSuperior
 import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.BotonSecundario
-import com.example.pagoflex.ui.components.CampoContrasena
 import com.example.pagoflex.ui.components.CamposTarjeta
 import com.example.pagoflex.ui.components.CasillaConTexto
 import com.example.pagoflex.ui.components.FilaDato
@@ -55,7 +53,6 @@ import com.example.pagoflex.viewmodel.PagoViewModel
 fun PagoScreen(
     datos: BaseDatos,
     compromiso: Compromiso,
-    codigoCorrecto: String,
     motivoNoPagar: () -> String?,
     onPagoValido: (SolicitudPago) -> Unit,
     onVolver: () -> Unit,
@@ -79,10 +76,8 @@ fun PagoScreen(
         onVencimientoTarjetaCambia = viewModel::onVencimientoTarjetaCambia,
         onCvvCambia = viewModel::onCvvCambia,
         onGuardarTarjetaCambia = viewModel::onGuardarTarjetaCambia,
-        onCodigoCambia = viewModel::onCodigoCambia,
-        onConfirmaTotalCambia = viewModel::onConfirmaTotalCambia,
         onPagar = {
-            viewModel.onPagar(codigoCorrecto, motivoNoPagar(), tarjetas, datos.fechaHoy)
+            viewModel.onPagar(motivoNoPagar(), tarjetas, datos.fechaHoy)
                 ?.let { solicitud -> onPagoValido(solicitud) }
         },
         onVolver = onVolver,
@@ -103,8 +98,6 @@ fun PagoContent(
     onVencimientoTarjetaCambia: (String) -> Unit,
     onCvvCambia: (String) -> Unit,
     onGuardarTarjetaCambia: (Boolean) -> Unit,
-    onCodigoCambia: (String) -> Unit,
-    onConfirmaTotalCambia: (Boolean) -> Unit,
     onPagar: () -> Unit,
     onVolver: () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
@@ -204,26 +197,6 @@ fun PagoContent(
                 }
             }
 
-            TarjetaSeccion(
-                titulo = "Confirma que eres tú",
-                subtitulo = "Así nadie más puede pagar desde tu teléfono."
-            ) {
-                CampoContrasena(
-                    valor = uiState.codigo,
-                    onValorCambia = onCodigoCambia,
-                    etiqueta = "Código de confirmación",
-                    error = uiState.errorCodigo,
-                    ayuda = "Son los 4 últimos números de tu RUT, antes del guion",
-                    tipoTeclado = KeyboardType.NumberPassword
-                )
-                CasillaConTexto(
-                    texto = "Revisé el total a pagar: $total",
-                    marcado = uiState.confirmaTotal,
-                    onCambio = onConfirmaTotalCambia,
-                    error = uiState.errorConfirmacion
-                )
-            }
-
             MensajeAnimado(texto = uiState.errorPago)
 
             BotonPrincipal(
@@ -253,8 +226,7 @@ private fun PagoPreview() {
             tarjetas = datos.tarjetasGuardadas(1, MedioPago.DEBITO),
             onMedioPagoSeleccionado = {}, onTarjetaSeleccionada = {}, onNumeroTarjetaCambia = {},
             onTitularTarjetaCambia = {}, onVencimientoTarjetaCambia = {}, onCvvCambia = {},
-            onGuardarTarjetaCambia = {}, onCodigoCambia = {},
-            onConfirmaTotalCambia = {}, onPagar = {}
+            onGuardarTarjetaCambia = {}, onPagar = {}
         )
     }
 }
@@ -270,21 +242,17 @@ private fun PagoConErroresPreview() {
                 usarTarjetaNueva = true,
                 numeroTarjeta = "4111111111111112",
                 vencimientoTarjeta = "0525",
-                codigo = "1234",
                 errorNumeroTarjeta = "Revisa el número: no corresponde a una tarjeta válida",
                 errorTitularTarjeta = "Ingresa el nombre tal como aparece en la tarjeta",
                 errorVencimientoTarjeta = "Esta tarjeta está vencida",
-                errorCvv = "Ingresa el código de seguridad",
-                errorCodigo = "El código no coincide. Son los 4 últimos números de tu RUT, antes del guion",
-                errorConfirmacion = "Confirma que revisaste el total a pagar"
+                errorCvv = "Ingresa el código de seguridad"
             ),
             datos = datos,
             compromiso = datos.compromisoPorId(101) ?: datos.compromisos.first(),
             tarjetas = datos.tarjetasGuardadas(1, MedioPago.CREDITO),
             onMedioPagoSeleccionado = {}, onTarjetaSeleccionada = {}, onNumeroTarjetaCambia = {},
             onTitularTarjetaCambia = {}, onVencimientoTarjetaCambia = {}, onCvvCambia = {},
-            onGuardarTarjetaCambia = {}, onCodigoCambia = {},
-            onConfirmaTotalCambia = {}, onPagar = {}
+            onGuardarTarjetaCambia = {}, onPagar = {}
         )
     }
 }

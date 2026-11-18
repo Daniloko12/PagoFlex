@@ -1,5 +1,6 @@
 package com.example.pagoflex.data.remoto
 
+import com.example.pagoflex.model.SERVIDOR_EMULADOR
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
@@ -11,7 +12,6 @@ import java.time.YearMonth
 import java.util.concurrent.TimeUnit
 
 object ServidorPagoFlex {
-    const val HOST = "10.0.2.2"
     const val PUERTO_USUARIOS = 8081
     const val PUERTO_COMPROMISOS = 8082
     const val PUERTO_PAGOS = 8083
@@ -30,17 +30,34 @@ object ServidorPagoFlex {
         .writeTimeout(20, TimeUnit.SECONDS)
         .build()
 
-    private fun retrofit(puerto: Int): Retrofit = Retrofit.Builder()
-        .baseUrl("http://$HOST:$puerto/")
+    private fun <T> crear(host: String, puerto: Int, api: Class<T>): T = Retrofit.Builder()
+        .baseUrl("http://$host:$puerto/")
         .client(clienteHttp)
         .addConverterFactory(GsonConverterFactory.create(gson))
         .build()
+        .create(api)
 
-    val usuarios: UsuariosApi by lazy { retrofit(PUERTO_USUARIOS).create(UsuariosApi::class.java) }
+    private class Apis(val host: String) {
+        val usuarios: UsuariosApi = crear(host, PUERTO_USUARIOS, UsuariosApi::class.java)
+        val compromisos: CompromisosApi = crear(host, PUERTO_COMPROMISOS, CompromisosApi::class.java)
+        val pagos: PagosApi = crear(host, PUERTO_PAGOS, PagosApi::class.java)
+        val movimientos: MovimientosApi = crear(host, PUERTO_MOVIMIENTOS, MovimientosApi::class.java)
+    }
 
-    val compromisos: CompromisosApi by lazy { retrofit(PUERTO_COMPROMISOS).create(CompromisosApi::class.java) }
+    @Volatile
+    private var apis = Apis(SERVIDOR_EMULADOR)
 
-    val pagos: PagosApi by lazy { retrofit(PUERTO_PAGOS).create(PagosApi::class.java) }
+    val host: String get() = apis.host
 
-    val movimientos: MovimientosApi by lazy { retrofit(PUERTO_MOVIMIENTOS).create(MovimientosApi::class.java) }
+    fun configurar(host: String) {
+        if (host != apis.host) apis = Apis(host)
+    }
+
+    val usuarios: UsuariosApi get() = apis.usuarios
+
+    val compromisos: CompromisosApi get() = apis.compromisos
+
+    val pagos: PagosApi get() = apis.pagos
+
+    val movimientos: MovimientosApi get() = apis.movimientos
 }

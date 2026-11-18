@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.example.pagoflex.data.SesionPreferencias
+import com.example.pagoflex.data.remoto.ServidorPagoFlex
 import com.example.pagoflex.data.remoto.cargarDatosDelServidor
 import com.example.pagoflex.model.DatosAnexo9
 import com.example.pagoflex.model.proximoRecordatorio
@@ -18,6 +19,8 @@ class RecordatorioWorker(context: Context, parametros: WorkerParameters) : Corou
 
     override suspend fun doWork(): Result {
         val esPrueba = inputData.getBoolean(DATO_PRUEBA, false)
+        val sesion = SesionPreferencias(applicationContext)
+        ServidorPagoFlex.configurar(sesion.leerServidor())
         val datos = try {
             cargarDatosDelServidor(DatosAnexo9.FECHA_HOY)
         } catch (e: CancellationException) {
@@ -25,7 +28,7 @@ class RecordatorioWorker(context: Context, parametros: WorkerParameters) : Corou
         } catch (e: Exception) {
             return if (esPrueba) Result.failure() else Result.retry()
         }
-        val usuario = datos.usuarioPorId(SesionPreferencias(applicationContext).leer()) ?: return Result.success()
+        val usuario = datos.usuarioPorId(sesion.leer()) ?: return Result.success()
         if (esPrueba) {
             val proximo = datos.proximoRecordatorio(usuario)
             if (proximo != null) Notificaciones.mostrarRecordatorio(applicationContext, proximo)

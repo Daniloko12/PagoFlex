@@ -98,6 +98,7 @@ fun AppNavegacion(
     val busqueda by pagoFlexViewModel.busqueda.collectAsStateWithLifecycle()
     val compromisosEncontrados by pagoFlexViewModel.compromisosEncontrados.collectAsStateWithLifecycle()
     val cargaInicial by pagoFlexViewModel.cargaInicial.collectAsStateWithLifecycle()
+    val servidor by pagoFlexViewModel.servidor.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -159,7 +160,9 @@ fun AppNavegacion(
     if (cargaInicial != EstadoCarga.LISTA) {
         ConexionScreen(
             cargando = cargaInicial == EstadoCarga.CARGANDO,
-            onReintentar = pagoFlexViewModel::reintentarConexion
+            servidor = servidor,
+            onReintentar = pagoFlexViewModel::reintentarConexion,
+            onCambiarServidor = pagoFlexViewModel::cambiarServidor
         )
         return
     }
@@ -197,7 +200,9 @@ fun AppNavegacion(
                 onRecuperarClave = { navController.navigate(Ruta.RecuperarClave.ruta) },
                 modoOscuro = modoOscuro,
                 onCambiarModo = pagoFlexViewModel::cambiarModoOscuro,
-                snackbarHostState = snackbarHostState
+                snackbarHostState = snackbarHostState,
+                servidor = servidor,
+                onCambiarServidor = pagoFlexViewModel::cambiarServidor
             )
         }
 

@@ -7,28 +7,54 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.pagoflex.R
+import com.example.pagoflex.model.SERVIDOR_EMULADOR
+import com.example.pagoflex.model.errorDireccionServidor
 import com.example.pagoflex.ui.components.BotonPrincipal
+import com.example.pagoflex.ui.components.BotonSecundario
+import com.example.pagoflex.ui.components.CampoTexto
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
 
 @Composable
 fun ConexionScreen(
     cargando: Boolean,
-    onReintentar: () -> Unit
+    servidor: String,
+    onReintentar: () -> Unit,
+    onCambiarServidor: (String) -> Unit
 ) {
+    var cambiarServidor by remember { mutableStateOf(false) }
+
+    if (cambiarServidor) {
+        DialogoServidor(
+            actual = servidor,
+            onConectar = { direccion ->
+                cambiarServidor = false
+                onCambiarServidor(direccion)
+            },
+            onCancelar = { cambiarServidor = false }
+        )
+    }
+
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier
@@ -45,7 +71,7 @@ fun ConexionScreen(
             if (cargando) {
                 CircularProgressIndicator()
                 Text(
-                    text = "Conectando con los servicios de PagoFlex…",
+                    text = "Conectando con los servicios de PagoFlex en $servidor…",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
@@ -56,7 +82,7 @@ fun ConexionScreen(
                     textAlign = TextAlign.Center
                 )
                 Text(
-                    text = "Revisa que los microservicios de PagoFlex estén encendidos y que el teléfono tenga conexión.",
+                    text = "Revisa que los microservicios estén encendidos en el PC $servidor y que los dos equipos estén en la misma red.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -66,16 +92,60 @@ fun ConexionScreen(
                     onClick = onReintentar,
                     modifier = Modifier.fillMaxWidth()
                 )
+                BotonSecundario(
+                    texto = "Cambiar la IP del servidor",
+                    onClick = { cambiarServidor = true },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
+}
+
+@Composable
+fun DialogoServidor(
+    actual: String,
+    onConectar: (String) -> Unit,
+    onCancelar: () -> Unit
+) {
+    var direccion by remember { mutableStateOf(actual) }
+    val error = errorDireccionServidor(direccion)
+
+    AlertDialog(
+        onDismissRequest = onCancelar,
+        title = { Text("Servidor de PagoFlex") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.espacioChico)) {
+                Text(
+                    text = "Escribe la IP del PC donde corren los microservicios. " +
+                        "Si es el mismo PC del emulador, usa $SERVIDOR_EMULADOR.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                CampoTexto(
+                    valor = direccion,
+                    onValorCambia = { direccion = it },
+                    etiqueta = "IP del servidor",
+                    icono = R.drawable.ic_ubicacion,
+                    error = error,
+                    ayuda = "Por ejemplo 192.168.1.20",
+                    tipoTeclado = KeyboardType.Uri
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConectar(direccion) }, enabled = error == null) { Text("Conectar") }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancelar) { Text(stringResource(R.string.dialogo_cancelar)) }
+        }
+    )
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun ConexionCargandoPreview() {
     PagoFlexTheme {
-        ConexionScreen(cargando = true, onReintentar = {})
+        ConexionScreen(cargando = true, servidor = SERVIDOR_EMULADOR, onReintentar = {}, onCambiarServidor = {})
     }
 }
 
@@ -83,6 +153,6 @@ private fun ConexionCargandoPreview() {
 @Composable
 private fun ConexionFallidaPreview() {
     PagoFlexTheme {
-        ConexionScreen(cargando = false, onReintentar = {})
+        ConexionScreen(cargando = false, servidor = "192.168.1.20", onReintentar = {}, onCambiarServidor = {})
     }
 }

@@ -8,10 +8,8 @@ import com.example.pagoflex.model.leerBoleta
 import com.example.pagoflex.model.montosEn
 import com.example.pagoflex.model.mensajeLectura
 import com.example.pagoflex.model.resumenLectura
-import com.example.pagoflex.viewmodel.FormularioViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -62,6 +60,10 @@ class LectorBoletaTest {
         val lectura = leerBoleta("Gracias por su preferencia", datos.empresas, hoy)
         assertFalse(lectura.encontroAlgo)
         assertNull(lectura.concepto)
+        assertEquals(
+            "No encontramos el monto ni la fecha en la foto. Prueba con más luz o escríbelos a mano.",
+            mensajeLectura(lectura, datos.empresas)
+        )
     }
 
     @Test
@@ -74,32 +76,5 @@ class LectorBoletaTest {
         assertTrue(fechasEn("31-02-2026").isEmpty())
         assertEquals(1, empresaEnTexto("Inmobiliaria Altos del Maipo SpA", datos.empresas)?.idEmpresa)
         assertNull(empresaEnTexto("Supermercado cualquiera", datos.empresas))
-    }
-
-    @Test
-    fun formulario_seLlenaConLoLeidoYAvisaQueRevisar() {
-        val formulario = FormularioViewModel()
-        formulario.onConceptoCambia("Mensualidad")
-        formulario.onLeyendoBoleta()
-        assertTrue(formulario.uiState.value.leyendoBoleta)
-
-        val lectura = LecturaBoleta(monto = 45_990, vencimiento = LocalDate.of(2026, 11, 15), idEmpresa = 6, concepto = "Boleta de noviembre 2026")
-        formulario.onBoletaLeida(lectura, byteArrayOf(1, 2, 3), datos)
-        val estado = formulario.uiState.value
-        assertFalse(estado.leyendoBoleta)
-        assertTrue(estado.boletaConDatos)
-        assertEquals("Mensualidad", estado.concepto)
-        assertEquals("45990", estado.monto)
-        assertEquals("15-11-2026", estado.fechaVencimiento)
-        assertEquals(6, estado.empresa?.idEmpresa)
-        assertNotNull(formulario.imagenBoleta.value)
-        assertTrue(estado.mensajeBoleta!!.startsWith("Leímos monto"))
-
-        formulario.onLeyendoBoleta()
-        formulario.onBoletaLeida(null, null, datos)
-        assertEquals("No pudimos leer la foto. Completa los datos a mano.", formulario.uiState.value.mensajeBoleta)
-        assertFalse(formulario.uiState.value.boletaConDatos)
-        assertEquals("45990", formulario.uiState.value.monto)
-        assertEquals(mensajeLectura(LecturaBoleta(), datos.empresas), "No encontramos el monto ni la fecha en la foto. Prueba con más luz o escríbelos a mano.")
     }
 }

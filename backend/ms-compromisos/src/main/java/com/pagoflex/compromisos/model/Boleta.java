@@ -15,7 +15,7 @@ public class Boleta {
     private Integer idCompromiso;
 
     @Lob
-    @Column(nullable = false, columnDefinition = "LONGBLOB")
+    @Column(nullable = false, length = 20000000)
     private byte[] imagen;
 
     @Column(nullable = false)

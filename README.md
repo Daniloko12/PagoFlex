@@ -9,7 +9,7 @@ La app tiene dos roles que entran por el mismo inicio de sesión: el **usuario f
 | Integrante | GitHub | Aporte principal |
 |---|---|---|
 | Jose Veliz | [velizntd](https://github.com/velizntd) | Cámara y galería, contraseña segura, recuperación con código, sincronización con Flow, permisos por rol, historial de movimientos, inicio con filtros, pagos agregados por el cliente, fotos de boletas, microservicios de usuarios y pagos, animaciones y pruebas |
-| (nombre del compañero) | [Daniloko12](https://github.com/Daniloko12) | Base del proyecto, base de datos, navegación por rol, panel del administrador, notificaciones de recordatorio, escáner de boletas, contacto por correo, microservicios de compromisos y movimientos, Docker y conexión de la app con Retrofit |
+| (nombre del compañero) | [Daniloko12](https://github.com/Daniloko12) | Base del proyecto, base de datos, navegación por rol, panel del administrador, notificaciones de recordatorio, escáner de boletas, contacto por correo, microservicios de compromisos y movimientos, conexión de la app con Retrofit y presentación con varios PCs |
 
 ## Funcionalidades
 
@@ -96,8 +96,8 @@ Los permisos están centralizados en `model/PermisosRol.kt`. El ViewModel revisa
 - **Capa de datos con Flow**: `PagoFlexRepositorio` expone `StateFlow` (datos, usuario actual, búsqueda, preferencias). Cada vez que se guarda algo, el repositorio vuelve a pedir los datos a los microservicios y emite los nuevos, y la interfaz se actualiza sola con `collectAsStateWithLifecycle`. Si el servidor responde con un error, la app muestra su mensaje ("Ese correo ya está registrado", "Ese compromiso ya está pagado").
 - **Corrutinas**: las llamadas al servidor son `suspend` y se lanzan desde la interfaz con `rememberCoroutineScope`, así la pantalla nunca se congela.
 - **Sincronización automática**: no hay botón "Actualizar". El ViewModel tiene un `Flow` que sincroniza con el servidor al abrir la app y luego cada minuto (`stateIn` con `SharingStarted.WhileSubscribed`), así que lo que registra otra persona aparece solo. Si el servidor no responde, la app avisa "Sin conexión" y muestra la última información conocida.
-- **Pantalla de conexión**: al abrir la app se ve "Conectando con los servicios de PagoFlex…" mientras llegan los datos. Si el servidor está apagado aparece un botón **Reintentar**.
-- **SharedPreferences** para la sesión, el modo oscuro y la última actualización.
+- **Pantalla de conexión**: al abrir la app se ve "Conectando con los servicios de PagoFlex…" mientras llegan los datos. Si el servidor está apagado aparecen **Reintentar** y **Cambiar la IP del servidor**. La IP elegida se guarda en `SharedPreferences`.
+- **SharedPreferences** para la sesión, el modo oscuro, la IP del servidor y la última actualización.
 - **Animaciones**: `AnimatedVisibility` en mensajes de error y filtros, `animateColorAsState` y `animateFloatAsState` en los requisitos de la contraseña, `AnimatedContent` en los pasos de recuperación, `animateIntAsState` en el total por pagar, `Crossfade` en el ojo de la contraseña y `animateItem` en las listas.
 
 ```
@@ -115,14 +115,14 @@ app/src/main/java/com/example/pagoflex
 
 ## Microservicios
 
-El backend está en la carpeta `backend/`: 4 microservicios en **Java 21 con Spring Boot 3.5**, una base **MySQL 8.4** y todo se levanta con **Docker Compose**. Cada microservicio tiene su propia base de datos.
+El backend está en la carpeta `backend/`: 4 microservicios en **Java 21 con Spring Boot 3.5** que se abren y se ejecutan desde **VS Code**. Cada microservicio tiene su propia base de datos **H2** (un archivo en la carpeta `pagoflex-datos` del usuario), así que no hay que instalar un motor de base de datos. Si se quiere usar **MySQL**, cada microservicio trae el perfil `mysql`.
 
 | Microservicio | Puerto | Base de datos | Qué maneja |
 |---|---|---|---|
-| `ms-usuarios` | 8081 | `pagoflex_usuarios` | Cuentas, inicio de sesión, contraseñas, recuperación con código, comunas y reconocimientos |
-| `ms-compromisos` | 8082 | `pagoflex_compromisos` | Organizaciones, compromisos, fotos de boletas, anulaciones, reportes y recomendaciones |
-| `ms-pagos` | 8083 | `pagoflex_pagos` | Pagos y tarjetas guardadas |
-| `ms-movimientos` | 8084 | `pagoflex_movimientos` | Historial de movimientos (quién hizo qué y cuándo) |
+| `ms-usuarios` | 8081 | `usuarios` | Cuentas, inicio de sesión, contraseñas, recuperación con código, comunas y reconocimientos |
+| `ms-compromisos` | 8082 | `compromisos` | Organizaciones, compromisos, fotos de boletas, anulaciones, reportes y recomendaciones |
+| `ms-pagos` | 8083 | `pagos` | Pagos y tarjetas guardadas |
+| `ms-movimientos` | 8084 | `movimientos` | Historial de movimientos (quién hizo qué y cuándo) |
 
 **Comunicación entre microservicios:** con `RestClient`. Por ejemplo, al registrar un pago, `ms-pagos` le pide el compromiso a `ms-compromisos`, revisa que no esté pagado ni anulado, guarda el pago, deja el compromiso como pagado en `ms-compromisos`, envía los reconocimientos a `ms-usuarios` y el movimiento a `ms-movimientos`. Si otro microservicio no responde, el pago no se guarda.
 
@@ -130,28 +130,32 @@ Cada microservicio sigue las capas `controller` → `service` → `repository` (
 
 ### Levantar el backend
 
-Se necesita **Docker** con Docker Compose. No hace falta instalar Java ni Maven: Docker compila cada microservicio.
+1. Instalar **JDK 21** (por ejemplo Eclipse Temurin 21) y **VS Code** con las extensiones **Extension Pack for Java** y **Spring Boot Extension Pack** (VS Code las sugiere al abrir la carpeta).
+2. En VS Code: **File → Open Folder** → la carpeta `backend`. Esperar a que la barra de abajo diga que terminó de cargar los proyectos Java; la primera vez descarga las librerías.
+3. Ir a **Run and Debug** (Ctrl+Shift+D), elegir **Todos los microservicios** y presionar ▶. Se levantan los 4.
+4. Probar en el navegador:
+   - http://localhost:8082/api/empresas: tiene que mostrar el JSON con las organizaciones.
+   - Swagger de cada uno: http://localhost:8081/swagger-ui.html, :8082, :8083 y :8084.
+   - Consola de la base de datos: http://localhost:8081/h2-console, con JDBC URL `jdbc:h2:file:~/pagoflex-datos/usuarios`, usuario `sa` y sin contraseña (en cada puerto se cambia `usuarios` por el nombre de su base).
 
-```
-cd backend
-docker compose up --build
-```
+Para volver a los datos de prueba: `POST /api/admin/restablecer` en cada microservicio, o el botón "Restablecer datos de prueba" de la app.
 
-La primera vez demora varios minutos porque descarga las imágenes y las librerías. Cuando en la terminal aparezca `Started ...Application` para los 4 microservicios, se puede probar cada uno en su página Swagger:
+### Presentar con varios PCs
 
-- http://localhost:8081/swagger-ui.html (usuarios)
-- http://localhost:8082/swagger-ui.html (compromisos)
-- http://localhost:8083/swagger-ui.html (pagos)
-- http://localhost:8084/swagger-ui.html (movimientos)
+Un PC levanta los 4 microservicios (el **servidor**) y los demás PCs abren la app en su emulador y se conectan a la IP del servidor. Lo que se hace en un PC se ve en los otros, porque todos usan las mismas bases de datos.
 
-Comandos útiles:
+1. **En el servidor**, buscar su IP en la red (`ip addr` en Linux, `ipconfig` en Windows), por ejemplo `192.168.1.20`.
+2. **Abrir los puertos 8081 a 8084 en el servidor:**
+   - Linux (Fedora/Bazzite): `sudo firewall-cmd --permanent --add-port=8081-8084/tcp` y luego `sudo firewall-cmd --reload`.
+   - Windows: al levantar los microservicios por primera vez, permitir Java en **redes privadas**, y que la red wifi esté como **privada**.
+3. **Desde otro PC**, abrir en el navegador `http://192.168.1.20:8082/api/empresas`. Si aparece el JSON, la red funciona.
+4. **En la app del otro PC**, en la pantalla de inicio de sesión tocar **Servidor: … · Cambiar**, escribir `192.168.1.20` y **Conectar**. La app lo recuerda.
 
-| Para | Comando |
-|---|---|
-| Detener todo | `docker compose down` |
-| Detener y borrar la base de datos | `docker compose down -v` |
-| Ver los mensajes de un microservicio | `docker compose logs -f ms-pagos` |
-| Volver a los datos de prueba | `POST /api/admin/restablecer` en cada microservicio |
+En el emulador del mismo PC que el servidor se usa `10.0.2.2`, que viene por defecto.
+
+### Usar MySQL en vez de H2 (opcional)
+
+Con un MySQL encendido (por ejemplo XAMPP), cada microservicio crea su base al iniciar. En `.vscode/launch.json` se agrega a cada configuración `"args": "--spring.profiles.active=mysql"`. El usuario y la clave se cambian con las variables `DB_USER` y `DB_PASSWORD` (por defecto `root` sin clave).
 
 ## Cómo ejecutar
 
@@ -162,10 +166,10 @@ Comandos útiles:
    ```
 3. Abrir la carpeta en Android Studio y esperar a que termine **Gradle Sync** (necesita internet la primera vez para descargar las librerías, incluida ML Kit).
 4. Crear o abrir un emulador con **Android 8.0 (API 26) o superior**. Para ver la solicitud de permiso de notificaciones conviene uno con Android 13 o superior.
-5. Levantar el backend con Docker (ver [Levantar el backend](#levantar-el-backend)).
+5. Levantar el backend desde VS Code (ver [Levantar el backend](#levantar-el-backend)).
 6. Presionar **Run 'app'**.
 
-La app se conecta a `10.0.2.2`, que es la dirección del PC visto desde el emulador. Para usar un teléfono real hay que cambiar `HOST` en `data/remoto/ServidorPagoFlex.kt` por la IP del PC en la red wifi.
+La app se conecta a `10.0.2.2`, que es la dirección del PC visto desde el emulador. Para usar otro PC o un teléfono real, en el inicio de sesión se toca **Servidor: … · Cambiar** y se escribe la IP del PC que tiene los microservicios.
 
 ### Cuentas de prueba
 
@@ -184,7 +188,7 @@ Para probar el escáner en el emulador: arrastrar una imagen de una boleta a la 
 
 ### Pruebas
 
-- Pruebas unitarias (reglas de negocio, contraseña, código de recuperación, filtros, permisos, movimientos, búsqueda, lector de boletas, mensajes de correo y formato JSON del servidor):
+- Pruebas unitarias: **4 por cada ViewModel** de formulario (`IngresoViewModelTest`, `RegistroViewModelTest`, `CambiarClaveViewModelTest`, `PagoViewModelTest`, `TarjetaViewModelTest` y `FormularioViewModelTest`), más las de reglas de negocio, contraseña, código de recuperación, filtros, permisos, movimientos, búsqueda, IP del servidor, lector de boletas, mensajes de correo y formato JSON del servidor:
   ```
   ./gradlew test
   ```

@@ -53,6 +53,7 @@ import com.example.pagoflex.model.CLAVE_DE_PRUEBA
 import com.example.pagoflex.model.Credenciales
 import com.example.pagoflex.model.IngresoUiState
 import com.example.pagoflex.model.Rol
+import com.example.pagoflex.model.SERVIDOR_EMULADOR
 import com.example.pagoflex.model.Usuario
 import com.example.pagoflex.model.usuariosDelRol
 import com.example.pagoflex.ui.components.BotonPrincipal
@@ -76,6 +77,8 @@ fun IngresoScreen(
     modoOscuro: Boolean,
     onCambiarModo: (Boolean) -> Unit,
     snackbarHostState: SnackbarHostState,
+    servidor: String = SERVIDOR_EMULADOR,
+    onCambiarServidor: (String) -> Unit = {},
     viewModel: IngresoViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -97,7 +100,9 @@ fun IngresoScreen(
         onRecuperarClave = onRecuperarClave,
         modoOscuro = modoOscuro,
         onCambiarModo = onCambiarModo,
-        snackbarHostState = snackbarHostState
+        snackbarHostState = snackbarHostState,
+        servidor = servidor,
+        onCambiarServidor = onCambiarServidor
     )
 }
 
@@ -114,10 +119,24 @@ fun IngresoContent(
     onRecuperarClave: () -> Unit = {},
     modoOscuro: Boolean = true,
     onCambiarModo: (Boolean) -> Unit = {},
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    servidor: String = SERVIDOR_EMULADOR,
+    onCambiarServidor: (String) -> Unit = {}
 ) {
     var verCuentas by remember { mutableStateOf(false) }
     var confirmarRestablecer by remember { mutableStateOf(false) }
+    var cambiarServidor by remember { mutableStateOf(false) }
+
+    if (cambiarServidor) {
+        DialogoServidor(
+            actual = servidor,
+            onConectar = { direccion ->
+                cambiarServidor = false
+                onCambiarServidor(direccion)
+            },
+            onCancelar = { cambiarServidor = false }
+        )
+    }
 
     if (verCuentas) {
         AlertDialog(
@@ -301,6 +320,16 @@ fun IngresoContent(
                         onClick = { confirmarRestablecer = true },
                         modifier = Modifier.align(Alignment.CenterHorizontally)
                     ) { Text(stringResource(R.string.btn_restablecer_datos)) }
+                    TextButton(
+                        onClick = { cambiarServidor = true },
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Icon(painterResource(R.drawable.ic_ubicacion), contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text(
+                            text = "Servidor: $servidor · Cambiar",
+                            modifier = Modifier.padding(start = Dimens.espacioMini)
+                        )
+                    }
                 }
             }
         }

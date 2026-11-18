@@ -49,7 +49,7 @@ public class Usuario {
     private Integer diasAnticipacion;
 
     @Lob
-    @Column(columnDefinition = "LONGBLOB")
+    @Column(length = 20000000)
     private byte[] avatar;
 
     @JsonIgnore

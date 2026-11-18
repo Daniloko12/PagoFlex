@@ -52,6 +52,7 @@ import com.example.pagoflex.model.claveValida
 import com.example.pagoflex.model.compromisoPorId
 import com.example.pagoflex.model.cuentaParaRecuperar
 import com.example.pagoflex.model.empresaPorId
+import com.example.pagoflex.model.errorDireccionServidor
 import com.example.pagoflex.model.generarCodigoRecuperacion
 import com.example.pagoflex.model.mensajeCodigo
 import com.example.pagoflex.model.motivoParaNoAnular
@@ -71,6 +72,7 @@ import com.example.pagoflex.model.movimientoRegistro
 import com.example.pagoflex.model.movimientoReporte
 import com.example.pagoflex.model.movimientoVencimiento
 import com.example.pagoflex.model.normalizarRut
+import com.example.pagoflex.model.normalizarServidor
 import com.example.pagoflex.model.puede
 import com.example.pagoflex.model.puedeVerCompromiso
 import com.example.pagoflex.model.recomendacionPorId
@@ -108,6 +110,8 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
 
     val cargaInicial: StateFlow<EstadoCarga> = repositorio.cargaInicial
 
+    val servidor: StateFlow<String> = repositorio.servidor
+
     val sinConexion: StateFlow<Boolean> =
         combine(repositorio.sinConexion, repositorio.servidorDisponible) { modoSinConexion, disponible ->
             modoSinConexion || !disponible
@@ -137,6 +141,12 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
 
     fun reintentarConexion() {
         viewModelScope.launch { repositorio.reintentarConexion() }
+    }
+
+    fun cambiarServidor(direccion: String) {
+        val limpia = normalizarServidor(direccion)
+        if (errorDireccionServidor(limpia) != null) return
+        viewModelScope.launch { repositorio.cambiarServidor(limpia) }
     }
 
     private fun sinPermiso(accion: Accion): String? = motivoSinPermiso(usuarioActual.value, accion)

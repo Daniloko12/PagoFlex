@@ -19,8 +19,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -37,12 +40,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -199,7 +202,13 @@ fun IngresoContent(
                 .padding(bottom = innerPadding.calculateBottomPadding())
                 .verticalScroll(rememberScrollState())
         ) {
-            EncabezadoMarca(modoOscuro = modoOscuro, onCambiarModo = onCambiarModo)
+            EncabezadoMarca(
+                modoOscuro = modoOscuro,
+                onCambiarModo = onCambiarModo,
+                servidor = servidor,
+                onElegirServidor = { cambiarServidor = true },
+                onRestablecer = { confirmarRestablecer = true }
+            )
 
             Surface(
                 modifier = Modifier
@@ -293,43 +302,6 @@ fun IngresoContent(
                             modifier = Modifier.padding(start = Dimens.espacioMini)
                         )
                     }
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_escudo),
-                            contentDescription = null,
-                            tint = MaterialTheme.coloresExtra.exito,
-                            modifier = Modifier.size(Dimens.tamanoIcono)
-                        )
-                        Text(
-                            text = stringResource(R.string.aviso_confianza),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = Dimens.espacioChico)
-                        )
-                    }
-                    HorizontalDivider()
-                    Text(
-                        text = stringResource(R.string.aviso_demo),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    TextButton(
-                        onClick = { confirmarRestablecer = true },
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    ) { Text(stringResource(R.string.btn_restablecer_datos)) }
-                    TextButton(
-                        onClick = { cambiarServidor = true },
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    ) {
-                        Icon(painterResource(R.drawable.ic_ubicacion), contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text(
-                            text = "Servidor: $servidor · Cambiar",
-                            modifier = Modifier.padding(start = Dimens.espacioMini)
-                        )
-                    }
                 }
             }
         }
@@ -337,7 +309,13 @@ fun IngresoContent(
 }
 
 @Composable
-private fun EncabezadoMarca(modoOscuro: Boolean, onCambiarModo: (Boolean) -> Unit) {
+private fun EncabezadoMarca(
+    modoOscuro: Boolean,
+    onCambiarModo: (Boolean) -> Unit,
+    servidor: String,
+    onElegirServidor: () -> Unit,
+    onRestablecer: () -> Unit
+) {
     val colores = MaterialTheme.coloresExtra
     Box(
         modifier = Modifier
@@ -370,6 +348,12 @@ private fun EncabezadoMarca(modoOscuro: Boolean, onCambiarModo: (Boolean) -> Uni
                         .padding(start = 12.dp)
                 )
                 BotonModo(modoOscuro = modoOscuro, onCambiarModo = onCambiarModo, color = colores.textoEncabezado)
+                MenuOpciones(
+                    servidor = servidor,
+                    onElegirServidor = onElegirServidor,
+                    onRestablecer = onRestablecer,
+                    color = colores.textoEncabezado
+                )
             }
             Spacer(Modifier.height(40.dp))
             Text(
@@ -382,6 +366,43 @@ private fun EncabezadoMarca(modoOscuro: Boolean, onCambiarModo: (Boolean) -> Uni
                 text = stringResource(R.string.marca_bajada),
                 style = MaterialTheme.typography.bodyLarge,
                 color = colores.textoEncabezadoSuave
+            )
+        }
+    }
+}
+
+@Composable
+private fun MenuOpciones(
+    servidor: String,
+    onElegirServidor: () -> Unit,
+    onRestablecer: () -> Unit,
+    color: Color
+) {
+    var abierto by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { abierto = true }) {
+            Icon(
+                painter = painterResource(R.drawable.ic_mas_opciones),
+                contentDescription = stringResource(R.string.cd_mas_opciones),
+                tint = color
+            )
+        }
+        DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
+            DropdownMenuItem(
+                text = { Text("Servidor: $servidor") },
+                leadingIcon = { Icon(painterResource(R.drawable.ic_ubicacion), contentDescription = null) },
+                onClick = {
+                    abierto = false
+                    onElegirServidor()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.btn_restablecer_datos)) },
+                leadingIcon = { Icon(painterResource(R.drawable.ic_actualizar), contentDescription = null) },
+                onClick = {
+                    abierto = false
+                    onRestablecer()
+                }
             )
         }
     }

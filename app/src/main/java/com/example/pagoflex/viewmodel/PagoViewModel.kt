@@ -60,16 +60,7 @@ class PagoViewModel : ViewModel() {
         _pago.update { it.copy(guardarTarjeta = valor) }
     }
 
-    fun onCodigoCambia(valor: String) {
-        val limpio = valor.filter { it.isDigit() }.take(4)
-        _pago.update { it.copy(codigo = limpio, errorCodigo = null) }
-    }
-
-    fun onConfirmaTotalCambia(valor: Boolean) {
-        _pago.update { it.copy(confirmaTotal = valor, errorConfirmacion = null) }
-    }
-
-    fun onPagar(codigoCorrecto: String, bloqueo: String?, tarjetasGuardadas: List<Tarjeta>, hoy: LocalDate): SolicitudPago? {
+    fun onPagar(bloqueo: String?, tarjetasGuardadas: List<Tarjeta>, hoy: LocalDate): SolicitudPago? {
         val estado = _pago.value
         val medio = estado.medioPago
         val conTarjeta = medio == MedioPago.DEBITO || medio == MedioPago.CREDITO
@@ -82,14 +73,8 @@ class PagoViewModel : ViewModel() {
         val erroresNueva = if (usaNueva)
             validarTarjeta(estado.numeroTarjeta, estado.titularTarjeta, estado.vencimientoTarjeta, estado.cvv, hoy)
         else null
-        val errorCodigo = when {
-            estado.codigo.isBlank() -> "Ingresa tu código de confirmación"
-            estado.codigo != codigoCorrecto -> "El código no coincide. Son los 4 últimos números de tu RUT, antes del guion"
-            else -> null
-        }
-        val errorConfirmacion = if (!estado.confirmaTotal) "Confirma que revisaste el total a pagar" else null
 
-        val hayErrores = listOf(errorMedioPago, errorTarjeta, errorCodigo, errorConfirmacion, bloqueo).any { it != null } ||
+        val hayErrores = listOf(errorMedioPago, errorTarjeta, bloqueo).any { it != null } ||
             erroresNueva?.hayErrores == true
 
         _pago.update {
@@ -100,8 +85,6 @@ class PagoViewModel : ViewModel() {
                 errorTitularTarjeta = erroresNueva?.titular,
                 errorVencimientoTarjeta = erroresNueva?.vencimiento,
                 errorCvv = erroresNueva?.cvv,
-                errorCodigo = errorCodigo,
-                errorConfirmacion = errorConfirmacion,
                 errorPago = bloqueo,
                 pagoExitoso = !hayErrores
             )

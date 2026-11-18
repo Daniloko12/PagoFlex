@@ -105,11 +105,6 @@ fun ocultarRut(rut: String): String {
     return "$primerGrupo.•••.•••-$dv"
 }
 
-fun codigoConfirmacionDe(rut: String): String {
-    val cuerpo = rut.replace(".", "").replace(" ", "").substringBefore("-")
-    return cuerpo.takeLast(4)
-}
-
 const val CLAVE_DE_PRUEBA = "Pago#2026"
 
 const val CLAVE_ANTERIOR_DE_PRUEBA = "12345"

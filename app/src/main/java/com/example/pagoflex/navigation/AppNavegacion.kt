@@ -25,7 +25,6 @@ import com.example.pagoflex.model.CLAVE_DE_PRUEBA
 import com.example.pagoflex.model.CorreoArmado
 import com.example.pagoflex.model.EstadoRecomendacion
 import com.example.pagoflex.model.Rol
-import com.example.pagoflex.model.codigoConfirmacionDe
 import com.example.pagoflex.model.compromisoPorId
 import com.example.pagoflex.model.correoParaCliente
 import com.example.pagoflex.model.correoParaEmpresa
@@ -373,7 +372,6 @@ fun AppNavegacion(
             PagoScreen(
                 datos = datos,
                 compromiso = compromiso,
-                codigoCorrecto = codigoConfirmacionDe(usuario.rut),
                 motivoNoPagar = { pagoFlexViewModel.motivoParaNoPagar(idCompromiso) },
                 onPagoValido = { solicitud ->
                     scope.launch {

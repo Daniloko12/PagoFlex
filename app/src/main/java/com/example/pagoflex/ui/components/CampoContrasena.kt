@@ -81,10 +81,10 @@ fun CampoContrasena(
 private fun CampoContrasenaPreview() {
     PagoFlexTheme {
         CampoContrasena(
-            valor = "4207",
+            valor = "Pago#2026",
             onValorCambia = {},
-            etiqueta = "Código de confirmación",
-            ayuda = "Los 4 últimos números de tu RUT, antes del guion",
+            etiqueta = "Contraseña",
+            ayuda = "Mínimo 8 caracteres",
             modifier = Modifier.padding(16.dp)
         )
     }

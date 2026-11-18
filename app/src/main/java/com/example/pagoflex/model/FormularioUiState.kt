@@ -234,8 +234,6 @@ data class PagoUiState(
     val vencimientoTarjeta: String = "",
     val cvv: String = "",
     val guardarTarjeta: Boolean = true,
-    val codigo: String = "",
-    val confirmaTotal: Boolean = false,
 
     val errorMedioPago: String? = null,
     val errorTarjeta: String? = null,
@@ -243,8 +241,6 @@ data class PagoUiState(
     val errorTitularTarjeta: String? = null,
     val errorVencimientoTarjeta: String? = null,
     val errorCvv: String? = null,
-    val errorCodigo: String? = null,
-    val errorConfirmacion: String? = null,
     val errorPago: String? = null,
 
     val pagoExitoso: Boolean = false

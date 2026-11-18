@@ -5,6 +5,8 @@ import com.example.pagoflex.model.MedioPago
 import com.example.pagoflex.model.PagoUiState
 import com.example.pagoflex.model.SolicitudPago
 import com.example.pagoflex.model.Tarjeta
+import com.example.pagoflex.model.TarjetaNueva
+import com.example.pagoflex.model.TarjetaUiState
 import com.example.pagoflex.model.largoCvv
 import com.example.pagoflex.model.tarjetaNuevaDe
 import com.example.pagoflex.model.validarTarjeta
@@ -15,11 +17,11 @@ import kotlinx.coroutines.flow.update
 import java.time.LocalDate
 
 class PagoViewModel : ViewModel() {
-    private val _uiState = MutableStateFlow(PagoUiState())
-    val uiState: StateFlow<PagoUiState> = _uiState.asStateFlow()
+    private val _pago = MutableStateFlow(PagoUiState())
+    val pago: StateFlow<PagoUiState> = _pago.asStateFlow()
 
     fun onMedioPagoSeleccionado(medio: MedioPago, tarjetasDelMedio: List<Tarjeta> = emptyList()) {
-        _uiState.update {
+        _pago.update {
             it.copy(
                 medioPago = medio,
                 idTarjeta = tarjetasDelMedio.firstOrNull()?.idTarjeta,
@@ -31,44 +33,44 @@ class PagoViewModel : ViewModel() {
     }
 
     fun onTarjetaSeleccionada(idTarjeta: Int?) {
-        _uiState.update {
+        _pago.update {
             it.copy(idTarjeta = idTarjeta, usarTarjetaNueva = idTarjeta == null, errorTarjeta = null)
         }
     }
 
     fun onNumeroTarjetaCambia(valor: String) {
-        _uiState.update { it.copy(numeroTarjeta = valor.filter { c -> c.isDigit() }.take(19), errorNumeroTarjeta = null) }
+        _pago.update { it.copy(numeroTarjeta = valor.filter { c -> c.isDigit() }.take(19), errorNumeroTarjeta = null) }
     }
 
     fun onTitularTarjetaCambia(valor: String) {
-        _uiState.update { it.copy(titularTarjeta = valor.take(40), errorTitularTarjeta = null) }
+        _pago.update { it.copy(titularTarjeta = valor.take(40), errorTitularTarjeta = null) }
     }
 
     fun onVencimientoTarjetaCambia(valor: String) {
-        _uiState.update { it.copy(vencimientoTarjeta = valor.filter { c -> c.isDigit() }.take(4), errorVencimientoTarjeta = null) }
+        _pago.update { it.copy(vencimientoTarjeta = valor.filter { c -> c.isDigit() }.take(4), errorVencimientoTarjeta = null) }
     }
 
     fun onCvvCambia(valor: String) {
-        _uiState.update {
+        _pago.update {
             it.copy(cvv = valor.filter { c -> c.isDigit() }.take(largoCvv(it.numeroTarjeta)), errorCvv = null)
         }
     }
 
     fun onGuardarTarjetaCambia(valor: Boolean) {
-        _uiState.update { it.copy(guardarTarjeta = valor) }
+        _pago.update { it.copy(guardarTarjeta = valor) }
     }
 
     fun onCodigoCambia(valor: String) {
         val limpio = valor.filter { it.isDigit() }.take(4)
-        _uiState.update { it.copy(codigo = limpio, errorCodigo = null) }
+        _pago.update { it.copy(codigo = limpio, errorCodigo = null) }
     }
 
     fun onConfirmaTotalCambia(valor: Boolean) {
-        _uiState.update { it.copy(confirmaTotal = valor, errorConfirmacion = null) }
+        _pago.update { it.copy(confirmaTotal = valor, errorConfirmacion = null) }
     }
 
     fun onPagar(codigoCorrecto: String, bloqueo: String?, tarjetasGuardadas: List<Tarjeta>, hoy: LocalDate): SolicitudPago? {
-        val estado = _uiState.value
+        val estado = _pago.value
         val medio = estado.medioPago
         val conTarjeta = medio == MedioPago.DEBITO || medio == MedioPago.CREDITO
         val usaNueva = conTarjeta && (estado.usarTarjetaNueva || tarjetasGuardadas.isEmpty())
@@ -90,7 +92,7 @@ class PagoViewModel : ViewModel() {
         val hayErrores = listOf(errorMedioPago, errorTarjeta, errorCodigo, errorConfirmacion, bloqueo).any { it != null } ||
             erroresNueva?.hayErrores == true
 
-        _uiState.update {
+        _pago.update {
             it.copy(
                 errorMedioPago = errorMedioPago,
                 errorTarjeta = errorTarjeta,
@@ -112,5 +114,48 @@ class PagoViewModel : ViewModel() {
             tarjetaNueva = if (usaNueva) tarjetaNuevaDe(medio, estado.numeroTarjeta, estado.titularTarjeta, estado.vencimientoTarjeta) else null,
             guardarTarjeta = usaNueva && estado.guardarTarjeta
         )
+    }
+
+    private val _tarjeta = MutableStateFlow(TarjetaUiState())
+    val tarjeta: StateFlow<TarjetaUiState> = _tarjeta.asStateFlow()
+
+    fun onMedioTarjetaSeleccionado(medio: MedioPago) {
+        _tarjeta.update { it.copy(medioPago = medio, errorTarjeta = null) }
+    }
+
+    fun onNumeroTarjetaNuevaCambia(valor: String) {
+        _tarjeta.update { it.copy(numero = valor.filter { c -> c.isDigit() }.take(19), errorNumero = null, errorTarjeta = null) }
+    }
+
+    fun onTitularTarjetaNuevaCambia(valor: String) {
+        _tarjeta.update { it.copy(titular = valor.take(40), errorTitular = null) }
+    }
+
+    fun onVencimientoTarjetaNuevaCambia(valor: String) {
+        _tarjeta.update { it.copy(vencimiento = valor.filter { c -> c.isDigit() }.take(4), errorVencimiento = null) }
+    }
+
+    fun onCvvTarjetaNuevaCambia(valor: String) {
+        _tarjeta.update { it.copy(cvv = valor.filter { c -> c.isDigit() }.take(largoCvv(it.numero)), errorCvv = null) }
+    }
+
+    fun onTarjetaRepetida() {
+        _tarjeta.update { it.copy(errorTarjeta = "Ya tienes guardada esta tarjeta") }
+    }
+
+    fun onAgregarTarjeta(hoy: LocalDate): TarjetaNueva? {
+        val estado = _tarjeta.value
+        val errores = validarTarjeta(estado.numero, estado.titular, estado.vencimiento, estado.cvv, hoy)
+        _tarjeta.update {
+            it.copy(
+                errorNumero = errores.numero,
+                errorTitular = errores.titular,
+                errorVencimiento = errores.vencimiento,
+                errorCvv = errores.cvv,
+                errorTarjeta = null
+            )
+        }
+        if (errores.hayErrores) return null
+        return tarjetaNuevaDe(estado.medioPago, estado.numero, estado.titular, estado.vencimiento)
     }
 }

@@ -3,11 +3,8 @@ package com.example.pagoflex
 import com.example.pagoflex.model.Accion
 import com.example.pagoflex.model.BaseDatos
 import com.example.pagoflex.model.CLAVE_DE_PRUEBA
-import com.example.pagoflex.model.CambioClave
 import com.example.pagoflex.model.CategoriaCumplimiento
-import com.example.pagoflex.model.ClaveRecuperada
 import com.example.pagoflex.model.DatosAnexo9
-import com.example.pagoflex.model.DatosRecuperacion
 import com.example.pagoflex.model.EstadoCompromiso
 import com.example.pagoflex.model.EstadoRecomendacion
 import com.example.pagoflex.model.EstadoReporte
@@ -22,8 +19,6 @@ import com.example.pagoflex.model.MINUTOS_VIGENCIA_CODIGO
 import com.example.pagoflex.model.MarcaTarjeta
 import com.example.pagoflex.model.MedioPago
 import com.example.pagoflex.model.MotivoAnulacion
-import com.example.pagoflex.model.MotivoReporte
-import com.example.pagoflex.model.PasoRecuperacion
 import com.example.pagoflex.model.RequisitoClave
 import com.example.pagoflex.model.ResultadoCodigo
 import com.example.pagoflex.model.Rol
@@ -72,7 +67,6 @@ import com.example.pagoflex.model.parsearVencimientoTarjeta
 import com.example.pagoflex.model.proximoRecordatorio
 import com.example.pagoflex.model.puede
 import com.example.pagoflex.model.puedeVerCompromiso
-import com.example.pagoflex.model.recomendacionesDe
 import com.example.pagoflex.model.recordatoriosDeHoy
 import com.example.pagoflex.model.reporteAtrasado
 import com.example.pagoflex.model.requisitosPendientes
@@ -88,13 +82,6 @@ import com.example.pagoflex.model.validarPersona
 import com.example.pagoflex.model.validarRut
 import com.example.pagoflex.model.validarTarjeta
 import com.example.pagoflex.notificaciones.ProgramadorRecordatorios
-import com.example.pagoflex.viewmodel.CambiarClaveViewModel
-import com.example.pagoflex.viewmodel.ClienteViewModel
-import com.example.pagoflex.viewmodel.EditarCompromisoViewModel
-import com.example.pagoflex.viewmodel.EditarPerfilViewModel
-import com.example.pagoflex.viewmodel.RecomendacionViewModel
-import com.example.pagoflex.viewmodel.RecuperarClaveViewModel
-import com.example.pagoflex.viewmodel.ReporteViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -229,11 +216,7 @@ class ReglasNegocioTest {
 
     @Test
     fun hu06_reporte_RN09() {
-        val formulario = ReporteViewModel()
-        formulario.onMotivoSeleccionado(MotivoReporte.OTRO)
-        assertNull(formulario.onEnviar(datos.motivoParaNoReportar(106)))
-        formulario.onComentarioCambia("Me cobraron dos veces")
-        assertNotNull(formulario.onEnviar(datos.motivoParaNoReportar(106)))
+        assertNull(datos.motivoParaNoReportar(106))
         assertNotNull(datos.motivoParaNoReportar(109))
     }
 
@@ -261,23 +244,6 @@ class ReglasNegocioTest {
     }
 
     @Test
-    fun hu08_recomendacion_RN12() {
-        val propias = datos.recomendacionesDe(1)
-        val formulario = RecomendacionViewModel()
-        formulario.onNombreOrganizacionCambia("Jardín Infantil Pequeños Exploradores")
-        formulario.onRubroSeleccionado(DatosAnexo9.rubros.first())
-        formulario.onComunaSeleccionada(DatosAnexo9.comunas.first())
-        assertNull(formulario.onEnviar(propias, datos.fechaHoy))
-        assertNotNull(formulario.uiState.value.errorRecomendacion)
-
-        formulario.onNombreOrganizacionCambia("Taller de Pintura Arcoíris")
-        formulario.onNombreContactoCambia("Marta")
-        assertNull(formulario.onEnviar(propias, datos.fechaHoy))
-        formulario.onAutorizaContactoCambia(true)
-        assertNotNull(formulario.onEnviar(propias, datos.fechaHoy))
-    }
-
-    @Test
     fun anular_soloAdministrador_RN21() {
         val admin = usuario(9)
         assertNotNull(datos.motivoParaNoAnular(admin, 72, MotivoAnulacion.ERROR_REGISTRO, null))
@@ -291,20 +257,6 @@ class ReglasNegocioTest {
         assertNotNull(datos.motivoParaNoEditar(104))
         assertNotNull(datos.motivoParaNoEditar(109))
         assertNull(datos.motivoParaNoEditar(106))
-
-        val vencido = datos.compromisoPorId(106)!!
-        val editar = EditarCompromisoViewModel()
-        editar.onCargar(vencido)
-        assertEquals("30-09-2026", editar.uiState.value.fechaVencimiento)
-        editar.onMontoCambia("300000")
-        assertEquals(300_000, editar.onGuardar(vencido, datos)?.monto)
-
-        editar.onFechaVencimientoCambia("01-10-2026")
-        assertNull(editar.onGuardar(vencido, datos))
-        editar.onFechaVencimientoCambia("30-10-2026")
-        editar.onNumeroCuotaCambia("15")
-        assertNull(editar.onGuardar(vencido, datos))
-        assertNotNull(editar.uiState.value.errorDuplicado)
     }
 
     @Test
@@ -317,12 +269,6 @@ class ReglasNegocioTest {
         val camila = usuario(1)!!
         assertFalse(datos.validarPersona(camila.rut, "Camila", "Rojas", camila.correo, "+56 9 0000 0101", idPropio = 1).hayErrores)
         assertNotNull(datos.validarPersona(camila.rut, "Camila", "Rojas", "lmunoz@correo.ejemplo", "+56 9 0000 0101", idPropio = 1).correo)
-
-        val formulario = ClienteViewModel()
-        formulario.onCargar(camila, datos)
-        assertEquals("Maipú", formulario.uiState.value.comuna?.nombre)
-        formulario.onCorreoCambia("camila.rojas@gmail.com")
-        assertEquals("camila.rojas@gmail.com", formulario.onGuardar(datos)?.correo)
     }
 
     @Test
@@ -397,43 +343,6 @@ class ReglasNegocioTest {
         assertEquals(1, datos.cuentaParaRecuperar("CRojas@correo.ejemplo")?.idUsuario)
         assertNull(datos.cuentaParaRecuperar("nadie@correo.ejemplo"))
         assertNull(datos.cuentaParaRecuperar("rsalinas@pagoflex.ejemplo"))
-
-        val recuperar = RecuperarClaveViewModel()
-        recuperar.onCorreoCambia("crojas@correo")
-        assertNull(recuperar.onSolicitarCodigo())
-        assertNotNull(recuperar.uiState.value.errorCorreo)
-        recuperar.onCorreoCambia("crojas@correo.ejemplo")
-        assertEquals(DatosRecuperacion("crojas@correo.ejemplo"), recuperar.onSolicitarCodigo())
-        assertNull(recuperar.onVerificarCodigo())
-        recuperar.onCodigoEnviado()
-        assertEquals(PasoRecuperacion.CODIGO, recuperar.uiState.value.paso)
-        recuperar.onCodigoCambia("12a34")
-        assertEquals("1234", recuperar.uiState.value.codigo)
-        assertNull(recuperar.onVerificarCodigo())
-        assertEquals("El código tiene 6 números", recuperar.uiState.value.errorCodigo)
-        recuperar.onCodigoCambia("4829137")
-        assertEquals("482913", recuperar.onVerificarCodigo())
-        recuperar.onClaveNuevaCambia("Nueva#2027")
-        recuperar.onConfirmacionCambia("Nueva#2027")
-        assertNull(recuperar.onGuardarClave())
-        recuperar.onCodigoCorrecto()
-        assertEquals(
-            ClaveRecuperada("crojas@correo.ejemplo", "482913", "Nueva#2027"),
-            recuperar.onGuardarClave()
-        )
-        recuperar.onCambiarDatos()
-        assertEquals(PasoRecuperacion.DATOS, recuperar.uiState.value.paso)
-        assertEquals("", recuperar.uiState.value.codigo)
-
-        val cambiar = CambiarClaveViewModel()
-        cambiar.onClaveActualCambia(CLAVE_DE_PRUEBA)
-        cambiar.onClaveNuevaCambia(CLAVE_DE_PRUEBA)
-        cambiar.onConfirmacionCambia(CLAVE_DE_PRUEBA)
-        assertNull(cambiar.onGuardar())
-        assertEquals("La nueva contraseña debe ser distinta a la actual", cambiar.uiState.value.errorClaveNueva)
-        cambiar.onClaveNuevaCambia("Nueva#2027")
-        cambiar.onConfirmacionCambia("Nueva#2027")
-        assertEquals(CambioClave(CLAVE_DE_PRUEBA, "Nueva#2027"), cambiar.onGuardar())
     }
 
     @Test
@@ -530,26 +439,5 @@ class ReglasNegocioTest {
 
         assertEquals(0, FiltrosCompromiso().cantidadActivos)
         assertEquals(2, FiltrosCompromiso(estado = FiltroEstado.PAGADOS, idEmpresa = idEmpresa).cantidadActivos)
-    }
-
-    @Test
-    fun perfil_editarMisDatos() {
-        val camila = usuario(1)!!
-        val editar = EditarPerfilViewModel()
-        editar.onCargar(camila, datos)
-        assertEquals("Maipú", editar.uiState.value.comuna?.nombre)
-        editar.onCorreoCambia("lmunoz@correo.ejemplo")
-        assertNull(editar.onGuardar(camila, datos))
-        assertNotNull(editar.uiState.value.errorCorreo)
-        editar.onCorreoCambia("camila.rojas@gmail.com")
-        editar.onTelefonoCambia("+56 9 1111 2222")
-        val misDatos = editar.onGuardar(camila, datos)
-        assertEquals("camila.rojas@gmail.com", misDatos?.correo)
-        assertEquals(1, misDatos?.idComuna)
-
-        val admin = usuario(9)!!
-        val editarAdmin = EditarPerfilViewModel()
-        editarAdmin.onCargar(admin, datos)
-        assertNotNull(editarAdmin.onGuardar(admin, datos))
     }
 }

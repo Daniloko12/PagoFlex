@@ -62,7 +62,7 @@ fun PagoScreen(
     snackbarHostState: SnackbarHostState,
     viewModel: PagoViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.pago.collectAsStateWithLifecycle()
     val tarjetas = uiState.medioPago?.let { datos.tarjetasGuardadas(compromiso.idUsuarioFinal, it) } ?: emptyList()
 
     PagoContent(

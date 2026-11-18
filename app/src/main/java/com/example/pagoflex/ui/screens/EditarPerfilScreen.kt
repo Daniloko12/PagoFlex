@@ -41,7 +41,7 @@ import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
-import com.example.pagoflex.viewmodel.EditarPerfilViewModel
+import com.example.pagoflex.viewmodel.CuentaViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -51,25 +51,25 @@ fun EditarPerfilScreen(
     onDatosValidos: suspend (MisDatos) -> String?,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
-    viewModel: EditarPerfilViewModel = viewModel()
+    viewModel: CuentaViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.perfil.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(usuario.idUsuario) { viewModel.onCargar(usuario, datos) }
+    LaunchedEffect(usuario.idUsuario) { viewModel.onCargarPerfil(usuario, datos) }
 
     EditarPerfilContent(
         uiState = uiState,
         usuario = usuario,
         comunas = datos.comunas,
-        onNombresCambia = viewModel::onNombresCambia,
-        onApellidosCambia = viewModel::onApellidosCambia,
-        onCorreoCambia = viewModel::onCorreoCambia,
-        onTelefonoCambia = viewModel::onTelefonoCambia,
-        onComunaSeleccionada = viewModel::onComunaSeleccionada,
+        onNombresCambia = viewModel::onNombresPerfilCambia,
+        onApellidosCambia = viewModel::onApellidosPerfilCambia,
+        onCorreoCambia = viewModel::onCorreoPerfilCambia,
+        onTelefonoCambia = viewModel::onTelefonoPerfilCambia,
+        onComunaSeleccionada = viewModel::onComunaPerfilSeleccionada,
         onGuardar = {
-            viewModel.onGuardar(usuario, datos)?.let { misDatos ->
-                scope.launch { onDatosValidos(misDatos)?.let { error -> viewModel.onErrorGuardar(error) } }
+            viewModel.onGuardarPerfil(usuario, datos)?.let { misDatos ->
+                scope.launch { onDatosValidos(misDatos)?.let { error -> viewModel.onErrorPerfil(error) } }
             }
         },
         onVolver = onVolver,

@@ -39,7 +39,7 @@ import com.example.pagoflex.ui.components.RequisitosClave
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
-import com.example.pagoflex.viewmodel.RegistroViewModel
+import com.example.pagoflex.viewmodel.CuentaViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -48,20 +48,20 @@ fun RegistroScreen(
     onCuentaValida: suspend (NuevaCuenta) -> String?,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
-    viewModel: RegistroViewModel = viewModel()
+    viewModel: CuentaViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.registro.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
     RegistroContent(
         uiState = uiState,
-        onRutCambia = viewModel::onRutCambia,
-        onNombresCambia = viewModel::onNombresCambia,
-        onApellidosCambia = viewModel::onApellidosCambia,
-        onCorreoCambia = viewModel::onCorreoCambia,
-        onTelefonoCambia = viewModel::onTelefonoCambia,
-        onClaveCambia = viewModel::onClaveCambia,
-        onConfirmacionCambia = viewModel::onConfirmacionCambia,
+        onRutCambia = viewModel::onRutRegistroCambia,
+        onNombresCambia = viewModel::onNombresRegistroCambia,
+        onApellidosCambia = viewModel::onApellidosRegistroCambia,
+        onCorreoCambia = viewModel::onCorreoRegistroCambia,
+        onTelefonoCambia = viewModel::onTelefonoRegistroCambia,
+        onClaveCambia = viewModel::onClaveRegistroCambia,
+        onConfirmacionCambia = viewModel::onConfirmacionRegistroCambia,
         onAceptaTerminosCambia = viewModel::onAceptaTerminosCambia,
         onCrearCuenta = {
             viewModel.onCrearCuenta(datos)?.let { nueva ->

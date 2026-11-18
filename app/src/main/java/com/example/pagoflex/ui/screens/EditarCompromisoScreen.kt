@@ -46,7 +46,7 @@ import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
-import com.example.pagoflex.viewmodel.EditarCompromisoViewModel
+import com.example.pagoflex.viewmodel.CompromisoViewModel
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -57,24 +57,24 @@ fun EditarCompromisoScreen(
     onCambiosValidos: suspend (CambiosCompromiso) -> String?,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
-    viewModel: EditarCompromisoViewModel = viewModel()
+    viewModel: CompromisoViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.edicion.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(compromiso.idCompromiso) { viewModel.onCargar(compromiso) }
+    LaunchedEffect(compromiso.idCompromiso) { viewModel.onCargarEdicion(compromiso) }
 
     EditarCompromisoContent(
         uiState = uiState,
         datos = datos,
         compromiso = compromiso,
-        onConceptoCambia = viewModel::onConceptoCambia,
-        onMontoCambia = viewModel::onMontoCambia,
-        onFechaVencimientoCambia = viewModel::onFechaVencimientoCambia,
-        onNumeroCuotaCambia = viewModel::onNumeroCuotaCambia,
-        onTotalCuotasCambia = viewModel::onTotalCuotasCambia,
+        onConceptoCambia = viewModel::onConceptoEdicionCambia,
+        onMontoCambia = viewModel::onMontoEdicionCambia,
+        onFechaVencimientoCambia = viewModel::onFechaEdicionCambia,
+        onNumeroCuotaCambia = viewModel::onNumeroCuotaEdicionCambia,
+        onTotalCuotasCambia = viewModel::onTotalCuotasEdicionCambia,
         onGuardar = {
-            viewModel.onGuardar(compromiso, datos)?.let { cambios ->
+            viewModel.onGuardarEdicion(compromiso, datos)?.let { cambios ->
                 scope.launch { onCambiosValidos(cambios)?.let { error -> viewModel.onErrorEdicion(error) } }
             }
         },

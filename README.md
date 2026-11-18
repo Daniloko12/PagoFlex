@@ -110,8 +110,17 @@ app/src/main/java/com/example/pagoflex
 ├── notificaciones  Canales, WorkManager y recordatorios
 ├── permisos        Permisos de cámara, galería y notificaciones
 ├── ui              Pantallas, componentes, estilos y tema
-└── viewmodel       ViewModels de la app y de cada formulario
+└── viewmodel       Los 4 ViewModels de la app
 ```
+
+La app tiene **4 ViewModels**:
+
+| ViewModel | Qué maneja |
+|---|---|
+| `PagoFlexViewModel` | El principal: datos del servidor, sesión, conexión, sincronización y todas las acciones que guardan en los microservicios |
+| `CuentaViewModel` | Formularios de la cuenta: iniciar sesión, crear cuenta, cambiar contraseña, recuperar contraseña, editar perfil y datos de un cliente |
+| `CompromisoViewModel` | Formularios de compromisos: registrar (con la boleta escaneada), editar, reportar un problema y recomendar una organización |
+| `PagoViewModel` | Formularios de pago: pagar un compromiso y agregar una tarjeta |
 
 ## Microservicios
 
@@ -188,7 +197,18 @@ Para probar el escáner en el emulador: arrastrar una imagen de una boleta a la 
 
 ### Pruebas
 
-- Pruebas unitarias: **4 por cada ViewModel** de formulario (`IngresoViewModelTest`, `RegistroViewModelTest`, `CambiarClaveViewModelTest`, `PagoViewModelTest`, `TarjetaViewModelTest` y `FormularioViewModelTest`), más las de reglas de negocio, contraseña, código de recuperación, filtros, permisos, movimientos, búsqueda, IP del servidor, lector de boletas, mensajes de correo y formato JSON del servidor:
+- Pruebas unitarias de los ViewModels, **4 por cada uno**:
+
+  | Archivo | Qué prueba |
+  |---|---|
+  | `PagoFlexViewModelTest` | Carga de datos y sesión guardada, cambio de contraseña sin sesión o insegura, compromiso ajeno o sin conexión, búsqueda del administrador y cierre de sesión |
+  | `CuentaViewModelTest` | Inicio de sesión con errores, registro con RUT repetido y sin términos, cambio de contraseña rechazado y cambio de contraseña válido |
+  | `CompromisoViewModelTest` | Registro sin organización o con cuota repetida, boleta escaneada, edición con fecha pasada o cuota repetida, reporte "Otro" sin comentario |
+  | `PagoViewModelTest` | Código incorrecto, pago con tarjeta guardada, pago con tarjeta nueva y agregar tarjeta vencida o válida |
+
+  `PagoFlexViewModelTest` usa un repositorio con datos de prueba y `PreferenciasEnMemoria` en lugar del servidor y del teléfono, y `ReglaCorrutinas` con `kotlinx-coroutines-test` para las corrutinas.
+- Además hay pruebas del modelo: reglas de negocio, contraseña, código de recuperación, filtros, permisos, movimientos, búsqueda, IP del servidor, lector de boletas, mensajes de correo y formato JSON del servidor.
+- Para ejecutar todas:
   ```
   ./gradlew test
   ```

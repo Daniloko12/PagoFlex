@@ -234,10 +234,10 @@ fun RegistrarCompromisoContent(
                         modifier = Modifier.weight(1f)
                     )
                 }
-                uiState.errorCuota?.let { TarjetaMensaje(texto = it) }
+                uiState.errorCuota?.let { TarjetaMensaje(texto = it, error = true) }
             }
 
-            uiState.errorDuplicado?.let { TarjetaMensaje(texto = it) }
+            uiState.errorDuplicado?.let { TarjetaMensaje(texto = it, error = true) }
 
             Row(horizontalArrangement = Arrangement.spacedBy(Dimens.espacioMedio)) {
                 BotonSecundario(

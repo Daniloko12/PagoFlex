@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.example.pagoflex.model.SERVIDOR_EMULADOR
+import com.example.pagoflex.model.normalizarServidor
 import java.time.LocalDateTime
 
 class SesionPreferencias(private val prefs: SharedPreferences) {
@@ -52,5 +53,5 @@ class SesionPreferencias(private val prefs: SharedPreferences) {
         prefs.edit { putString(CLAVE_SERVIDOR, direccion) }
     }
 
-    fun leerServidor(): String = prefs.getString(CLAVE_SERVIDOR, null) ?: SERVIDOR_EMULADOR
+    fun leerServidor(): String = normalizarServidor(prefs.getString(CLAVE_SERVIDOR, null) ?: SERVIDOR_EMULADOR)
 }

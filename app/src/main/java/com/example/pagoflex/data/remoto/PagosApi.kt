@@ -24,6 +24,6 @@ interface PagosApi {
     @DELETE("api/tarjetas/{id}")
     suspend fun quitarTarjeta(@Path("id") idTarjeta: Int): Tarjeta
 
-    @POST("api/admin/restablecer")
+    @POST("api/admin/pagos/restablecer")
     suspend fun restablecer(): Map<String, String>
 }

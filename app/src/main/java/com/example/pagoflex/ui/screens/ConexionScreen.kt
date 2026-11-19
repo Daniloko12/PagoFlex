@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.pagoflex.R
+import com.example.pagoflex.model.IP_EMULADOR
 import com.example.pagoflex.model.SERVIDOR_EMULADOR
 import com.example.pagoflex.model.errorDireccionServidor
 import com.example.pagoflex.ui.components.BotonPrincipal
@@ -82,7 +83,7 @@ fun ConexionScreen(
                     textAlign = TextAlign.Center
                 )
                 Text(
-                    text = "Revisa que los microservicios estén encendidos en el PC $servidor y que los dos equipos estén en la misma red.",
+                    text = "Revisa que Eureka, los microservicios y el API Gateway estén encendidos en $servidor.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -93,7 +94,7 @@ fun ConexionScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
                 BotonSecundario(
-                    texto = "Cambiar la IP del servidor",
+                    texto = "Cambiar el servidor",
                     onClick = { cambiarServidor = true },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -117,17 +118,17 @@ fun DialogoServidor(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Dimens.espacioChico)) {
                 Text(
-                    text = "Escribe la IP del PC donde corren los microservicios. " +
-                        "Si es el mismo PC del emulador, usa $SERVIDOR_EMULADOR.",
+                    text = "Escribe la IP del PC donde corre el API Gateway o la URL pública de VS Code. " +
+                        "Si los microservicios están en este mismo PC, usa $IP_EMULADOR.",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 CampoTexto(
                     valor = direccion,
                     onValorCambia = { direccion = it },
-                    etiqueta = "IP del servidor",
+                    etiqueta = "Servidor",
                     icono = R.drawable.ic_ubicacion,
                     error = error,
-                    ayuda = "Por ejemplo 192.168.1.20",
+                    ayuda = "Ej: 192.168.1.20 o https://…devtunnels.ms",
                     tipoTeclado = KeyboardType.Uri
                 )
             }
@@ -153,6 +154,6 @@ private fun ConexionCargandoPreview() {
 @Composable
 private fun ConexionFallidaPreview() {
     PagoFlexTheme {
-        ConexionScreen(cargando = false, servidor = "192.168.1.20", onReintentar = {}, onCambiarServidor = {})
+        ConexionScreen(cargando = false, servidor = "http://192.168.1.20:8080", onReintentar = {}, onCambiarServidor = {})
     }
 }

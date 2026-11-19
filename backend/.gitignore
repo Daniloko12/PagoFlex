@@ -1,6 +1,0 @@
-target/
-.vscode/*
-!.vscode/launch.json
-!.vscode/extensions.json
-*.iml
-.idea/

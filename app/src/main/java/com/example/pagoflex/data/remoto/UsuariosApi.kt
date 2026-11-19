@@ -47,6 +47,6 @@ interface UsuariosApi {
     @POST("api/recuperacion/clave")
     suspend fun recuperarClave(@Body recuperacion: RecuperacionClave): ResultadoVerificacion
 
-    @POST("api/admin/restablecer")
+    @POST("api/admin/usuarios/restablecer")
     suspend fun restablecer(): Map<String, String>
 }

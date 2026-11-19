@@ -63,6 +63,6 @@ interface CompromisosApi {
     @PUT("api/recomendaciones/{id}/estado")
     suspend fun cambiarEstadoRecomendacion(@Path("id") idRecomendacion: Int, @Body cambio: CambioEstadoRecomendacion): Recomendacion
 
-    @POST("api/admin/restablecer")
+    @POST("api/admin/compromisos/restablecer")
     suspend fun restablecer(): Map<String, String>
 }

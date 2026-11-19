@@ -1,6 +1,7 @@
 package com.example.pagoflex.data.remoto
 
 import com.example.pagoflex.model.SERVIDOR_EMULADOR
+import com.example.pagoflex.model.normalizarServidor
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
@@ -12,11 +13,6 @@ import java.time.YearMonth
 import java.util.concurrent.TimeUnit
 
 object ServidorPagoFlex {
-    const val PUERTO_USUARIOS = 8081
-    const val PUERTO_COMPROMISOS = 8082
-    const val PUERTO_PAGOS = 8083
-    const val PUERTO_MOVIMIENTOS = 8084
-
     val gson: Gson = GsonBuilder()
         .registerTypeAdapter(LocalDate::class.java, AdaptadorTexto { LocalDate.parse(it) })
         .registerTypeAdapter(LocalDateTime::class.java, AdaptadorTexto { LocalDateTime.parse(it) })
@@ -25,32 +21,35 @@ object ServidorPagoFlex {
         .create()
 
     private val clienteHttp = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
-        .writeTimeout(20, TimeUnit.SECONDS)
+        .addInterceptor { cadena ->
+            cadena.proceed(cadena.request().newBuilder().header("X-Tunnel-Skip-AntiPhishing-Page", "true").build())
+        }
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    private fun <T> crear(host: String, puerto: Int, api: Class<T>): T = Retrofit.Builder()
-        .baseUrl("http://$host:$puerto/")
-        .client(clienteHttp)
-        .addConverterFactory(GsonConverterFactory.create(gson))
-        .build()
-        .create(api)
+    private class Apis(val url: String) {
+        private val retrofit = Retrofit.Builder()
+            .baseUrl("$url/")
+            .client(clienteHttp)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
 
-    private class Apis(val host: String) {
-        val usuarios: UsuariosApi = crear(host, PUERTO_USUARIOS, UsuariosApi::class.java)
-        val compromisos: CompromisosApi = crear(host, PUERTO_COMPROMISOS, CompromisosApi::class.java)
-        val pagos: PagosApi = crear(host, PUERTO_PAGOS, PagosApi::class.java)
-        val movimientos: MovimientosApi = crear(host, PUERTO_MOVIMIENTOS, MovimientosApi::class.java)
+        val usuarios: UsuariosApi = retrofit.create(UsuariosApi::class.java)
+        val compromisos: CompromisosApi = retrofit.create(CompromisosApi::class.java)
+        val pagos: PagosApi = retrofit.create(PagosApi::class.java)
+        val movimientos: MovimientosApi = retrofit.create(MovimientosApi::class.java)
     }
 
     @Volatile
     private var apis = Apis(SERVIDOR_EMULADOR)
 
-    val host: String get() = apis.host
+    val url: String get() = apis.url
 
-    fun configurar(host: String) {
-        if (host != apis.host) apis = Apis(host)
+    fun configurar(direccion: String) {
+        val limpia = normalizarServidor(direccion)
+        if (limpia != apis.url) apis = Apis(limpia)
     }
 
     val usuarios: UsuariosApi get() = apis.usuarios

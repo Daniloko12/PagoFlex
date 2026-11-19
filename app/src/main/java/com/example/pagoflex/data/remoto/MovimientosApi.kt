@@ -8,6 +8,6 @@ interface MovimientosApi {
     @GET("api/movimientos")
     suspend fun movimientos(): List<Movimiento>
 
-    @POST("api/admin/restablecer")
+    @POST("api/admin/movimientos/restablecer")
     suspend fun restablecer(): Map<String, String>
 }

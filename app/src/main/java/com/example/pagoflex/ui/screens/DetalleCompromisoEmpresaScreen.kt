@@ -2,6 +2,7 @@ package com.example.pagoflex.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -40,9 +41,11 @@ import com.example.pagoflex.model.formatoFecha
 import com.example.pagoflex.model.formatoFechaHora
 import com.example.pagoflex.model.formatoPesos
 import com.example.pagoflex.model.motivoParaNoEditar
+import com.example.pagoflex.model.movimientosDelCompromiso
 import com.example.pagoflex.model.nombreCompleto
 import com.example.pagoflex.model.ocultarRut
 import com.example.pagoflex.model.pagoDe
+import com.example.pagoflex.model.registradoPorElCliente
 import com.example.pagoflex.model.reporteActivoDe
 import com.example.pagoflex.model.totalAPagar
 import com.example.pagoflex.model.usuarioPorId
@@ -53,6 +56,7 @@ import com.example.pagoflex.ui.components.CampoTexto
 import com.example.pagoflex.ui.components.EtiquetaInteres
 import com.example.pagoflex.ui.components.FilaDato
 import com.example.pagoflex.ui.components.GrupoRadio
+import com.example.pagoflex.ui.components.LineaDeTiempo
 import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
@@ -66,6 +70,8 @@ fun DetalleCompromisoEmpresaScreen(
     onVolver: () -> Unit,
     onEditar: () -> Unit = {},
     onVerCliente: (Int) -> Unit = {},
+    fotoBoleta: ByteArray? = null,
+    onEscribirCliente: () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
     val persona = datos.usuarioPorId(compromiso.idUsuarioFinal)
@@ -133,7 +139,14 @@ fun DetalleCompromisoEmpresaScreen(
                     FilaDato("Días de atraso", textoDias(diasAtraso(compromiso, datos.fechaHoy)))
                     FilaDato("Total con recargo", formatoPesos(totalAPagar(compromiso)), destacado = true)
                 }
-                FilaDato("Registrado por", registradoPor?.let { nombreCorto(it) } ?: "Equipo PagoFlex (planilla)")
+                FilaDato(
+                    "Registrado por",
+                    when {
+                        registradoPor != null -> nombreCorto(registradoPor)
+                        datos.registradoPorElCliente(compromiso) -> "El cliente, desde la app"
+                        else -> "Equipo PagoFlex (planilla)"
+                    }
+                )
                 FilaDato("Registrado el", formatoFecha(compromiso.fechaRegistro.toLocalDate()))
                 FilaDato("Folio", compromiso.folio)
             }
@@ -147,17 +160,26 @@ fun DetalleCompromisoEmpresaScreen(
                 )
             }
 
+            TarjetaBoleta(foto = fotoBoleta)
+
             if (persona != null) {
                 TarjetaSeccion(titulo = "Persona") {
                     FilaDato("Nombre", nombreCompleto(persona))
                     FilaDato("RUT", ocultarRut(persona.rut))
                     FilaDato("Correo", persona.correo)
                     persona.telefono?.let { FilaDato("Teléfono", it) }
-                    BotonSecundario(
-                        texto = "Ver cliente",
-                        onClick = { onVerCliente(persona.idUsuario) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.espacioChico)) {
+                        BotonSecundario(
+                            texto = "Ver cliente",
+                            onClick = { onVerCliente(persona.idUsuario) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        BotonSecundario(
+                            texto = "Escribir correo",
+                            onClick = onEscribirCliente,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
             if (pago != null) {
@@ -184,6 +206,13 @@ fun DetalleCompromisoEmpresaScreen(
                     anulacion.comentario?.let { FilaDato("Comentario", it) }
                     FilaDato("Anulado por", datos.usuarioPorId(anulacion.idAdministrador)?.let { nombreCompleto(it) } ?: "")
                 }
+            }
+
+            TarjetaSeccion(
+                titulo = "Historial de este compromiso",
+                subtitulo = "Cada cambio queda guardado con la fecha y quién lo hizo"
+            ) {
+                LineaDeTiempo(movimientos = datos.movimientosDelCompromiso(compromiso.idCompromiso), datos = datos)
             }
 
             if (sePuedeAnular) {

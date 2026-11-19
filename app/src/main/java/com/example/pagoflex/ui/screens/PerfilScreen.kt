@@ -46,6 +46,7 @@ import com.example.pagoflex.model.BaseDatos
 import com.example.pagoflex.model.EstadoCompromiso
 import com.example.pagoflex.model.Rol
 import com.example.pagoflex.model.Usuario
+import com.example.pagoflex.model.accionesDe
 import com.example.pagoflex.model.compromisosVigentes
 import com.example.pagoflex.model.comunaPorId
 import com.example.pagoflex.model.formatoFecha
@@ -71,6 +72,7 @@ fun PerfilScreen(
     onImagenElegida: (Uri) -> Unit,
     onEditarDatos: () -> Unit,
     onCambiarClave: () -> Unit,
+    onEscribirSoporte: () -> Unit = {},
     menu: MenuSesion = MenuSesion(),
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
@@ -146,6 +148,7 @@ fun PerfilScreen(
         },
         onEditarDatos = onEditarDatos,
         onCambiarClave = onCambiarClave,
+        onEscribirSoporte = onEscribirSoporte,
         menu = menu,
         snackbarHostState = snackbarHostState
     )
@@ -160,6 +163,7 @@ fun PerfilContent(
     onAbrirGaleria: () -> Unit = {},
     onEditarDatos: () -> Unit = {},
     onCambiarClave: () -> Unit = {},
+    onEscribirSoporte: () -> Unit = {},
     menu: MenuSesion = MenuSesion(),
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
@@ -220,12 +224,39 @@ fun PerfilContent(
                     onClick = onCambiarClave,
                     modifier = Modifier.fillMaxWidth()
                 )
+                TarjetaSeccion(titulo = "Tu rol: ${usuario.rol.etiqueta}", subtitulo = usuario.rol.descripcion) {
+                    accionesDe(usuario.rol).forEach { accion ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_check),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = accion.descripcion,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = Dimens.espacioChico)
+                            )
+                        }
+                    }
+                }
                 if (usuario.rol == Rol.USUARIO_FINAL) {
                     val vigentes = datos.compromisosVigentes(usuario.idUsuario)
                     TarjetaSeccion(titulo = "Resumen") {
                         FilaDato("Compromisos por pagar", vigentes.count { it.estado != EstadoCompromiso.EN_REVISION }.toString())
                         FilaDato("Tarjetas guardadas", datos.tarjetasGuardadas(usuario.idUsuario).size.toString())
                     }
+                }
+                TarjetaSeccion(
+                    titulo = "¿Necesitas ayuda?",
+                    subtitulo = "Escríbenos y te respondemos a ${usuario.correo}"
+                ) {
+                    BotonSecundario(
+                        texto = "Escribir a soporte",
+                        onClick = onEscribirSoporte,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }

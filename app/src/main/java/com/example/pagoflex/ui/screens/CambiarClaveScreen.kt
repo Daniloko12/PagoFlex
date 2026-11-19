@@ -15,6 +15,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -27,30 +28,32 @@ import com.example.pagoflex.ui.components.BarraSuperior
 import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.BotonSecundario
 import com.example.pagoflex.ui.components.CampoContrasena
-import com.example.pagoflex.ui.components.TarjetaMensaje
+import com.example.pagoflex.ui.components.MensajeAnimado
+import com.example.pagoflex.ui.components.RequisitosClave
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
-import com.example.pagoflex.viewmodel.CambiarClaveViewModel
+import com.example.pagoflex.viewmodel.CuentaViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun CambiarClaveScreen(
-    onCambioValido: (CambioClave) -> String?,
+    onCambioValido: suspend (CambioClave) -> String?,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
-    viewModel: CambiarClaveViewModel = viewModel()
+    viewModel: CuentaViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.cambioClave.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     CambiarClaveContent(
         uiState = uiState,
         onClaveActualCambia = viewModel::onClaveActualCambia,
         onClaveNuevaCambia = viewModel::onClaveNuevaCambia,
-        onConfirmacionCambia = viewModel::onConfirmacionCambia,
-        onAlternarVisibilidad = viewModel::onAlternarVisibilidad,
+        onConfirmacionCambia = viewModel::onConfirmacionClaveNuevaCambia,
         onGuardar = {
-            viewModel.onGuardar()?.let { cambio ->
-                onCambioValido(cambio)?.let { error -> viewModel.onErrorCambio(error) }
+            viewModel.onGuardarCambioClave()?.let { cambio ->
+                scope.launch { onCambioValido(cambio)?.let { error -> viewModel.onErrorCambioClave(error) } }
             }
         },
         onVolver = onVolver,
@@ -64,7 +67,6 @@ fun CambiarClaveContent(
     onClaveActualCambia: (String) -> Unit,
     onClaveNuevaCambia: (String) -> Unit,
     onConfirmacionCambia: (String) -> Unit,
-    onAlternarVisibilidad: () -> Unit,
     onGuardar: () -> Unit,
     onVolver: () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
@@ -95,30 +97,24 @@ fun CambiarClaveContent(
                     valor = uiState.claveActual,
                     onValorCambia = onClaveActualCambia,
                     etiqueta = "Contraseña actual",
-                    visible = uiState.claveVisible,
-                    onAlternarVisible = onAlternarVisibilidad,
                     error = uiState.errorClaveActual
                 )
                 CampoContrasena(
                     valor = uiState.claveNueva,
                     onValorCambia = onClaveNuevaCambia,
                     etiqueta = "Nueva contraseña",
-                    visible = uiState.claveVisible,
-                    onAlternarVisible = onAlternarVisibilidad,
-                    error = uiState.errorClaveNueva,
-                    ayuda = "${uiState.claveNueva.length}/5 dígitos"
+                    error = uiState.errorClaveNueva
                 )
+                RequisitosClave(clave = uiState.claveNueva)
                 CampoContrasena(
                     valor = uiState.confirmacionClave,
                     onValorCambia = onConfirmacionCambia,
                     etiqueta = "Repite la nueva contraseña",
-                    visible = uiState.claveVisible,
-                    onAlternarVisible = onAlternarVisibilidad,
                     error = uiState.errorConfirmacion
                 )
             }
 
-            uiState.errorCambio?.let { TarjetaMensaje(texto = it) }
+            MensajeAnimado(texto = uiState.errorCambio)
 
             BotonPrincipal(
                 texto = "Guardar contraseña",
@@ -140,9 +136,9 @@ fun CambiarClaveContent(
 private fun CambiarClavePreview() {
     PagoFlexTheme(modoOscuro = false) {
         CambiarClaveContent(
-            uiState = CambiarClaveUiState(claveActual = "12345", errorClaveNueva = "Es muy fácil de adivinar. Elige otra combinación"),
+            uiState = CambiarClaveUiState(claveActual = "Pago#2026", claveNueva = "pago2026", errorClaveNueva = "Te faltan 2 de los 5 requisitos de seguridad"),
             onClaveActualCambia = {}, onClaveNuevaCambia = {}, onConfirmacionCambia = {},
-            onAlternarVisibilidad = {}, onGuardar = {}
+            onGuardar = {}
         )
     }
 }

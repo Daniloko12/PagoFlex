@@ -37,7 +37,7 @@ import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
-import com.example.pagoflex.viewmodel.ReporteViewModel
+import com.example.pagoflex.viewmodel.CompromisoViewModel
 
 @Composable
 fun ReporteScreen(
@@ -47,17 +47,17 @@ fun ReporteScreen(
     onReporteValido: (SolicitudReporte) -> Unit,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
-    viewModel: ReporteViewModel = viewModel()
+    viewModel: CompromisoViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.reporte.collectAsStateWithLifecycle()
 
     ReporteContent(
         uiState = uiState,
         datos = datos,
         compromiso = compromiso,
-        onMotivoSeleccionado = viewModel::onMotivoSeleccionado,
-        onComentarioCambia = viewModel::onComentarioCambia,
-        onEnviar = { viewModel.onEnviar(motivoNoReportar())?.let { solicitud -> onReporteValido(solicitud) } },
+        onMotivoSeleccionado = viewModel::onMotivoReporteSeleccionado,
+        onComentarioCambia = viewModel::onComentarioReporteCambia,
+        onEnviar = { viewModel.onEnviarReporte(motivoNoReportar())?.let { solicitud -> onReporteValido(solicitud) } },
         onVolver = onVolver,
         snackbarHostState = snackbarHostState
     )

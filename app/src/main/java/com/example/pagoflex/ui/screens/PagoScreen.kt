@@ -39,12 +39,11 @@ import com.example.pagoflex.model.totalAPagar
 import com.example.pagoflex.ui.components.BarraSuperior
 import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.BotonSecundario
-import com.example.pagoflex.ui.components.CampoContrasena
 import com.example.pagoflex.ui.components.CamposTarjeta
 import com.example.pagoflex.ui.components.CasillaConTexto
 import com.example.pagoflex.ui.components.FilaDato
 import com.example.pagoflex.ui.components.GrupoRadio
-import com.example.pagoflex.ui.components.TarjetaMensaje
+import com.example.pagoflex.ui.components.MensajeAnimado
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
@@ -54,14 +53,13 @@ import com.example.pagoflex.viewmodel.PagoViewModel
 fun PagoScreen(
     datos: BaseDatos,
     compromiso: Compromiso,
-    codigoCorrecto: String,
     motivoNoPagar: () -> String?,
     onPagoValido: (SolicitudPago) -> Unit,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
     viewModel: PagoViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.pago.collectAsStateWithLifecycle()
     val tarjetas = uiState.medioPago?.let { datos.tarjetasGuardadas(compromiso.idUsuarioFinal, it) } ?: emptyList()
 
     PagoContent(
@@ -78,11 +76,8 @@ fun PagoScreen(
         onVencimientoTarjetaCambia = viewModel::onVencimientoTarjetaCambia,
         onCvvCambia = viewModel::onCvvCambia,
         onGuardarTarjetaCambia = viewModel::onGuardarTarjetaCambia,
-        onCodigoCambia = viewModel::onCodigoCambia,
-        onAlternarVisibilidad = viewModel::onAlternarVisibilidad,
-        onConfirmaTotalCambia = viewModel::onConfirmaTotalCambia,
         onPagar = {
-            viewModel.onPagar(codigoCorrecto, motivoNoPagar(), tarjetas, datos.fechaHoy)
+            viewModel.onPagar(motivoNoPagar(), tarjetas, datos.fechaHoy)
                 ?.let { solicitud -> onPagoValido(solicitud) }
         },
         onVolver = onVolver,
@@ -103,9 +98,6 @@ fun PagoContent(
     onVencimientoTarjetaCambia: (String) -> Unit,
     onCvvCambia: (String) -> Unit,
     onGuardarTarjetaCambia: (Boolean) -> Unit,
-    onCodigoCambia: (String) -> Unit,
-    onAlternarVisibilidad: () -> Unit,
-    onConfirmaTotalCambia: (Boolean) -> Unit,
     onPagar: () -> Unit,
     onVolver: () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
@@ -205,28 +197,7 @@ fun PagoContent(
                 }
             }
 
-            TarjetaSeccion(
-                titulo = "Confirma que eres tú",
-                subtitulo = "Así nadie más puede pagar desde tu teléfono."
-            ) {
-                CampoContrasena(
-                    valor = uiState.codigo,
-                    onValorCambia = onCodigoCambia,
-                    etiqueta = "Código de confirmación",
-                    visible = uiState.codigoVisible,
-                    onAlternarVisible = onAlternarVisibilidad,
-                    error = uiState.errorCodigo,
-                    ayuda = "Son los 4 últimos números de tu RUT, antes del guion"
-                )
-                CasillaConTexto(
-                    texto = "Revisé el total a pagar: $total",
-                    marcado = uiState.confirmaTotal,
-                    onCambio = onConfirmaTotalCambia,
-                    error = uiState.errorConfirmacion
-                )
-            }
-
-            uiState.errorPago?.let { TarjetaMensaje(texto = it) }
+            MensajeAnimado(texto = uiState.errorPago)
 
             BotonPrincipal(
                 texto = "Pagar $total",
@@ -255,8 +226,7 @@ private fun PagoPreview() {
             tarjetas = datos.tarjetasGuardadas(1, MedioPago.DEBITO),
             onMedioPagoSeleccionado = {}, onTarjetaSeleccionada = {}, onNumeroTarjetaCambia = {},
             onTitularTarjetaCambia = {}, onVencimientoTarjetaCambia = {}, onCvvCambia = {},
-            onGuardarTarjetaCambia = {}, onCodigoCambia = {}, onAlternarVisibilidad = {},
-            onConfirmaTotalCambia = {}, onPagar = {}
+            onGuardarTarjetaCambia = {}, onPagar = {}
         )
     }
 }
@@ -272,21 +242,17 @@ private fun PagoConErroresPreview() {
                 usarTarjetaNueva = true,
                 numeroTarjeta = "4111111111111112",
                 vencimientoTarjeta = "0525",
-                codigo = "1234",
                 errorNumeroTarjeta = "Revisa el número: no corresponde a una tarjeta válida",
                 errorTitularTarjeta = "Ingresa el nombre tal como aparece en la tarjeta",
                 errorVencimientoTarjeta = "Esta tarjeta está vencida",
-                errorCvv = "Ingresa el código de seguridad",
-                errorCodigo = "El código no coincide. Son los 4 últimos números de tu RUT, antes del guion",
-                errorConfirmacion = "Confirma que revisaste el total a pagar"
+                errorCvv = "Ingresa el código de seguridad"
             ),
             datos = datos,
             compromiso = datos.compromisoPorId(101) ?: datos.compromisos.first(),
             tarjetas = datos.tarjetasGuardadas(1, MedioPago.CREDITO),
             onMedioPagoSeleccionado = {}, onTarjetaSeleccionada = {}, onNumeroTarjetaCambia = {},
             onTitularTarjetaCambia = {}, onVencimientoTarjetaCambia = {}, onCvvCambia = {},
-            onGuardarTarjetaCambia = {}, onCodigoCambia = {}, onAlternarVisibilidad = {},
-            onConfirmaTotalCambia = {}, onPagar = {}
+            onGuardarTarjetaCambia = {}, onPagar = {}
         )
     }
 }

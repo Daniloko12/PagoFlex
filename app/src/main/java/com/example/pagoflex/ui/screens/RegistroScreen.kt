@@ -17,6 +17,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -33,36 +34,38 @@ import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.CampoContrasena
 import com.example.pagoflex.ui.components.CampoTexto
 import com.example.pagoflex.ui.components.CasillaConTexto
-import com.example.pagoflex.ui.components.TarjetaMensaje
+import com.example.pagoflex.ui.components.MensajeAnimado
+import com.example.pagoflex.ui.components.RequisitosClave
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
-import com.example.pagoflex.viewmodel.RegistroViewModel
+import com.example.pagoflex.viewmodel.CuentaViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun RegistroScreen(
     datos: BaseDatos,
-    onCuentaValida: (NuevaCuenta) -> String?,
+    onCuentaValida: suspend (NuevaCuenta) -> String?,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
-    viewModel: RegistroViewModel = viewModel()
+    viewModel: CuentaViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.registro.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     RegistroContent(
         uiState = uiState,
-        onRutCambia = viewModel::onRutCambia,
-        onNombresCambia = viewModel::onNombresCambia,
-        onApellidosCambia = viewModel::onApellidosCambia,
-        onCorreoCambia = viewModel::onCorreoCambia,
-        onTelefonoCambia = viewModel::onTelefonoCambia,
-        onClaveCambia = viewModel::onClaveCambia,
-        onConfirmacionCambia = viewModel::onConfirmacionCambia,
-        onAlternarVisibilidad = viewModel::onAlternarVisibilidad,
+        onRutCambia = viewModel::onRutRegistroCambia,
+        onNombresCambia = viewModel::onNombresRegistroCambia,
+        onApellidosCambia = viewModel::onApellidosRegistroCambia,
+        onCorreoCambia = viewModel::onCorreoRegistroCambia,
+        onTelefonoCambia = viewModel::onTelefonoRegistroCambia,
+        onClaveCambia = viewModel::onClaveRegistroCambia,
+        onConfirmacionCambia = viewModel::onConfirmacionRegistroCambia,
         onAceptaTerminosCambia = viewModel::onAceptaTerminosCambia,
         onCrearCuenta = {
             viewModel.onCrearCuenta(datos)?.let { nueva ->
-                onCuentaValida(nueva)?.let { error -> viewModel.onErrorRegistro(error) }
+                scope.launch { onCuentaValida(nueva)?.let { error -> viewModel.onErrorRegistro(error) } }
             }
         },
         onVolver = onVolver,
@@ -80,7 +83,6 @@ fun RegistroContent(
     onTelefonoCambia: (String) -> Unit,
     onClaveCambia: (String) -> Unit,
     onConfirmacionCambia: (String) -> Unit,
-    onAlternarVisibilidad: () -> Unit,
     onAceptaTerminosCambia: (Boolean) -> Unit,
     onCrearCuenta: () -> Unit,
     onVolver: () -> Unit = {},
@@ -158,23 +160,19 @@ fun RegistroContent(
 
             TarjetaSeccion(
                 titulo = "Tu contraseña",
-                subtitulo = "5 números que solo tú conozcas. La guardamos cifrada: ni PagoFlex puede leerla."
+                subtitulo = "La guardamos cifrada: ni PagoFlex puede leerla. Toca el ojo de cada campo para ver lo que escribiste."
             ) {
                 CampoContrasena(
                     valor = uiState.clave,
                     onValorCambia = onClaveCambia,
                     etiqueta = "Contraseña *",
-                    visible = uiState.claveVisible,
-                    onAlternarVisible = onAlternarVisibilidad,
-                    error = uiState.errorClave,
-                    ayuda = "${uiState.clave.length}/5 dígitos"
+                    error = uiState.errorClave
                 )
+                RequisitosClave(clave = uiState.clave)
                 CampoContrasena(
                     valor = uiState.confirmacionClave,
                     onValorCambia = onConfirmacionCambia,
                     etiqueta = "Repite la contraseña *",
-                    visible = uiState.claveVisible,
-                    onAlternarVisible = onAlternarVisibilidad,
                     error = uiState.errorConfirmacion
                 )
             }
@@ -186,7 +184,7 @@ fun RegistroContent(
                 error = uiState.errorTerminos
             )
 
-            uiState.errorRegistro?.let { TarjetaMensaje(texto = it) }
+            MensajeAnimado(texto = uiState.errorRegistro)
 
             BotonPrincipal(
                 texto = stringResource(R.string.btn_crear_cuenta),
@@ -209,7 +207,7 @@ private fun RegistroPreview() {
             uiState = RegistroUiState(),
             onRutCambia = {}, onNombresCambia = {}, onApellidosCambia = {}, onCorreoCambia = {},
             onTelefonoCambia = {}, onClaveCambia = {}, onConfirmacionCambia = {},
-            onAlternarVisibilidad = {}, onAceptaTerminosCambia = {}, onCrearCuenta = {}
+            onAceptaTerminosCambia = {}, onCrearCuenta = {}
         )
     }
 }
@@ -233,7 +231,7 @@ private fun RegistroConErroresPreview() {
             ),
             onRutCambia = {}, onNombresCambia = {}, onApellidosCambia = {}, onCorreoCambia = {},
             onTelefonoCambia = {}, onClaveCambia = {}, onConfirmacionCambia = {},
-            onAlternarVisibilidad = {}, onAceptaTerminosCambia = {}, onCrearCuenta = {}
+            onAceptaTerminosCambia = {}, onCrearCuenta = {}
         )
     }
 }

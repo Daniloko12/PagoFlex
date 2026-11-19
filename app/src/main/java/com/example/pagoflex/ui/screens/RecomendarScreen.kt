@@ -38,7 +38,7 @@ import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
-import com.example.pagoflex.viewmodel.RecomendacionViewModel
+import com.example.pagoflex.viewmodel.CompromisoViewModel
 import java.time.LocalDate
 
 @Composable
@@ -50,9 +50,9 @@ fun RecomendarScreen(
     onRecomendacionValida: (NuevaRecomendacion) -> Unit,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
-    viewModel: RecomendacionViewModel = viewModel()
+    viewModel: CompromisoViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.recomendacion.collectAsStateWithLifecycle()
 
     RecomendarContent(
         uiState = uiState,
@@ -61,13 +61,13 @@ fun RecomendarScreen(
         onNombreOrganizacionCambia = viewModel::onNombreOrganizacionCambia,
         onRutOrganizacionCambia = viewModel::onRutOrganizacionCambia,
         onRubroSeleccionado = viewModel::onRubroSeleccionado,
-        onComunaSeleccionada = viewModel::onComunaSeleccionada,
+        onComunaSeleccionada = viewModel::onComunaRecomendacionSeleccionada,
         onNombreContactoCambia = viewModel::onNombreContactoCambia,
         onCorreoContactoCambia = viewModel::onCorreoContactoCambia,
         onTelefonoContactoCambia = viewModel::onTelefonoContactoCambia,
         onAutorizaContactoCambia = viewModel::onAutorizaContactoCambia,
-        onEnviar = { viewModel.onEnviar(propias, hoy)?.let { nueva -> onRecomendacionValida(nueva) } },
-        onLimpiar = viewModel::onLimpiar,
+        onEnviar = { viewModel.onEnviarRecomendacion(propias, hoy)?.let { nueva -> onRecomendacionValida(nueva) } },
+        onLimpiar = viewModel::onLimpiarRecomendacion,
         onVolver = onVolver,
         snackbarHostState = snackbarHostState
     )

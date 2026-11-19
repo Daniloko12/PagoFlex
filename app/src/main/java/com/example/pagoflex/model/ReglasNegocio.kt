@@ -105,20 +105,48 @@ fun ocultarRut(rut: String): String {
     return "$primerGrupo.•••.•••-$dv"
 }
 
-fun codigoConfirmacionDe(rut: String): String {
-    val cuerpo = rut.replace(".", "").replace(" ", "").substringBefore("-")
-    return cuerpo.takeLast(4)
+const val CLAVE_DE_PRUEBA = "Pago#2026"
+
+const val CLAVE_ANTERIOR_DE_PRUEBA = "12345"
+
+const val LARGO_MINIMO_CLAVE = 8
+
+const val LARGO_MAXIMO_CLAVE = 20
+
+enum class RequisitoClave(val texto: String) {
+    LARGO("Al menos $LARGO_MINIMO_CLAVE caracteres"),
+    MAYUSCULA("Una letra mayúscula"),
+    MINUSCULA("Una letra minúscula"),
+    NUMERO("Un número"),
+    ESPECIAL("Un carácter especial, por ejemplo # ! . * @")
 }
 
-const val CLAVE_DE_PRUEBA = "12345"
+fun esCaracterEspecial(caracter: Char): Boolean = !caracter.isLetterOrDigit() && !caracter.isWhitespace()
 
-fun claveValida(clave: String): Boolean = clave.length == 5 && clave.all { it.isDigit() }
+fun cumpleRequisito(clave: String, requisito: RequisitoClave): Boolean = when (requisito) {
+    RequisitoClave.LARGO -> clave.length >= LARGO_MINIMO_CLAVE
+    RequisitoClave.MAYUSCULA -> clave.any { it.isUpperCase() }
+    RequisitoClave.MINUSCULA -> clave.any { it.isLowerCase() }
+    RequisitoClave.NUMERO -> clave.any { it.isDigit() }
+    RequisitoClave.ESPECIAL -> clave.any { esCaracterEspecial(it) }
+}
 
-fun errorClaveNueva(clave: String): String? = when {
-    clave.isBlank() -> "Crea tu contraseña"
-    !claveValida(clave) -> "La contraseña debe tener 5 dígitos"
-    clave.toSet().size == 1 || clave == "12345" || clave == "54321" -> "Es muy fácil de adivinar. Elige otra combinación"
-    else -> null
+fun requisitosPendientes(clave: String): List<RequisitoClave> =
+    RequisitoClave.entries.filter { !cumpleRequisito(clave, it) }
+
+fun claveValida(clave: String): Boolean =
+    requisitosPendientes(clave).isEmpty() && clave.none { it.isWhitespace() } && clave.length <= LARGO_MAXIMO_CLAVE
+
+fun errorClaveNueva(clave: String): String? {
+    val pendientes = requisitosPendientes(clave)
+    return when {
+        clave.isEmpty() -> "Crea tu contraseña"
+        clave.any { it.isWhitespace() } -> "La contraseña no puede tener espacios"
+        clave.length > LARGO_MAXIMO_CLAVE -> "Máximo $LARGO_MAXIMO_CLAVE caracteres"
+        pendientes.size == 1 -> "Te falta: ${pendientes.first().texto.lowercase()}"
+        pendientes.isNotEmpty() -> "Te faltan ${pendientes.size} de los 5 requisitos de seguridad"
+        else -> null
+    }
 }
 
 fun errorConfirmacionClave(clave: String, confirmacion: String): String? = when {
@@ -127,11 +155,12 @@ fun errorConfirmacionClave(clave: String, confirmacion: String): String? = when 
     else -> null
 }
 
-fun hashClave(rut: String, clave: String): String {
-    val texto = "${normalizarRut(rut)}:$clave"
+fun sha256(texto: String): String {
     val bytes = MessageDigest.getInstance("SHA-256").digest(texto.toByteArray(Charsets.UTF_8))
     return bytes.joinToString("") { "%02x".format(it) }
 }
+
+fun hashClave(rut: String, clave: String): String = sha256("${normalizarRut(rut)}:$clave")
 
 fun correoValido(correo: String): Boolean {
     val texto = correo.trim()

@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -40,38 +41,41 @@ import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.BotonSecundario
 import com.example.pagoflex.ui.components.CampoTexto
 import com.example.pagoflex.ui.components.FilaDato
+import com.example.pagoflex.ui.components.MensajeAnimado
 import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
-import com.example.pagoflex.viewmodel.EditarCompromisoViewModel
+import com.example.pagoflex.viewmodel.CompromisoViewModel
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 @Composable
 fun EditarCompromisoScreen(
     datos: BaseDatos,
     compromiso: Compromiso,
-    onCambiosValidos: (CambiosCompromiso) -> String?,
+    onCambiosValidos: suspend (CambiosCompromiso) -> String?,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
-    viewModel: EditarCompromisoViewModel = viewModel()
+    viewModel: CompromisoViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.edicion.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(compromiso.idCompromiso) { viewModel.onCargar(compromiso) }
+    LaunchedEffect(compromiso.idCompromiso) { viewModel.onCargarEdicion(compromiso) }
 
     EditarCompromisoContent(
         uiState = uiState,
         datos = datos,
         compromiso = compromiso,
-        onConceptoCambia = viewModel::onConceptoCambia,
-        onMontoCambia = viewModel::onMontoCambia,
-        onFechaVencimientoCambia = viewModel::onFechaVencimientoCambia,
-        onNumeroCuotaCambia = viewModel::onNumeroCuotaCambia,
-        onTotalCuotasCambia = viewModel::onTotalCuotasCambia,
+        onConceptoCambia = viewModel::onConceptoEdicionCambia,
+        onMontoCambia = viewModel::onMontoEdicionCambia,
+        onFechaVencimientoCambia = viewModel::onFechaEdicionCambia,
+        onNumeroCuotaCambia = viewModel::onNumeroCuotaEdicionCambia,
+        onTotalCuotasCambia = viewModel::onTotalCuotasEdicionCambia,
         onGuardar = {
-            viewModel.onGuardar(compromiso, datos)?.let { cambios ->
-                onCambiosValidos(cambios)?.let { error -> viewModel.onErrorEdicion(error) }
+            viewModel.onGuardarEdicion(compromiso, datos)?.let { cambios ->
+                scope.launch { onCambiosValidos(cambios)?.let { error -> viewModel.onErrorEdicion(error) } }
             }
         },
         onVolver = onVolver,
@@ -180,7 +184,7 @@ fun EditarCompromisoContent(
             }
 
             uiState.errorDuplicado?.let { TarjetaMensaje(texto = it) }
-            uiState.errorEdicion?.let { TarjetaMensaje(texto = it) }
+            MensajeAnimado(texto = uiState.errorEdicion)
 
             BotonPrincipal(
                 texto = stringResource(R.string.btn_guardar_cambios),

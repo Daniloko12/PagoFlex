@@ -1,29 +1,34 @@
 package com.example.pagoflex.ui.screens
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.pagoflex.R
 import com.example.pagoflex.data.ConvertidorImagen
-import com.example.pagoflex.model.Canal
 import com.example.pagoflex.model.BaseDatos
+import com.example.pagoflex.model.Canal
 import com.example.pagoflex.model.CategoriaCumplimiento
 import com.example.pagoflex.model.Compromiso
 import com.example.pagoflex.model.DiasAnticipacion
@@ -42,6 +47,8 @@ import com.example.pagoflex.model.pagoATiempo
 import com.example.pagoflex.model.primerNombre
 import com.example.pagoflex.model.tarjetaPorId
 import com.example.pagoflex.model.textoTarjeta
+import com.example.pagoflex.ui.components.AvatarIniciales
+import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.styles.EstilosTarjeta
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.coloresExtra
@@ -53,6 +60,22 @@ val ESPACIO_BOTON_FLOTANTE = 88.dp
 @Composable
 fun fotoDe(avatar: ByteArray?): ImageBitmap? = remember(avatar) {
     avatar?.let { bytes -> ConvertidorImagen.aBitmap(bytes)?.asImageBitmap() }
+}
+
+@Composable
+fun TarjetaBoleta(foto: ByteArray?) {
+    val imagen = fotoDe(foto) ?: return
+    TarjetaSeccion(titulo = "Boleta escaneada", subtitulo = "Foto que se adjuntó al agregar este pago") {
+        Image(
+            bitmap = imagen,
+            contentDescription = "Foto de la boleta",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 360.dp)
+                .clip(RoundedCornerShape(Dimens.radioCampo))
+        )
+    }
 }
 
 @Composable
@@ -189,37 +212,73 @@ fun MensajeVacio(texto: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun EstadoConexion(
-    sinConexion: Boolean,
+fun AvisoSinConexion(
     ultimaActualizacion: LocalDateTime,
-    onActualizar: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colores = MaterialTheme.coloresExtra
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = EstilosTarjeta.forma,
-        color = if (sinConexion) colores.advertenciaFondo else MaterialTheme.colorScheme.surface,
-        contentColor = if (sinConexion) colores.advertencia else MaterialTheme.colorScheme.onSurfaceVariant
+        color = colores.advertenciaFondo,
+        contentColor = colores.advertencia
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = Dimens.espacioMedio, vertical = Dimens.espacioMini),
+            modifier = Modifier.padding(horizontal = Dimens.espacioMedio, vertical = Dimens.espacioChico),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = if (sinConexion)
-                    "Sin conexión. Esta es tu última situación conocida, del ${formatoFechaHora(ultimaActualizacion)}."
-                else "Actualizado: ${formatoFechaHora(ultimaActualizacion)}",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.weight(1f)
+            Icon(
+                painter = painterResource(R.drawable.ic_actualizar),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
             )
-            TextButton(onClick = onActualizar) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_actualizar),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+            Crossfade(
+                targetState = formatoFechaHora(ultimaActualizacion),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = Dimens.espacioChico),
+                label = "ultimaActualizacion"
+            ) { hora ->
+                Text(
+                    text = "Sin conexión. Te mostramos tu última situación conocida, del $hora. Se actualizará sola al volver la conexión.",
+                    style = MaterialTheme.typography.bodySmall
                 )
-                Text(text = stringResource(R.string.btn_actualizar), modifier = Modifier.padding(start = Dimens.espacioMini))
+            }
+        }
+    }
+}
+
+@Composable
+fun SugerenciasCorreo(sugerencias: List<Usuario>, onElegir: (String) -> Unit) {
+    if (sugerencias.isEmpty()) return
+    Surface(
+        shape = RoundedCornerShape(Dimens.radioTarjeta),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column {
+            sugerencias.forEach { usuario ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onElegir(usuario.correo) }
+                        .padding(horizontal = Dimens.espacioMedio, vertical = Dimens.espacioChico),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AvatarIniciales(iniciales = inicialesDe(usuario), color = colorAvatarDe(usuario.idUsuario))
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = Dimens.espacioMedio)
+                    ) {
+                        Text(text = usuario.correo, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = nombreCorto(usuario),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         }
     }

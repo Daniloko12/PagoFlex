@@ -1,11 +1,14 @@
 package com.example.pagoflex.data
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.core.content.edit
+import com.example.pagoflex.model.SERVIDOR_EMULADOR
+import com.example.pagoflex.model.normalizarServidor
 import java.time.LocalDateTime
 
-class SesionPreferencias(context: Context) {
-    private val prefs = context.getSharedPreferences(NOMBRE_ARCHIVO, Context.MODE_PRIVATE)
+class SesionPreferencias(private val prefs: SharedPreferences) {
+    constructor(context: Context) : this(context.getSharedPreferences(NOMBRE_ARCHIVO, Context.MODE_PRIVATE))
 
     companion object {
         const val NOMBRE_ARCHIVO = "sesion"
@@ -13,6 +16,7 @@ class SesionPreferencias(context: Context) {
         private const val CLAVE_SIN_CONEXION = "sin_conexion"
         private const val CLAVE_ULTIMA_ACTUALIZACION = "ultima_actualizacion"
         private const val CLAVE_MODO_OSCURO = "modo_oscuro"
+        private const val CLAVE_SERVIDOR = "servidor"
         private const val SIN_SESION = -1
     }
 
@@ -44,4 +48,10 @@ class SesionPreferencias(context: Context) {
     }
 
     fun leerModoOscuro(): Boolean = prefs.getBoolean(CLAVE_MODO_OSCURO, true)
+
+    fun guardarServidor(direccion: String) {
+        prefs.edit { putString(CLAVE_SERVIDOR, direccion) }
+    }
+
+    fun leerServidor(): String = normalizarServidor(prefs.getString(CLAVE_SERVIDOR, null) ?: SERVIDOR_EMULADOR)
 }

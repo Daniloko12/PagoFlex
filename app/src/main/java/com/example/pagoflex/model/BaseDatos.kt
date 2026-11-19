@@ -21,6 +21,7 @@ data class BaseDatos(
     val rubros: List<Rubro> = DatosAnexo9.rubros,
     val comunas: List<Comuna> = DatosAnexo9.comunas,
     val reconocimientos: List<Reconocimiento> = DatosAnexo9.reconocimientos,
+    val movimientos: List<Movimiento> = movimientosIniciales(compromisos, pagos, anulaciones, reportes),
     val fechaHoy: LocalDate = DatosAnexo9.FECHA_HOY
 )
 
@@ -49,6 +50,14 @@ fun BaseDatos.comunaPorId(id: Int?): Comuna? = comunas.find { it.idComuna == id 
 fun BaseDatos.reconocimientoPorId(id: Int): Reconocimiento? = reconocimientos.find { it.idReconocimiento == id }
 
 fun BaseDatos.usuariosDelRol(rol: Rol): List<Usuario> = usuarios.filter { it.rol == rol && it.activo }
+
+fun BaseDatos.cuentasQueEmpiezanCon(texto: String, maximo: Int = 4): List<Usuario> {
+    val buscado = texto.trim()
+    if (buscado.isEmpty()) return emptyList()
+    return usuarios.filter {
+        it.activo && it.correo.startsWith(buscado, ignoreCase = true) && !it.correo.equals(buscado, ignoreCase = true)
+    }.take(maximo)
+}
 
 fun BaseDatos.usuarioPorRut(rut: String): Usuario? {
     val buscado = normalizarRut(rut)
@@ -105,7 +114,7 @@ fun BaseDatos.empresasDelUsuario(idUsuario: Int): List<EmpresaCliente> {
     return empresas.filter { it.idEmpresa in ids }
 }
 
-fun BaseDatos.movimientos(idUsuario: Int): List<MovimientoHistorial> {
+fun BaseDatos.pagosYAnulaciones(idUsuario: Int): List<MovimientoHistorial> {
     val propios = compromisos.filter { it.idUsuarioFinal == idUsuario }
     val conPago = propios.mapNotNull { c -> pagoDe(c.idCompromiso)?.let { p -> MovimientoHistorial(p.fechaHora, c, p, null) } }
     val anulados = propios.mapNotNull { c -> anulacionDe(c.idCompromiso)?.let { a -> MovimientoHistorial(a.fecha, c, null, a) } }
@@ -113,14 +122,50 @@ fun BaseDatos.movimientos(idUsuario: Int): List<MovimientoHistorial> {
 }
 
 fun BaseDatos.aniosHistorial(idUsuario: Int): List<Int> =
-    movimientos(idUsuario).map { it.fecha.year }.distinct().sortedDescending()
+    pagosYAnulaciones(idUsuario).map { it.fecha.year }.distinct().sortedDescending()
 
 fun BaseDatos.historialFiltrado(idUsuario: Int, idEmpresa: Int?, anio: Int?, mes: Int?): List<MovimientoHistorial> =
-    movimientos(idUsuario).filter { m ->
+    pagosYAnulaciones(idUsuario).filter { m ->
         (idEmpresa == null || m.compromiso.idEmpresa == idEmpresa) &&
             (anio == null || m.fecha.year == anio) &&
             (mes == null || m.fecha.monthValue == mes)
     }
+
+fun BaseDatos.registradoPorElCliente(compromiso: Compromiso): Boolean =
+    compromiso.idAdminRegistro == null && movimientos.any {
+        it.idCompromiso == compromiso.idCompromiso &&
+            it.tipo == TipoMovimiento.COMPROMISO_REGISTRADO &&
+            it.idAutor == compromiso.idUsuarioFinal
+    }
+
+fun BaseDatos.movimientosDe(idUsuario: Int, grupo: GrupoMovimiento? = null): List<Movimiento> =
+    movimientos
+        .filter { it.idUsuario == idUsuario && (grupo == null || it.tipo.grupo == grupo) }
+        .sortedWith(compareByDescending<Movimiento> { it.fecha }.thenByDescending { it.idMovimiento })
+
+fun BaseDatos.movimientosDelCompromiso(idCompromiso: Int): List<Movimiento> =
+    movimientos
+        .filter { it.idCompromiso == idCompromiso }
+        .sortedWith(compareBy<Movimiento> { it.fecha }.thenBy { it.idMovimiento })
+
+fun BaseDatos.movimientosFiltrados(grupo: GrupoMovimiento?, texto: String): List<Movimiento> {
+    val buscado = texto.trim().lowercase()
+    return movimientos
+        .filter { m ->
+            (grupo == null || m.tipo.grupo == grupo) && (
+                buscado.isEmpty() ||
+                    m.detalle.lowercase().contains(buscado) ||
+                    usuarioPorId(m.idUsuario)?.let { nombreCompleto(it).lowercase().contains(buscado) } == true
+                )
+        }
+        .sortedWith(compareByDescending<Movimiento> { it.fecha }.thenByDescending { it.idMovimiento })
+}
+
+fun BaseDatos.autorDe(movimiento: Movimiento): String = when (val autor = usuarioPorId(movimiento.idAutor)) {
+    null -> "PagoFlex (automático)"
+    else -> if (autor.idUsuario == movimiento.idUsuario) "${nombreCompleto(autor)} (titular)"
+    else "${nombreCompleto(autor)} (${autor.rol.etiqueta.lowercase()})"
+}
 
 fun indicadorDe(idUsuario: Int): IndicadorCumplimiento {
     val base = DatosAnexo9.cumplimientoHistorico.find { it.idUsuarioFinal == idUsuario }
@@ -167,6 +212,17 @@ fun BaseDatos.avisosProgramados(
         }
         .sortedBy { it.fechaEntrega }
 }
+
+fun BaseDatos.avisosDelUsuario(usuario: Usuario): List<AvisoProgramado> {
+    if (usuario.rol != Rol.USUARIO_FINAL || usuario.avisosActivos == false) return emptyList()
+    val anticipacion = DiasAnticipacion.entries.find { it.dias == usuario.diasAnticipacion } ?: DiasAnticipacion.TRES
+    return avisosProgramados(usuario, true, anticipacion)
+}
+
+fun BaseDatos.recordatoriosDeHoy(usuario: Usuario): List<AvisoProgramado> =
+    avisosDelUsuario(usuario).filter { it.fechaEntrega.toLocalDate() == fechaHoy }
+
+fun BaseDatos.proximoRecordatorio(usuario: Usuario): AvisoProgramado? = avisosDelUsuario(usuario).firstOrNull()
 
 fun BaseDatos.reportesOrdenados(filtro: EstadoReporte?): List<Reporte> =
     reportes
@@ -402,8 +458,7 @@ fun BaseDatos.validarPersona(
     )
 }
 
-fun BaseDatos.cuentaParaRecuperar(correo: String, rut: String): Usuario? =
-    usuarioPorCorreo(correo)?.takeIf { validarRut(rut) && normalizarRut(it.rut) == normalizarRut(rut) }
+fun BaseDatos.cuentaParaRecuperar(correo: String): Usuario? = usuarioPorCorreo(correo)?.takeIf { it.activo }
 
 fun BaseDatos.siguienteCuota(compromiso: Compromiso, fecha: LocalDateTime): Compromiso? {
     val numero = compromiso.numeroCuota ?: return null
@@ -504,4 +559,36 @@ fun BaseDatos.resumenPanel(meses: Int = 4): ResumenPanel {
             .sortedBy { it.fechaVencimiento }
             .take(5)
     )
+}
+
+fun baseDatosVacia(fechaHoy: LocalDate = DatosAnexo9.FECHA_HOY): BaseDatos = BaseDatos(
+    usuarios = emptyList(),
+    empresas = emptyList(),
+    compromisos = emptyList(),
+    pagos = emptyList(),
+    anulaciones = emptyList(),
+    reportes = emptyList(),
+    recomendaciones = emptyList(),
+    contactosRecomendacion = emptyList(),
+    historialRecomendaciones = emptyList(),
+    reconocimientosObtenidos = emptyList(),
+    tarjetas = emptyList(),
+    rubros = emptyList(),
+    comunas = emptyList(),
+    reconocimientos = emptyList(),
+    movimientos = emptyList(),
+    fechaHoy = fechaHoy
+)
+
+fun BaseDatos.compromisosQueCoinciden(texto: String): List<Compromiso> {
+    val buscado = texto.trim()
+    val rutBuscado = texto.filter { it.isLetterOrDigit() }
+    return compromisos.filter { compromiso ->
+        val persona = usuarioPorId(compromiso.idUsuarioFinal) ?: return@filter false
+        val empresa = empresaPorId(compromiso.idEmpresa) ?: return@filter false
+        "${persona.nombres} ${persona.apellidos}".contains(buscado, ignoreCase = true) ||
+            persona.rut.filter { it.isLetterOrDigit() }.contains(rutBuscado, ignoreCase = true) ||
+            compromiso.concepto.contains(buscado, ignoreCase = true) ||
+            empresa.nombreFantasia.contains(buscado, ignoreCase = true)
+    }.sortedWith(compareBy<Compromiso>({ it.fechaVencimiento }, { it.idCompromiso }))
 }

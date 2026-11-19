@@ -19,8 +19,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -32,122 +34,103 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.pagoflex.R
 import com.example.pagoflex.model.BaseDatos
-import com.example.pagoflex.model.CLAVE_DE_PRUEBA
 import com.example.pagoflex.model.Credenciales
 import com.example.pagoflex.model.IngresoUiState
-import com.example.pagoflex.model.Rol
+import com.example.pagoflex.model.SERVIDOR_EMULADOR
 import com.example.pagoflex.model.Usuario
-import com.example.pagoflex.model.usuariosDelRol
+import com.example.pagoflex.model.cuentasQueEmpiezanCon
 import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.CampoContrasena
 import com.example.pagoflex.ui.components.CampoTexto
-import com.example.pagoflex.ui.components.OpcionCuenta
-import com.example.pagoflex.ui.components.TarjetaMensaje
+import com.example.pagoflex.ui.components.MensajeAnimado
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
 import com.example.pagoflex.ui.theme.coloresExtra
-import com.example.pagoflex.viewmodel.IngresoViewModel
+import com.example.pagoflex.viewmodel.CuentaViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun IngresoScreen(
     datos: BaseDatos,
-    onIngresar: (Credenciales) -> String?,
+    onIngresar: suspend (Credenciales) -> String?,
     onRestablecer: () -> Unit,
     onCrearCuenta: () -> Unit,
     onRecuperarClave: () -> Unit,
     modoOscuro: Boolean,
     onCambiarModo: (Boolean) -> Unit,
     snackbarHostState: SnackbarHostState,
-    viewModel: IngresoViewModel = viewModel()
+    servidor: String = SERVIDOR_EMULADOR,
+    onCambiarServidor: (String) -> Unit = {},
+    viewModel: CuentaViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.ingreso.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     IngresoContent(
         uiState = uiState,
-        cuentasDePrueba = datos.usuariosDelRol(Rol.USUARIO_FINAL) + datos.usuariosDelRol(Rol.ADMINISTRADOR),
-        onCorreoCambia = viewModel::onCorreoCambia,
-        onClaveCambia = viewModel::onClaveCambia,
-        onAlternarVisibilidad = viewModel::onAlternarVisibilidad,
+        sugerencias = datos.cuentasQueEmpiezanCon(uiState.correo),
+        onCorreoCambia = viewModel::onCorreoIngresoCambia,
+        onClaveCambia = viewModel::onClaveIngresoCambia,
         onIngresar = {
             viewModel.onIngresar()?.let { credenciales ->
-                onIngresar(credenciales)?.let { error -> viewModel.onErrorIngreso(error) }
+                scope.launch { onIngresar(credenciales)?.let { error -> viewModel.onErrorIngreso(error) } }
             }
         },
-        onUsarCuentaDePrueba = { usuario -> viewModel.onUsarCuentaDePrueba(usuario.correo) },
         onRestablecer = onRestablecer,
         onCrearCuenta = onCrearCuenta,
         onRecuperarClave = onRecuperarClave,
         modoOscuro = modoOscuro,
         onCambiarModo = onCambiarModo,
-        snackbarHostState = snackbarHostState
+        snackbarHostState = snackbarHostState,
+        servidor = servidor,
+        onCambiarServidor = onCambiarServidor
     )
 }
 
 @Composable
 fun IngresoContent(
     uiState: IngresoUiState,
-    cuentasDePrueba: List<Usuario>,
+    sugerencias: List<Usuario> = emptyList(),
     onCorreoCambia: (String) -> Unit,
     onClaveCambia: (String) -> Unit,
-    onAlternarVisibilidad: () -> Unit,
     onIngresar: () -> Unit,
-    onUsarCuentaDePrueba: (Usuario) -> Unit = {},
     onRestablecer: () -> Unit = {},
     onCrearCuenta: () -> Unit = {},
     onRecuperarClave: () -> Unit = {},
     modoOscuro: Boolean = true,
     onCambiarModo: (Boolean) -> Unit = {},
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    servidor: String = SERVIDOR_EMULADOR,
+    onCambiarServidor: (String) -> Unit = {}
 ) {
-    var verCuentas by remember { mutableStateOf(false) }
     var confirmarRestablecer by remember { mutableStateOf(false) }
+    var cambiarServidor by remember { mutableStateOf(false) }
 
-    if (verCuentas) {
-        AlertDialog(
-            onDismissRequest = { verCuentas = false },
-            title = { Text(stringResource(R.string.titulo_cuentas_prueba)) },
-            text = {
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    Text(
-                        text = stringResource(R.string.texto_cuentas_prueba, CLAVE_DE_PRUEBA),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = Dimens.espacioChico)
-                    )
-                    cuentasDePrueba.forEachIndexed { indice, usuario ->
-                        if (indice > 0) HorizontalDivider()
-                        OpcionCuenta(
-                            nombre = nombreCorto(usuario),
-                            detalle = "${usuario.rol.etiqueta} · ${usuario.correo}",
-                            iniciales = inicialesDe(usuario),
-                            seleccionada = usuario.correo == uiState.correo,
-                            onClick = {
-                                onUsarCuentaDePrueba(usuario)
-                                verCuentas = false
-                            },
-                            colorAvatar = colorAvatarDe(usuario.idUsuario)
-                        )
-                    }
-                }
+    if (cambiarServidor) {
+        DialogoServidor(
+            actual = servidor,
+            onConectar = { direccion ->
+                cambiarServidor = false
+                onCambiarServidor(direccion)
             },
-            confirmButton = {
-                TextButton(onClick = { verCuentas = false }) { Text(stringResource(R.string.btn_cerrar)) }
-            }
+            onCancelar = { cambiarServidor = false }
         )
     }
 
@@ -179,7 +162,13 @@ fun IngresoContent(
                 .padding(bottom = innerPadding.calculateBottomPadding())
                 .verticalScroll(rememberScrollState())
         ) {
-            EncabezadoMarca(modoOscuro = modoOscuro, onCambiarModo = onCambiarModo)
+            EncabezadoMarca(
+                modoOscuro = modoOscuro,
+                onCambiarModo = onCambiarModo,
+                servidor = servidor,
+                onElegirServidor = { cambiarServidor = true },
+                onRestablecer = { confirmarRestablecer = true }
+            )
 
             Surface(
                 modifier = Modifier
@@ -220,12 +209,11 @@ fun IngresoContent(
                                 ayuda = stringResource(R.string.ayuda_correo),
                                 tipoTeclado = KeyboardType.Email
                             )
+                            SugerenciasCorreo(sugerencias = sugerencias, onElegir = onCorreoCambia)
                             CampoContrasena(
                                 valor = uiState.clave,
                                 onValorCambia = onClaveCambia,
                                 etiqueta = stringResource(R.string.campo_clave),
-                                visible = uiState.claveVisible,
-                                onAlternarVisible = onAlternarVisibilidad,
                                 error = uiState.errorClave,
                                 ayuda = stringResource(R.string.ayuda_clave)
                             )
@@ -244,7 +232,7 @@ fun IngresoContent(
                         )
                     }
 
-                    uiState.errorIngreso?.let { TarjetaMensaje(texto = it) }
+                    MensajeAnimado(texto = uiState.errorIngreso)
 
                     BotonPrincipal(
                         texto = stringResource(R.string.btn_ingresar),
@@ -265,43 +253,6 @@ fun IngresoContent(
                             Text(stringResource(R.string.btn_crear_cuenta), fontWeight = FontWeight.SemiBold)
                         }
                     }
-                    TextButton(
-                        onClick = { verCuentas = true },
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    ) {
-                        Icon(painterResource(R.drawable.ic_persona), contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text(
-                            text = stringResource(R.string.btn_cuentas_prueba),
-                            modifier = Modifier.padding(start = Dimens.espacioMini)
-                        )
-                    }
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_escudo),
-                            contentDescription = null,
-                            tint = MaterialTheme.coloresExtra.exito,
-                            modifier = Modifier.size(Dimens.tamanoIcono)
-                        )
-                        Text(
-                            text = stringResource(R.string.aviso_confianza),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = Dimens.espacioChico)
-                        )
-                    }
-                    HorizontalDivider()
-                    Text(
-                        text = stringResource(R.string.aviso_demo),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    TextButton(
-                        onClick = { confirmarRestablecer = true },
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    ) { Text(stringResource(R.string.btn_restablecer_datos)) }
                 }
             }
         }
@@ -309,7 +260,13 @@ fun IngresoContent(
 }
 
 @Composable
-private fun EncabezadoMarca(modoOscuro: Boolean, onCambiarModo: (Boolean) -> Unit) {
+private fun EncabezadoMarca(
+    modoOscuro: Boolean,
+    onCambiarModo: (Boolean) -> Unit,
+    servidor: String,
+    onElegirServidor: () -> Unit,
+    onRestablecer: () -> Unit
+) {
     val colores = MaterialTheme.coloresExtra
     Box(
         modifier = Modifier
@@ -342,6 +299,12 @@ private fun EncabezadoMarca(modoOscuro: Boolean, onCambiarModo: (Boolean) -> Uni
                         .padding(start = 12.dp)
                 )
                 BotonModo(modoOscuro = modoOscuro, onCambiarModo = onCambiarModo, color = colores.textoEncabezado)
+                MenuOpciones(
+                    servidor = servidor,
+                    onElegirServidor = onElegirServidor,
+                    onRestablecer = onRestablecer,
+                    color = colores.textoEncabezado
+                )
             }
             Spacer(Modifier.height(40.dp))
             Text(
@@ -359,15 +322,52 @@ private fun EncabezadoMarca(modoOscuro: Boolean, onCambiarModo: (Boolean) -> Uni
     }
 }
 
+@Composable
+private fun MenuOpciones(
+    servidor: String,
+    onElegirServidor: () -> Unit,
+    onRestablecer: () -> Unit,
+    color: Color
+) {
+    var abierto by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { abierto = true }) {
+            Icon(
+                painter = painterResource(R.drawable.ic_mas_opciones),
+                contentDescription = stringResource(R.string.cd_mas_opciones),
+                tint = color
+            )
+        }
+        DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
+            DropdownMenuItem(
+                text = { Text("Servidor: $servidor") },
+                leadingIcon = { Icon(painterResource(R.drawable.ic_ubicacion), contentDescription = null) },
+                onClick = {
+                    abierto = false
+                    onElegirServidor()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.btn_restablecer_datos)) },
+                leadingIcon = { Icon(painterResource(R.drawable.ic_actualizar), contentDescription = null) },
+                onClick = {
+                    abierto = false
+                    onRestablecer()
+                }
+            )
+        }
+    }
+}
+
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun IngresoPreview() {
     PagoFlexTheme {
         IngresoContent(
             uiState = IngresoUiState(),
-            cuentasDePrueba = BaseDatos().usuariosDelRol(Rol.USUARIO_FINAL),
+            sugerencias = BaseDatos().cuentasQueEmpiezanCon("c"),
             onCorreoCambia = {}, onClaveCambia = {},
-            onAlternarVisibilidad = {}, onIngresar = {}
+            onIngresar = {}
         )
     }
 }
@@ -379,13 +379,12 @@ private fun IngresoConErroresPreview() {
         IngresoContent(
             uiState = IngresoUiState(
                 correo = "paula@",
-                clave = "123",
+                clave = "",
                 errorCorreo = "Ingresa un correo válido, por ejemplo nombre@gmail.com",
-                errorClave = "La contraseña tiene 5 dígitos"
+                errorClave = "Ingresa tu contraseña"
             ),
-            cuentasDePrueba = BaseDatos().usuariosDelRol(Rol.ADMINISTRADOR),
             onCorreoCambia = {}, onClaveCambia = {},
-            onAlternarVisibilidad = {}, onIngresar = {}, modoOscuro = false
+            onIngresar = {}, modoOscuro = false
         )
     }
 }

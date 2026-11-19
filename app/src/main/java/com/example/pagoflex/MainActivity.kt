@@ -8,17 +8,21 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.pagoflex.navigation.AppNavegacion
+import com.example.pagoflex.notificaciones.Notificaciones
 import com.example.pagoflex.ui.theme.PagoFlexTheme
 import com.example.pagoflex.viewmodel.PagoFlexViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
+        Notificaciones.crearCanales(this)
         setContent {
-            val pagoFlexViewModel: PagoFlexViewModel = viewModel()
+            val pagoFlexViewModel: PagoFlexViewModel = viewModel(factory = PagoFlexViewModel.Factory)
             val modoOscuro by pagoFlexViewModel.modoOscuro.collectAsStateWithLifecycle()
 
             DisposableEffect(modoOscuro) {

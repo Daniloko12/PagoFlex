@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -35,37 +36,40 @@ import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.BotonSecundario
 import com.example.pagoflex.ui.components.CampoTexto
 import com.example.pagoflex.ui.components.ListaDesplegable
+import com.example.pagoflex.ui.components.MensajeAnimado
 import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
-import com.example.pagoflex.viewmodel.EditarPerfilViewModel
+import com.example.pagoflex.viewmodel.CuentaViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun EditarPerfilScreen(
     datos: BaseDatos,
     usuario: Usuario,
-    onDatosValidos: (MisDatos) -> String?,
+    onDatosValidos: suspend (MisDatos) -> String?,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
-    viewModel: EditarPerfilViewModel = viewModel()
+    viewModel: CuentaViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.perfil.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(usuario.idUsuario) { viewModel.onCargar(usuario, datos) }
+    LaunchedEffect(usuario.idUsuario) { viewModel.onCargarPerfil(usuario, datos) }
 
     EditarPerfilContent(
         uiState = uiState,
         usuario = usuario,
         comunas = datos.comunas,
-        onNombresCambia = viewModel::onNombresCambia,
-        onApellidosCambia = viewModel::onApellidosCambia,
-        onCorreoCambia = viewModel::onCorreoCambia,
-        onTelefonoCambia = viewModel::onTelefonoCambia,
-        onComunaSeleccionada = viewModel::onComunaSeleccionada,
+        onNombresCambia = viewModel::onNombresPerfilCambia,
+        onApellidosCambia = viewModel::onApellidosPerfilCambia,
+        onCorreoCambia = viewModel::onCorreoPerfilCambia,
+        onTelefonoCambia = viewModel::onTelefonoPerfilCambia,
+        onComunaSeleccionada = viewModel::onComunaPerfilSeleccionada,
         onGuardar = {
-            viewModel.onGuardar(usuario, datos)?.let { misDatos ->
-                onDatosValidos(misDatos)?.let { error -> viewModel.onErrorGuardar(error) }
+            viewModel.onGuardarPerfil(usuario, datos)?.let { misDatos ->
+                scope.launch { onDatosValidos(misDatos)?.let { error -> viewModel.onErrorPerfil(error) } }
             }
         },
         onVolver = onVolver,
@@ -154,7 +158,7 @@ fun EditarPerfilContent(
                 }
             }
 
-            uiState.errorGuardar?.let { TarjetaMensaje(texto = it) }
+            MensajeAnimado(texto = uiState.errorGuardar)
 
             BotonPrincipal(
                 texto = stringResource(R.string.btn_guardar_cambios),

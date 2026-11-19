@@ -28,12 +28,12 @@ import com.example.pagoflex.ui.components.BarraSuperior
 import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.BotonSecundario
 import com.example.pagoflex.ui.components.CamposTarjeta
+import com.example.pagoflex.ui.components.MensajeAnimado
 import com.example.pagoflex.ui.components.SelectorSegmentado
-import com.example.pagoflex.ui.components.TarjetaMensaje
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
-import com.example.pagoflex.viewmodel.TarjetaViewModel
+import com.example.pagoflex.viewmodel.PagoViewModel
 import java.time.LocalDate
 
 @Composable
@@ -42,19 +42,19 @@ fun AgregarTarjetaScreen(
     onTarjetaValida: (TarjetaNueva) -> Boolean,
     onVolver: () -> Unit,
     snackbarHostState: SnackbarHostState,
-    viewModel: TarjetaViewModel = viewModel()
+    viewModel: PagoViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.tarjeta.collectAsStateWithLifecycle()
 
     AgregarTarjetaContent(
         uiState = uiState,
-        onMedioPagoSeleccionado = viewModel::onMedioPagoSeleccionado,
-        onNumeroCambia = viewModel::onNumeroCambia,
-        onTitularCambia = viewModel::onTitularCambia,
-        onVencimientoCambia = viewModel::onVencimientoCambia,
-        onCvvCambia = viewModel::onCvvCambia,
+        onMedioPagoSeleccionado = viewModel::onMedioTarjetaSeleccionado,
+        onNumeroCambia = viewModel::onNumeroTarjetaNuevaCambia,
+        onTitularCambia = viewModel::onTitularTarjetaNuevaCambia,
+        onVencimientoCambia = viewModel::onVencimientoTarjetaNuevaCambia,
+        onCvvCambia = viewModel::onCvvTarjetaNuevaCambia,
         onGuardar = {
-            viewModel.onAgregar(hoy)?.let { nueva ->
+            viewModel.onAgregarTarjeta(hoy)?.let { nueva ->
                 if (!onTarjetaValida(nueva)) viewModel.onTarjetaRepetida()
             }
         },
@@ -121,7 +121,7 @@ fun AgregarTarjetaContent(
                     errorCvv = uiState.errorCvv
                 )
             }
-            uiState.errorTarjeta?.let { TarjetaMensaje(texto = it) }
+            MensajeAnimado(texto = uiState.errorTarjeta)
 
             BotonPrincipal(
                 texto = stringResource(R.string.btn_guardar_tarjeta),

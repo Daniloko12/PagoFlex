@@ -30,6 +30,10 @@ data class FormularioUiState(
     val errorCuota: String? = null,
     val errorDuplicado: String? = null,
 
+    val leyendoBoleta: Boolean = false,
+    val mensajeBoleta: String? = null,
+    val boletaConDatos: Boolean = false,
+
     val registroExitoso: Boolean = false
 )
 
@@ -110,8 +114,6 @@ data class IngresoUiState(
     val correo: String = "",
     val clave: String = "",
 
-    val claveVisible: Boolean = false,
-
     val errorCorreo: String? = null,
     val errorClave: String? = null,
     val errorIngreso: String? = null
@@ -122,30 +124,33 @@ data class Credenciales(
     val clave: String
 )
 
+enum class PasoRecuperacion(val numero: Int, val titulo: String) {
+    DATOS(1, "Ingresa tu correo"),
+    CODIGO(2, "Ingresa el código"),
+    CLAVE(3, "Crea tu nueva contraseña")
+}
+
 data class RecuperarClaveUiState(
+    val paso: PasoRecuperacion = PasoRecuperacion.DATOS,
     val correo: String = "",
-    val rut: String = "",
+    val codigo: String = "",
     val claveNueva: String = "",
     val confirmacionClave: String = "",
 
-    val claveVisible: Boolean = false,
-    val cuentaVerificada: Boolean = false,
-
     val errorCorreo: String? = null,
-    val errorRut: String? = null,
+    val errorCodigo: String? = null,
     val errorClaveNueva: String? = null,
     val errorConfirmacion: String? = null,
     val errorRecuperacion: String? = null
 )
 
 data class DatosRecuperacion(
-    val correo: String,
-    val rut: String
+    val correo: String
 )
 
 data class ClaveRecuperada(
     val correo: String,
-    val rut: String,
+    val codigo: String,
     val claveNueva: String
 )
 
@@ -179,8 +184,6 @@ data class CambiarClaveUiState(
     val claveNueva: String = "",
     val confirmacionClave: String = "",
 
-    val claveVisible: Boolean = false,
-
     val errorClaveActual: String? = null,
     val errorClaveNueva: String? = null,
     val errorConfirmacion: String? = null,
@@ -201,8 +204,6 @@ data class RegistroUiState(
     val clave: String = "",
     val confirmacionClave: String = "",
     val aceptaTerminos: Boolean = false,
-
-    val claveVisible: Boolean = false,
 
     val errorRut: String? = null,
     val errorNombres: String? = null,
@@ -233,10 +234,6 @@ data class PagoUiState(
     val vencimientoTarjeta: String = "",
     val cvv: String = "",
     val guardarTarjeta: Boolean = true,
-    val codigo: String = "",
-    val confirmaTotal: Boolean = false,
-
-    val codigoVisible: Boolean = false,
 
     val errorMedioPago: String? = null,
     val errorTarjeta: String? = null,
@@ -244,8 +241,6 @@ data class PagoUiState(
     val errorTitularTarjeta: String? = null,
     val errorVencimientoTarjeta: String? = null,
     val errorCvv: String? = null,
-    val errorCodigo: String? = null,
-    val errorConfirmacion: String? = null,
     val errorPago: String? = null,
 
     val pagoExitoso: Boolean = false

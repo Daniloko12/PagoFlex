@@ -4,8 +4,10 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -16,15 +18,23 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.pagoflex.R
+import com.example.pagoflex.contacto.Correo
+import com.example.pagoflex.data.EstadoCarga
+import com.example.pagoflex.model.Accion
 import com.example.pagoflex.model.CLAVE_DE_PRUEBA
+import com.example.pagoflex.model.CorreoArmado
 import com.example.pagoflex.model.EstadoRecomendacion
 import com.example.pagoflex.model.Rol
-import com.example.pagoflex.model.codigoConfirmacionDe
 import com.example.pagoflex.model.compromisoPorId
+import com.example.pagoflex.model.correoParaCliente
+import com.example.pagoflex.model.correoParaEmpresa
+import com.example.pagoflex.model.correoParaSoporte
+import com.example.pagoflex.model.empresaPorId
 import com.example.pagoflex.model.formatoFecha
 import com.example.pagoflex.model.nombreCompleto
 import com.example.pagoflex.model.pagoPorComprobante
 import com.example.pagoflex.model.primerNombre
+import com.example.pagoflex.model.puede
 import com.example.pagoflex.model.recomendacionPorId
 import com.example.pagoflex.model.recomendacionesDe
 import com.example.pagoflex.model.reporteActivoDe
@@ -32,6 +42,8 @@ import com.example.pagoflex.model.reportePorId
 import com.example.pagoflex.model.textoTarjeta
 import com.example.pagoflex.model.usuarioDeReporte
 import com.example.pagoflex.model.usuarioPorId
+import com.example.pagoflex.notificaciones.ProgramadorRecordatorios
+import com.example.pagoflex.ui.screens.AgregarPagoScreen
 import com.example.pagoflex.ui.screens.AgregarTarjetaScreen
 import com.example.pagoflex.ui.screens.AvanceScreen
 import com.example.pagoflex.ui.screens.AvisosScreen
@@ -41,6 +53,7 @@ import com.example.pagoflex.ui.screens.ClientesScreen
 import com.example.pagoflex.ui.screens.CobranzaScreen
 import com.example.pagoflex.ui.screens.ComprobanteScreen
 import com.example.pagoflex.ui.screens.CompromisosEmpresaScreen
+import com.example.pagoflex.ui.screens.ConexionScreen
 import com.example.pagoflex.ui.screens.DetalleClienteScreen
 import com.example.pagoflex.ui.screens.DetalleCompromisoEmpresaScreen
 import com.example.pagoflex.ui.screens.DetalleCompromisoScreen
@@ -52,6 +65,7 @@ import com.example.pagoflex.ui.screens.HistorialScreen
 import com.example.pagoflex.ui.screens.IngresoScreen
 import com.example.pagoflex.ui.screens.InicioScreen
 import com.example.pagoflex.ui.screens.MenuSesion
+import com.example.pagoflex.ui.screens.MovimientosScreen
 import com.example.pagoflex.ui.screens.OpcionMenu
 import com.example.pagoflex.ui.screens.PagoScreen
 import com.example.pagoflex.ui.screens.PanelScreen
@@ -71,7 +85,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun AppNavegacion(
-    pagoFlexViewModel: PagoFlexViewModel = viewModel()
+    pagoFlexViewModel: PagoFlexViewModel = viewModel(factory = PagoFlexViewModel.Factory)
 ) {
     val navController = rememberNavController()
 
@@ -82,13 +96,14 @@ fun AppNavegacion(
     val modoOscuro by pagoFlexViewModel.modoOscuro.collectAsStateWithLifecycle()
     val busqueda by pagoFlexViewModel.busqueda.collectAsStateWithLifecycle()
     val compromisosEncontrados by pagoFlexViewModel.compromisosEncontrados.collectAsStateWithLifecycle()
+    val cargaInicial by pagoFlexViewModel.cargaInicial.collectAsStateWithLifecycle()
+    val servidor by pagoFlexViewModel.servidor.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val textoSesionCerrada = stringResource(R.string.snackbar_sesion_cerrada)
     val textoDatosRestablecidos = stringResource(R.string.snackbar_datos_restablecidos)
     val textoFotoActualizada = stringResource(R.string.snackbar_foto_actualizada)
-    val textoFotoError = stringResource(R.string.snackbar_foto_error)
 
     fun avisar(texto: String) {
         scope.launch { snackbarHostState.showSnackbar(texto) }
@@ -135,6 +150,31 @@ fun AppNavegacion(
         ) irAlIngreso()
     }
 
+    val context = LocalContext.current
+
+    fun escribirCorreo(correo: CorreoArmado) {
+        if (!Correo.escribir(context, correo)) avisar("No encontramos una app de correo. Escribe a ${correo.para}.")
+    }
+
+    if (cargaInicial != EstadoCarga.LISTA) {
+        ConexionScreen(
+            cargando = cargaInicial == EstadoCarga.CARGANDO,
+            servidor = servidor,
+            onReintentar = pagoFlexViewModel::reintentarConexion,
+            onCambiarServidor = pagoFlexViewModel::cambiarServidor
+        )
+        return
+    }
+
+    LaunchedEffect(usuarioActual?.idUsuario, usuarioActual?.avisosActivos) {
+        val usuario = usuarioActual
+        if (usuario != null && usuario.rol == Rol.USUARIO_FINAL && usuario.avisosActivos != false) {
+            ProgramadorRecordatorios.programar(context)
+        } else {
+            ProgramadorRecordatorios.cancelar(context)
+        }
+    }
+
     val pantallaInicial = remember { usuarioActual?.let { rutaInicialDe(it.rol).ruta } ?: Ruta.Ingreso.ruta }
 
     NavHost(navController = navController, startDestination = pantallaInicial) {
@@ -153,14 +193,15 @@ fun AppNavegacion(
                     error
                 },
                 onRestablecer = {
-                    pagoFlexViewModel.restablecerDatos()
-                    avisar(textoDatosRestablecidos)
+                    scope.launch { avisar(pagoFlexViewModel.restablecerDatos() ?: textoDatosRestablecidos) }
                 },
                 onCrearCuenta = { navController.navigate(Ruta.Registro.ruta) },
                 onRecuperarClave = { navController.navigate(Ruta.RecuperarClave.ruta) },
                 modoOscuro = modoOscuro,
                 onCambiarModo = pagoFlexViewModel::cambiarModoOscuro,
-                snackbarHostState = snackbarHostState
+                snackbarHostState = snackbarHostState,
+                servidor = servidor,
+                onCambiarServidor = pagoFlexViewModel::cambiarServidor
             )
         }
 
@@ -184,7 +225,9 @@ fun AppNavegacion(
 
         composable(Ruta.RecuperarClave.ruta) {
             RecuperarClaveScreen(
-                onVerificar = pagoFlexViewModel::verificarCuenta,
+                datos = datos,
+                onSolicitarCodigo = pagoFlexViewModel::solicitarCodigo,
+                onVerificarCodigo = pagoFlexViewModel::verificarCodigo,
                 onClaveValida = { recuperada ->
                     val error = pagoFlexViewModel.recuperarClave(recuperada)
                     if (error == null) {
@@ -194,7 +237,8 @@ fun AppNavegacion(
                     error
                 },
                 onVolver = { navController.navigateUp() },
-                snackbarHostState = snackbarHostState
+                snackbarHostState = snackbarHostState,
+                onPedirAyuda = { correo -> escribirCorreo(correoParaSoporte(null, correo)) }
             )
         }
 
@@ -238,13 +282,14 @@ fun AppNavegacion(
                 datos = datos,
                 usuario = usuario,
                 onFotoTomada = { foto ->
-                    avisar(if (pagoFlexViewModel.cambiarAvatarDesdeCamara(foto)) textoFotoActualizada else textoFotoError)
+                    scope.launch { avisar(pagoFlexViewModel.cambiarAvatarDesdeCamara(foto) ?: textoFotoActualizada) }
                 },
                 onImagenElegida = { uri ->
-                    avisar(if (pagoFlexViewModel.cambiarAvatarDesdeGaleria(uri)) textoFotoActualizada else textoFotoError)
+                    scope.launch { avisar(pagoFlexViewModel.cambiarAvatarDesdeGaleria(uri) ?: textoFotoActualizada) }
                 },
                 onEditarDatos = { navController.navigate(Ruta.EditarPerfil.ruta) },
                 onCambiarClave = { navController.navigate(Ruta.CambiarClave.ruta) },
+                onEscribirSoporte = { escribirCorreo(correoParaSoporte(usuario)) },
                 menu = menuEn(Ruta.Perfil),
                 snackbarHostState = snackbarHostState
             )
@@ -258,7 +303,8 @@ fun AppNavegacion(
                 sinConexion = sinConexion,
                 ultimaActualizacion = ultimaActualizacion,
                 onVerCompromiso = { id -> navController.navigate(Ruta.DetalleCompromiso.crear(id)) },
-                onActualizar = { avisar(pagoFlexViewModel.actualizar()) },
+                onVerAvance = { irAPrincipal(Ruta.Avance.ruta) },
+                onAgregarPago = { navController.navigate(Ruta.AgregarPago.ruta) },
                 menu = menuEn(Ruta.Inicio),
                 snackbarHostState = snackbarHostState
             )
@@ -281,6 +327,37 @@ fun AppNavegacion(
                 onPagar = { navController.navigate(Ruta.Pagar.crear(idCompromiso)) },
                 onReportar = { navController.navigate(Ruta.Reportar.crear(idCompromiso)) },
                 onVerComprobante = { numero -> navController.navigate(Ruta.Comprobante.crear(numero)) },
+                fotoBoleta = produceState<ByteArray?>(null, idCompromiso) {
+                    value = pagoFlexViewModel.boletaDe(idCompromiso)
+                }.value,
+                onEscribirEmpresa = {
+                    datos.empresaPorId(compromiso.idEmpresa)?.let { empresa ->
+                        escribirCorreo(correoParaEmpresa(empresa, compromiso, usuario))
+                    }
+                },
+                snackbarHostState = snackbarHostState
+            )
+        }
+
+        composable(Ruta.AgregarPago.ruta) {
+            val usuario = usuarioActual ?: return@composable
+            if (!puede(usuario, Accion.AGREGAR_MIS_COMPROMISOS)) return@composable
+            AgregarPagoScreen(
+                datos = datos,
+                usuario = usuario,
+                onAgregar = { nuevo, fotoBoleta ->
+                    scope.launch {
+                        pagoFlexViewModel.registrarMiCompromiso(nuevo, fotoBoleta)
+                            .onSuccess { compromiso ->
+                                navController.navigate(Ruta.DetalleCompromiso.crear(compromiso.idCompromiso)) {
+                                    popUpTo(Ruta.AgregarPago.ruta) { inclusive = true }
+                                }
+                                avisar("Listo: agregamos \"${compromiso.concepto}\" a tus pagos.")
+                            }
+                            .onFailure { avisar(it.message ?: "No pudimos agregar el pago. Inténtalo de nuevo.") }
+                    }
+                },
+                onVolver = { navController.navigateUp() },
                 snackbarHostState = snackbarHostState
             )
         }
@@ -296,28 +373,28 @@ fun AppNavegacion(
             PagoScreen(
                 datos = datos,
                 compromiso = compromiso,
-                codigoCorrecto = codigoConfirmacionDe(usuario.rut),
                 motivoNoPagar = { pagoFlexViewModel.motivoParaNoPagar(idCompromiso) },
                 onPagoValido = { solicitud ->
-                    val resultado = pagoFlexViewModel.pagar(idCompromiso, solicitud)
-                    if (resultado == null) {
-                        avisar("No pudimos confirmar el pago. No se hizo ningún cobro.")
-                    } else {
-                        navController.navigate(Ruta.Comprobante.crear(resultado.pago.numeroComprobante)) {
-                            popUpTo(Ruta.Inicio.ruta)
-                        }
-                        val siguiente = resultado.siguienteCuota
-                        val textoSiguiente = when {
-                            siguiente != null ->
-                                " Tu cuota ${siguiente.numeroCuota} de ${siguiente.totalCuotas} vence el ${formatoFecha(siguiente.fechaVencimiento)}."
-                            compromiso.numeroCuota != null && compromiso.numeroCuota == compromiso.totalCuotas ->
-                                " ¡Pagaste todas tus cuotas!"
-                            else -> ""
-                        }
-                        avisar(
-                            if (resultado.reconocimientos.isEmpty()) "¡Pago confirmado!$textoSiguiente"
-                            else "¡Pago confirmado!$textoSiguiente Nuevo reconocimiento: ${resultado.reconocimientos.joinToString(", ")}"
-                        )
+                    scope.launch {
+                        pagoFlexViewModel.pagar(idCompromiso, solicitud)
+                            .onSuccess { resultado ->
+                                navController.navigate(Ruta.Comprobante.crear(resultado.pago.numeroComprobante)) {
+                                    popUpTo(Ruta.Inicio.ruta)
+                                }
+                                val siguiente = resultado.siguienteCuota
+                                val textoSiguiente = when {
+                                    siguiente != null ->
+                                        " Tu cuota ${siguiente.numeroCuota} de ${siguiente.totalCuotas} vence el ${formatoFecha(siguiente.fechaVencimiento)}."
+                                    compromiso.numeroCuota != null && compromiso.numeroCuota == compromiso.totalCuotas ->
+                                        " ¡Pagaste todas tus cuotas!"
+                                    else -> ""
+                                }
+                                avisar(
+                                    if (resultado.reconocimientos.isEmpty()) "¡Pago confirmado!$textoSiguiente"
+                                    else "¡Pago confirmado!$textoSiguiente Nuevo reconocimiento: ${resultado.reconocimientos.joinToString(", ")}"
+                                )
+                            }
+                            .onFailure { avisar(it.message ?: PagoFlexViewModel.MENSAJE_PAGO_FALLIDO) }
                     }
                 },
                 onVolver = { navController.navigateUp() },
@@ -338,11 +415,13 @@ fun AppNavegacion(
                 compromiso = compromiso,
                 motivoNoReportar = { pagoFlexViewModel.motivoParaNoReportar(idCompromiso) },
                 onReporteValido = { solicitud ->
-                    if (pagoFlexViewModel.reportar(idCompromiso, solicitud) != null) {
-                        navController.navigateUp()
-                        avisar("Recibimos tu reporte. Mientras lo revisamos, este cobro no suma días de atraso.")
-                    } else {
-                        avisar("No pudimos enviar el reporte. Inténtalo de nuevo.")
+                    scope.launch {
+                        pagoFlexViewModel.reportar(idCompromiso, solicitud)
+                            .onSuccess {
+                                navController.navigateUp()
+                                avisar("Recibimos tu reporte. Mientras lo revisamos, este cobro no suma días de atraso.")
+                            }
+                            .onFailure { avisar(it.message ?: "No pudimos enviar el reporte. Inténtalo de nuevo.") }
                     }
                 },
                 onVolver = { navController.navigateUp() },
@@ -383,6 +462,7 @@ fun AppNavegacion(
                 datos = datos,
                 usuario = usuario,
                 onRecomendar = { navController.navigate(Ruta.Recomendar.ruta) },
+                onVerCompromiso = { id -> navController.navigate(Ruta.DetalleCompromiso.crear(id)) },
                 menu = menuEn(Ruta.Avance),
                 snackbarHostState = snackbarHostState
             )
@@ -395,7 +475,9 @@ fun AppNavegacion(
                 idUsuario = usuario.idUsuario,
                 onAgregar = { navController.navigate(Ruta.AgregarTarjeta.ruta) },
                 onQuitar = { idTarjeta ->
-                    avisar(pagoFlexViewModel.quitarTarjeta(idTarjeta) ?: "Listo, quitamos la tarjeta de \"Mis tarjetas\".")
+                    scope.launch {
+                        avisar(pagoFlexViewModel.quitarTarjeta(idTarjeta) ?: "Listo, quitamos la tarjeta de \"Mis tarjetas\".")
+                    }
                 },
                 menu = menuEn(Ruta.Tarjetas),
                 snackbarHostState = snackbarHostState
@@ -410,12 +492,13 @@ fun AppNavegacion(
                     if (pagoFlexViewModel.tarjetaRepetida(nueva)) {
                         false
                     } else {
-                        val tarjeta = pagoFlexViewModel.agregarTarjeta(nueva)
-                        if (tarjeta != null) {
-                            navController.navigateUp()
-                            avisar("Guardamos tu ${textoTarjeta(tarjeta)}.")
-                        } else {
-                            avisar("No pudimos guardar la tarjeta. Inténtalo de nuevo.")
+                        scope.launch {
+                            pagoFlexViewModel.agregarTarjeta(nueva)
+                                .onSuccess { tarjeta ->
+                                    navController.navigateUp()
+                                    avisar("Guardamos tu ${textoTarjeta(tarjeta)}.")
+                                }
+                                .onFailure { avisar(it.message ?: "No pudimos guardar la tarjeta. Inténtalo de nuevo.") }
                         }
                         true
                     }
@@ -433,12 +516,13 @@ fun AppNavegacion(
                 propias = datos.recomendacionesDe(usuario.idUsuario),
                 hoy = datos.fechaHoy,
                 onRecomendacionValida = { nueva ->
-                    val recomendacion = pagoFlexViewModel.registrarRecomendacion(nueva)
-                    if (recomendacion != null) {
-                        navController.navigateUp()
-                        avisar("¡Gracias! Registramos tu recomendación de ${recomendacion.nombreOrganizacion}. Te contaremos cuando avance.")
-                    } else {
-                        avisar("No pudimos registrar la recomendación. Inténtalo de nuevo.")
+                    scope.launch {
+                        pagoFlexViewModel.registrarRecomendacion(nueva)
+                            .onSuccess { recomendacion ->
+                                navController.navigateUp()
+                                avisar("¡Gracias! Registramos tu recomendación de ${recomendacion.nombreOrganizacion}. Te contaremos cuando avance.")
+                            }
+                            .onFailure { avisar(it.message ?: "No pudimos registrar la recomendación. Inténtalo de nuevo.") }
                     }
                 },
                 onVolver = { navController.navigateUp() },
@@ -453,14 +537,13 @@ fun AppNavegacion(
                 usuario = usuario,
                 sinConexion = sinConexion,
                 onGuardar = { activos, anticipacion ->
-                    avisar(
-                        if (pagoFlexViewModel.guardarAvisos(activos, anticipacion)) "Listo, guardamos tus preferencias de avisos."
-                        else "No pudimos guardar tus preferencias. Inténtalo de nuevo."
-                    )
+                    scope.launch {
+                        avisar(pagoFlexViewModel.guardarAvisos(activos, anticipacion) ?: "Listo, guardamos tus preferencias de avisos.")
+                    }
                 },
                 onCambiarConexion = { sinSenal ->
                     pagoFlexViewModel.cambiarConexion(sinSenal)
-                    avisar(if (sinSenal) "Modo sin conexión activado" else "Conexión restablecida")
+                    avisar(if (sinSenal) "Modo sin conexión activado" else "Conexión restablecida: datos actualizados")
                 },
                 menu = menuEn(Ruta.Avisos),
                 snackbarHostState = snackbarHostState
@@ -485,7 +568,7 @@ fun AppNavegacion(
         }
 
         composable(Ruta.CompromisosEmpresa.ruta) {
-            if (usuarioActual?.rol != Rol.ADMINISTRADOR) return@composable
+            if (!puede(usuarioActual, Accion.VER_TODOS_LOS_COMPROMISOS)) return@composable
             CompromisosEmpresaScreen(
                 datos = datos,
                 encontrados = compromisosEncontrados,
@@ -503,7 +586,7 @@ fun AppNavegacion(
             arguments = listOf(navArgument("idCompromiso") { type = NavType.IntType })
         ) { entrada ->
             val idCompromiso = entrada.arguments?.getInt("idCompromiso") ?: 0
-            if (usuarioActual?.rol != Rol.ADMINISTRADOR) return@composable
+            if (!puede(usuarioActual, Accion.VER_TODOS_LOS_COMPROMISOS)) return@composable
             val compromiso = datos.compromisoPorId(idCompromiso) ?: return@composable
             DetalleCompromisoEmpresaScreen(
                 datos = datos,
@@ -511,15 +594,25 @@ fun AppNavegacion(
                 onAnular = { motivo, comentario ->
                     val tieneReporte = datos.reporteActivoDe(idCompromiso) != null
                     val persona = datos.usuarioPorId(compromiso.idUsuarioFinal)?.let { nombreCompleto(it) } ?: "la persona"
-                    val error = pagoFlexViewModel.anularCompromiso(idCompromiso, motivo, comentario)
-                    avisar(
-                        error ?: ("Se anuló \"${compromiso.concepto}\" de $persona." +
-                            if (tieneReporte) " Recuerda responder su reporte en \"Reportes\"." else "")
-                    )
+                    scope.launch {
+                        val error = pagoFlexViewModel.anularCompromiso(idCompromiso, motivo, comentario)
+                        avisar(
+                            error ?: ("Se anuló \"${compromiso.concepto}\" de $persona." +
+                                if (tieneReporte) " Recuerda responder su reporte en \"Reportes\"." else "")
+                        )
+                    }
                 },
                 onEditar = { navController.navigate(Ruta.EditarCompromiso.crear(idCompromiso)) },
                 onVerCliente = { idUsuario -> navController.navigate(Ruta.DetalleCliente.crear(idUsuario)) },
                 onVolver = { navController.navigateUp() },
+                fotoBoleta = produceState<ByteArray?>(null, idCompromiso) {
+                    value = pagoFlexViewModel.boletaDe(idCompromiso)
+                }.value,
+                onEscribirCliente = {
+                    datos.usuarioPorId(compromiso.idUsuarioFinal)?.let { persona ->
+                        escribirCorreo(correoParaCliente(persona, compromiso, datos.empresaPorId(compromiso.idEmpresa)))
+                    }
+                },
                 snackbarHostState = snackbarHostState
             )
         }
@@ -532,21 +625,22 @@ fun AppNavegacion(
                 defaultValue = null
             })
         ) { entrada ->
-            if (usuarioActual?.rol != Rol.ADMINISTRADOR) return@composable
+            if (!puede(usuarioActual, Accion.CREAR_COMPROMISO)) return@composable
             RegistrarCompromisoScreen(
                 datos = datos,
                 rutInicial = entrada.arguments?.getString("rut"),
                 onRegistroExitoso = { nuevo ->
-                    val compromiso = pagoFlexViewModel.registrarCompromiso(nuevo)
-                    if (compromiso == null) {
-                        avisar("No pudimos registrar el compromiso. Inténtalo de nuevo.")
-                    } else {
-                        val persona = pagoFlexViewModel.datos.value.usuarioPorId(compromiso.idUsuarioFinal)
-                        navController.navigateUp()
-                        avisar(
-                            "Listo: registramos \"${compromiso.concepto}\" para " +
-                                "${persona?.let { nombreCorto(it) } ?: "la persona"}. Ya lo ve en su app."
-                        )
+                    scope.launch {
+                        pagoFlexViewModel.registrarCompromiso(nuevo)
+                            .onSuccess { compromiso ->
+                                val persona = pagoFlexViewModel.datos.value.usuarioPorId(compromiso.idUsuarioFinal)
+                                navController.navigateUp()
+                                avisar(
+                                    "Listo: registramos \"${compromiso.concepto}\" para " +
+                                        "${persona?.let { nombreCorto(it) } ?: "la persona"}. Ya lo ve en su app."
+                                )
+                            }
+                            .onFailure { avisar(it.message ?: "No pudimos registrar el compromiso. Inténtalo de nuevo.") }
                     }
                 },
                 onVolver = { navController.navigateUp() },
@@ -559,7 +653,7 @@ fun AppNavegacion(
             arguments = listOf(navArgument("idCompromiso") { type = NavType.IntType })
         ) { entrada ->
             val idCompromiso = entrada.arguments?.getInt("idCompromiso") ?: 0
-            if (usuarioActual?.rol != Rol.ADMINISTRADOR) return@composable
+            if (!puede(usuarioActual, Accion.EDITAR_COMPROMISO)) return@composable
             val compromiso = datos.compromisoPorId(idCompromiso) ?: return@composable
             EditarCompromisoScreen(
                 datos = datos,
@@ -612,10 +706,12 @@ fun AppNavegacion(
                 onNuevoCompromiso = { navController.navigate(Ruta.RegistrarCompromiso.crear(cliente.rut)) },
                 onEditar = { navController.navigate(Ruta.EditarCliente.crear(idUsuario)) },
                 onRestablecerClave = {
-                    avisar(
-                        pagoFlexViewModel.restablecerClaveCliente(idUsuario)
-                            ?: "La contraseña de ${primerNombre(cliente)} volvió a ser $CLAVE_DE_PRUEBA."
-                    )
+                    scope.launch {
+                        avisar(
+                            pagoFlexViewModel.restablecerClaveCliente(idUsuario)
+                                ?: "La contraseña de ${primerNombre(cliente)} volvió a ser $CLAVE_DE_PRUEBA."
+                        )
+                    }
                 },
                 onVolver = { navController.navigateUp() },
                 snackbarHostState = snackbarHostState
@@ -628,14 +724,15 @@ fun AppNavegacion(
                 datos = datos,
                 cliente = null,
                 onClienteValido = { datosCliente ->
-                    val nuevo = pagoFlexViewModel.crearCliente(datosCliente)
-                    if (nuevo == null) {
-                        avisar("No pudimos crear el cliente. Revisa que su RUT y su correo no estén registrados.")
-                    } else {
-                        navController.navigate(Ruta.DetalleCliente.crear(nuevo.idUsuario)) {
-                            popUpTo(Ruta.Clientes.ruta)
-                        }
-                        avisar("Cliente creado. Ingresa con ${nuevo.correo} y la contraseña $CLAVE_DE_PRUEBA.")
+                    scope.launch {
+                        pagoFlexViewModel.crearCliente(datosCliente)
+                            .onSuccess { nuevo ->
+                                navController.navigate(Ruta.DetalleCliente.crear(nuevo.idUsuario)) {
+                                    popUpTo(Ruta.Clientes.ruta)
+                                }
+                                avisar("Cliente creado. Ingresa con ${nuevo.correo} y la contraseña $CLAVE_DE_PRUEBA.")
+                            }
+                            .onFailure { avisar(it.message ?: "No pudimos crear el cliente. Inténtalo de nuevo.") }
                     }
                 },
                 onVolver = { navController.navigateUp() },
@@ -654,15 +751,26 @@ fun AppNavegacion(
                 datos = datos,
                 cliente = cliente,
                 onClienteValido = { datosCliente ->
-                    val error = pagoFlexViewModel.editarCliente(idUsuario, datosCliente)
-                    if (error == null) {
-                        navController.navigateUp()
-                        avisar("Guardamos los datos de ${datosCliente.nombres.substringBefore(" ")}.")
-                    } else {
-                        avisar(error)
+                    scope.launch {
+                        val error = pagoFlexViewModel.editarCliente(idUsuario, datosCliente)
+                        if (error == null) {
+                            navController.navigateUp()
+                            avisar("Guardamos los datos de ${datosCliente.nombres.substringBefore(" ")}.")
+                        } else {
+                            avisar(error)
+                        }
                     }
                 },
                 onVolver = { navController.navigateUp() },
+                snackbarHostState = snackbarHostState
+            )
+        }
+
+        composable(Ruta.Movimientos.ruta) {
+            if (!puede(usuarioActual, Accion.VER_MOVIMIENTOS)) return@composable
+            MovimientosScreen(
+                datos = datos,
+                menu = menuEn(Ruta.Movimientos),
                 snackbarHostState = snackbarHostState
             )
         }
@@ -690,15 +798,19 @@ fun AppNavegacion(
                 reporte = reporte,
                 admin = admin,
                 onTomar = {
-                    avisar(pagoFlexViewModel.tomarReporte(idReporte) ?: "Tomaste el reporte de $persona. Quedaste como responsable.")
+                    scope.launch {
+                        avisar(pagoFlexViewModel.tomarReporte(idReporte) ?: "Tomaste el reporte de $persona. Quedaste como responsable.")
+                    }
                 },
                 onResolver = { respuesta ->
-                    val error = pagoFlexViewModel.resolverReporte(idReporte, respuesta)
-                    if (error != null) {
-                        avisar(error)
-                    } else {
-                        navController.navigateUp()
-                        avisar("Reporte resuelto. $persona ya puede ver tu respuesta.")
+                    scope.launch {
+                        val error = pagoFlexViewModel.resolverReporte(idReporte, respuesta)
+                        if (error != null) {
+                            avisar(error)
+                        } else {
+                            navController.navigateUp()
+                            avisar("Reporte resuelto. $persona ya puede ver tu respuesta.")
+                        }
                     }
                 },
                 onVerCompromiso = { navController.navigate(Ruta.DetalleCompromisoEmpresa.crear(reporte.idCompromiso)) },
@@ -729,26 +841,30 @@ fun AppNavegacion(
                 datos = datos,
                 recomendacion = recomendacion,
                 onAvanzar = {
-                    val reconocimientosAntes = pagoFlexViewModel.datos.value.reconocimientosObtenidos.size
-                    val error = pagoFlexViewModel.avanzarRecomendacion(idRecomendacion)
-                    if (error != null) {
-                        avisar(error)
-                    } else {
-                        val actual = pagoFlexViewModel.datos.value
-                        val nuevoEstado = actual.recomendacionPorId(idRecomendacion)?.estado
-                        val reconocimiento = if (nuevoEstado == EstadoRecomendacion.SE_UNIO &&
-                            actual.reconocimientosObtenidos.size > reconocimientosAntes
-                        ) " $quien recibió el reconocimiento Embajador/a PagoFlex." else ""
-                        avisar("${recomendacion.nombreOrganizacion} pasó a \"${nuevoEstado?.etiqueta ?: ""}\".$reconocimiento")
+                    scope.launch {
+                        val reconocimientosAntes = pagoFlexViewModel.datos.value.reconocimientosObtenidos.size
+                        val error = pagoFlexViewModel.avanzarRecomendacion(idRecomendacion)
+                        if (error != null) {
+                            avisar(error)
+                        } else {
+                            val actual = pagoFlexViewModel.datos.value
+                            val nuevoEstado = actual.recomendacionPorId(idRecomendacion)?.estado
+                            val reconocimiento = if (nuevoEstado == EstadoRecomendacion.SE_UNIO &&
+                                actual.reconocimientosObtenidos.size > reconocimientosAntes
+                            ) " $quien recibió el reconocimiento Embajador/a PagoFlex." else ""
+                            avisar("${recomendacion.nombreOrganizacion} pasó a \"${nuevoEstado?.etiqueta ?: ""}\".$reconocimiento")
+                        }
                     }
                 },
                 onDescartar = { motivo ->
-                    val error = pagoFlexViewModel.cambiarEstadoRecomendacion(idRecomendacion, EstadoRecomendacion.DESCARTADA, motivo)
-                    if (error != null) {
-                        avisar(error)
-                    } else {
-                        navController.navigateUp()
-                        avisar("Se descartó la recomendación de ${recomendacion.nombreOrganizacion}.")
+                    scope.launch {
+                        val error = pagoFlexViewModel.cambiarEstadoRecomendacion(idRecomendacion, EstadoRecomendacion.DESCARTADA, motivo)
+                        if (error != null) {
+                            avisar(error)
+                        } else {
+                            navController.navigateUp()
+                            avisar("Se descartó la recomendación de ${recomendacion.nombreOrganizacion}.")
+                        }
                     }
                 },
                 onVolver = { navController.navigateUp() },
@@ -779,6 +895,7 @@ private fun opcionesMenu(rol: Rol): List<OpcionMenu> = when (rol) {
         OpcionMenu(Ruta.Cobranza.ruta, R.string.menu_cobranza, R.drawable.ic_grafico),
         OpcionMenu(Ruta.Reportes.ruta, R.string.menu_reportes, R.drawable.ic_reporte),
         OpcionMenu(Ruta.Recomendaciones.ruta, R.string.menu_recomendaciones, R.drawable.ic_recomendar),
+        OpcionMenu(Ruta.Movimientos.ruta, R.string.menu_movimientos, R.drawable.ic_historial),
         OpcionMenu(Ruta.Perfil.ruta, R.string.menu_perfil, R.drawable.ic_persona)
     )
 }

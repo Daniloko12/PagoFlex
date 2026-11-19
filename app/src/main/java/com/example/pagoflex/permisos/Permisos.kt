@@ -19,8 +19,17 @@ object Permisos {
             Manifest.permission.READ_EXTERNAL_STORAGE
         }
 
+    val NOTIFICACIONES: String? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.POST_NOTIFICATIONS
+        } else {
+            null
+        }
+
     fun tiene(context: Context, permiso: String): Boolean =
         ContextCompat.checkSelfPermission(context, permiso) == PackageManager.PERMISSION_GRANTED
+
+    fun tieneNotificaciones(context: Context): Boolean = NOTIFICACIONES?.let { tiene(context, it) } ?: true
 
     fun abrirAjustes(context: Context) {
         val intent = Intent(

@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.pagoflex.R
+import com.example.pagoflex.model.BaseDatos
 import com.example.pagoflex.model.ClaveRecuperada
 import com.example.pagoflex.model.DatosRecuperacion
 import com.example.pagoflex.model.INTENTOS_MAXIMOS_CODIGO
@@ -52,8 +55,11 @@ import com.example.pagoflex.model.LARGO_CODIGO_RECUPERACION
 import com.example.pagoflex.model.MINUTOS_VIGENCIA_CODIGO
 import com.example.pagoflex.model.PasoRecuperacion
 import com.example.pagoflex.model.RecuperarClaveUiState
+import com.example.pagoflex.model.Usuario
+import com.example.pagoflex.model.cuentasQueEmpiezanCon
 import com.example.pagoflex.notificaciones.Notificaciones
 import com.example.pagoflex.permisos.Permisos
+import com.example.pagoflex.ui.components.AvatarIniciales
 import com.example.pagoflex.ui.components.BarraSuperior
 import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.BotonSecundario
@@ -70,6 +76,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun RecuperarClaveScreen(
+    datos: BaseDatos,
     onSolicitarCodigo: suspend (DatosRecuperacion) -> String?,
     onVerificarCodigo: suspend (DatosRecuperacion, String) -> String?,
     onClaveValida: suspend (ClaveRecuperada) -> String?,
@@ -114,6 +121,7 @@ fun RecuperarClaveScreen(
 
     RecuperarClaveContent(
         uiState = uiState,
+        sugerencias = datos.cuentasQueEmpiezanCon(uiState.correo),
         onCorreoCambia = viewModel::onCorreoRecuperacionCambia,
         onCodigoCambia = viewModel::onCodigoCambia,
         onClaveNuevaCambia = viewModel::onClaveRecuperacionCambia,
@@ -165,6 +173,7 @@ private fun CodigoSinNotificacion(codigo: String, onCerrar: () -> Unit) {
 fun RecuperarClaveContent(
     uiState: RecuperarClaveUiState,
     onCorreoCambia: (String) -> Unit,
+    sugerencias: List<Usuario> = emptyList(),
     onCodigoCambia: (String) -> Unit,
     onClaveNuevaCambia: (String) -> Unit,
     onConfirmacionCambia: (String) -> Unit,
@@ -216,7 +225,7 @@ fun RecuperarClaveContent(
                 label = "pasoRecuperacion"
             ) { paso ->
                 when (paso) {
-                    PasoRecuperacion.DATOS -> PasoDatos(uiState, onCorreoCambia, onSolicitarCodigo)
+                    PasoRecuperacion.DATOS -> PasoDatos(uiState, sugerencias, onCorreoCambia, onSolicitarCodigo)
                     PasoRecuperacion.CODIGO -> PasoCodigo(uiState, onCodigoCambia, onVerificarCodigo, onReenviarCodigo, onCambiarDatos)
                     PasoRecuperacion.CLAVE -> PasoClave(uiState, onClaveNuevaCambia, onConfirmacionCambia, onGuardar, onCambiarDatos)
                 }
@@ -270,6 +279,7 @@ private fun IndicadorPasos(pasoActual: PasoRecuperacion) {
 @Composable
 private fun PasoDatos(
     uiState: RecuperarClaveUiState,
+    sugerencias: List<Usuario>,
     onCorreoCambia: (String) -> Unit,
     onSolicitarCodigo: () -> Unit
 ) {
@@ -283,12 +293,50 @@ private fun PasoDatos(
             ayuda = stringResource(R.string.ayuda_correo),
             tipoTeclado = KeyboardType.Email
         )
+        if (sugerencias.isNotEmpty()) {
+            Surface(
+                shape = RoundedCornerShape(Dimens.radioTarjeta),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+                    sugerencias.forEach { usuario ->
+                        SugerenciaCorreo(usuario = usuario, onClick = { onCorreoCambia(usuario.correo) })
+                    }
+                }
+            }
+        }
         BotonPrincipal(
             texto = "Enviar código",
             onClick = onSolicitarCodigo,
             icono = R.drawable.ic_correo,
             modifier = Modifier.fillMaxWidth()
         )
+    }
+}
+
+@Composable
+private fun SugerenciaCorreo(usuario: Usuario, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = Dimens.espacioMedio, vertical = Dimens.espacioChico),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AvatarIniciales(iniciales = inicialesDe(usuario), color = colorAvatarDe(usuario.idUsuario))
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = Dimens.espacioMedio)
+        ) {
+            Text(text = usuario.correo, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = nombreCorto(usuario),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

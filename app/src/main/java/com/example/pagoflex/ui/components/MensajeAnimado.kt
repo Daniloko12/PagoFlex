@@ -16,7 +16,8 @@ import androidx.compose.ui.Modifier
 fun MensajeAnimado(
     texto: String?,
     modifier: Modifier = Modifier,
-    exito: Boolean = false
+    exito: Boolean = false,
+    error: Boolean = !exito
 ) {
     var ultimoTexto by remember { mutableStateOf(texto ?: "") }
     if (texto != null) ultimoTexto = texto
@@ -28,6 +29,6 @@ fun MensajeAnimado(
         exit = fadeOut() + shrinkVertically(),
         label = "mensaje"
     ) {
-        TarjetaMensaje(texto = ultimoTexto, exito = exito)
+        TarjetaMensaje(texto = ultimoTexto, exito = exito, error = error)
     }
 }

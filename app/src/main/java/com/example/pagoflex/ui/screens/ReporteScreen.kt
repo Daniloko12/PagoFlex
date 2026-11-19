@@ -120,7 +120,7 @@ fun ReporteContent(
                 )
             }
             TarjetaMensaje(texto = "Mientras revisamos tu reporte, el compromiso queda \"En revisión\": no se puede pagar y no suma días de atraso.")
-            uiState.errorReporte?.let { TarjetaMensaje(texto = it) }
+            uiState.errorReporte?.let { TarjetaMensaje(texto = it, error = true) }
 
             BotonPrincipal(
                 texto = stringResource(R.string.btn_enviar_reporte),

@@ -13,9 +13,6 @@
     <string name="btn_ingresar">Ingresar</string>
     <string name="btn_recuperar_clave">Recuperar contraseña</string>
     <string name="titulo_recuperar_clave">Recuperar contraseña</string>
-    <string name="btn_cuentas_prueba">Usar una cuenta de prueba</string>
-    <string name="titulo_cuentas_prueba">Cuentas de prueba</string>
-    <string name="texto_cuentas_prueba">Toca una cuenta para completar el correo y la contraseña. Todas usan la contraseña %1$s.</string>
     <string name="texto_sin_cuenta">¿No tienes cuenta?</string>
     <string name="btn_crear_cuenta">Crear cuenta</string>
 

@@ -2,6 +2,7 @@ package com.example.pagoflex.ui.screens
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -46,6 +47,7 @@ import com.example.pagoflex.model.pagoATiempo
 import com.example.pagoflex.model.primerNombre
 import com.example.pagoflex.model.tarjetaPorId
 import com.example.pagoflex.model.textoTarjeta
+import com.example.pagoflex.ui.components.AvatarIniciales
 import com.example.pagoflex.ui.components.TarjetaSeccion
 import com.example.pagoflex.ui.styles.EstilosTarjeta
 import com.example.pagoflex.ui.theme.Dimens
@@ -241,6 +243,42 @@ fun AvisoSinConexion(
                     text = "Sin conexión. Te mostramos tu última situación conocida, del $hora. Se actualizará sola al volver la conexión.",
                     style = MaterialTheme.typography.bodySmall
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun SugerenciasCorreo(sugerencias: List<Usuario>, onElegir: (String) -> Unit) {
+    if (sugerencias.isEmpty()) return
+    Surface(
+        shape = RoundedCornerShape(Dimens.radioTarjeta),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column {
+            sugerencias.forEach { usuario ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onElegir(usuario.correo) }
+                        .padding(horizontal = Dimens.espacioMedio, vertical = Dimens.espacioChico),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AvatarIniciales(iniciales = inicialesDe(usuario), color = colorAvatarDe(usuario.idUsuario))
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = Dimens.espacioMedio)
+                    ) {
+                        Text(text = usuario.correo, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = nombreCorto(usuario),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         }
     }

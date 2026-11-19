@@ -2,7 +2,6 @@ package com.example.pagoflex.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.example.pagoflex.model.BaseDatos
-import com.example.pagoflex.model.CLAVE_DE_PRUEBA
 import com.example.pagoflex.model.CambiarClaveUiState
 import com.example.pagoflex.model.CambioClave
 import com.example.pagoflex.model.ClaveRecuperada
@@ -43,10 +42,6 @@ class CuentaViewModel : ViewModel() {
 
     fun onClaveIngresoCambia(valor: String) {
         _ingreso.update { it.copy(clave = valor.take(LARGO_MAXIMO_CLAVE), errorClave = null, errorIngreso = null) }
-    }
-
-    fun onUsarCuentaDePrueba(correo: String) {
-        _ingreso.value = IngresoUiState(correo = correo, clave = CLAVE_DE_PRUEBA)
     }
 
     fun onErrorIngreso(mensaje: String) {

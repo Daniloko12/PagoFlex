@@ -8,7 +8,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
@@ -59,7 +57,6 @@ import com.example.pagoflex.model.Usuario
 import com.example.pagoflex.model.cuentasQueEmpiezanCon
 import com.example.pagoflex.notificaciones.Notificaciones
 import com.example.pagoflex.permisos.Permisos
-import com.example.pagoflex.ui.components.AvatarIniciales
 import com.example.pagoflex.ui.components.BarraSuperior
 import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.BotonSecundario
@@ -293,50 +290,13 @@ private fun PasoDatos(
             ayuda = stringResource(R.string.ayuda_correo),
             tipoTeclado = KeyboardType.Email
         )
-        if (sugerencias.isNotEmpty()) {
-            Surface(
-                shape = RoundedCornerShape(Dimens.radioTarjeta),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    sugerencias.forEach { usuario ->
-                        SugerenciaCorreo(usuario = usuario, onClick = { onCorreoCambia(usuario.correo) })
-                    }
-                }
-            }
-        }
+        SugerenciasCorreo(sugerencias = sugerencias, onElegir = onCorreoCambia)
         BotonPrincipal(
             texto = "Enviar código",
             onClick = onSolicitarCodigo,
             icono = R.drawable.ic_correo,
             modifier = Modifier.fillMaxWidth()
         )
-    }
-}
-
-@Composable
-private fun SugerenciaCorreo(usuario: Usuario, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = Dimens.espacioMedio, vertical = Dimens.espacioChico),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        AvatarIniciales(iniciales = inicialesDe(usuario), color = colorAvatarDe(usuario.idUsuario))
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = Dimens.espacioMedio)
-        ) {
-            Text(text = usuario.correo, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                text = nombreCorto(usuario),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
     }
 }
 

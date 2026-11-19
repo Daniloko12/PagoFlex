@@ -21,7 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,18 +51,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.pagoflex.R
 import com.example.pagoflex.model.BaseDatos
-import com.example.pagoflex.model.CLAVE_DE_PRUEBA
 import com.example.pagoflex.model.Credenciales
 import com.example.pagoflex.model.IngresoUiState
-import com.example.pagoflex.model.Rol
 import com.example.pagoflex.model.SERVIDOR_EMULADOR
 import com.example.pagoflex.model.Usuario
-import com.example.pagoflex.model.usuariosDelRol
+import com.example.pagoflex.model.cuentasQueEmpiezanCon
 import com.example.pagoflex.ui.components.BotonPrincipal
 import com.example.pagoflex.ui.components.CampoContrasena
 import com.example.pagoflex.ui.components.CampoTexto
 import com.example.pagoflex.ui.components.MensajeAnimado
-import com.example.pagoflex.ui.components.OpcionCuenta
 import com.example.pagoflex.ui.theme.Dimens
 import com.example.pagoflex.ui.theme.PagoFlexTheme
 import com.example.pagoflex.ui.theme.coloresExtra
@@ -89,7 +85,7 @@ fun IngresoScreen(
 
     IngresoContent(
         uiState = uiState,
-        cuentasDePrueba = datos.usuariosDelRol(Rol.USUARIO_FINAL) + datos.usuariosDelRol(Rol.ADMINISTRADOR),
+        sugerencias = datos.cuentasQueEmpiezanCon(uiState.correo),
         onCorreoCambia = viewModel::onCorreoIngresoCambia,
         onClaveCambia = viewModel::onClaveIngresoCambia,
         onIngresar = {
@@ -97,7 +93,6 @@ fun IngresoScreen(
                 scope.launch { onIngresar(credenciales)?.let { error -> viewModel.onErrorIngreso(error) } }
             }
         },
-        onUsarCuentaDePrueba = { usuario -> viewModel.onUsarCuentaDePrueba(usuario.correo) },
         onRestablecer = onRestablecer,
         onCrearCuenta = onCrearCuenta,
         onRecuperarClave = onRecuperarClave,
@@ -112,11 +107,10 @@ fun IngresoScreen(
 @Composable
 fun IngresoContent(
     uiState: IngresoUiState,
-    cuentasDePrueba: List<Usuario>,
+    sugerencias: List<Usuario> = emptyList(),
     onCorreoCambia: (String) -> Unit,
     onClaveCambia: (String) -> Unit,
     onIngresar: () -> Unit,
-    onUsarCuentaDePrueba: (Usuario) -> Unit = {},
     onRestablecer: () -> Unit = {},
     onCrearCuenta: () -> Unit = {},
     onRecuperarClave: () -> Unit = {},
@@ -126,7 +120,6 @@ fun IngresoContent(
     servidor: String = SERVIDOR_EMULADOR,
     onCambiarServidor: (String) -> Unit = {}
 ) {
-    var verCuentas by remember { mutableStateOf(false) }
     var confirmarRestablecer by remember { mutableStateOf(false) }
     var cambiarServidor by remember { mutableStateOf(false) }
 
@@ -138,39 +131,6 @@ fun IngresoContent(
                 onCambiarServidor(direccion)
             },
             onCancelar = { cambiarServidor = false }
-        )
-    }
-
-    if (verCuentas) {
-        AlertDialog(
-            onDismissRequest = { verCuentas = false },
-            title = { Text(stringResource(R.string.titulo_cuentas_prueba)) },
-            text = {
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    Text(
-                        text = stringResource(R.string.texto_cuentas_prueba, CLAVE_DE_PRUEBA),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = Dimens.espacioChico)
-                    )
-                    cuentasDePrueba.forEachIndexed { indice, usuario ->
-                        if (indice > 0) HorizontalDivider()
-                        OpcionCuenta(
-                            nombre = nombreCorto(usuario),
-                            detalle = "${usuario.rol.etiqueta} · ${usuario.correo}",
-                            iniciales = inicialesDe(usuario),
-                            seleccionada = usuario.correo == uiState.correo,
-                            onClick = {
-                                onUsarCuentaDePrueba(usuario)
-                                verCuentas = false
-                            },
-                            colorAvatar = colorAvatarDe(usuario.idUsuario)
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { verCuentas = false }) { Text(stringResource(R.string.btn_cerrar)) }
-            }
         )
     }
 
@@ -249,6 +209,7 @@ fun IngresoContent(
                                 ayuda = stringResource(R.string.ayuda_correo),
                                 tipoTeclado = KeyboardType.Email
                             )
+                            SugerenciasCorreo(sugerencias = sugerencias, onElegir = onCorreoCambia)
                             CampoContrasena(
                                 valor = uiState.clave,
                                 onValorCambia = onClaveCambia,
@@ -291,16 +252,6 @@ fun IngresoContent(
                         TextButton(onClick = onCrearCuenta) {
                             Text(stringResource(R.string.btn_crear_cuenta), fontWeight = FontWeight.SemiBold)
                         }
-                    }
-                    TextButton(
-                        onClick = { verCuentas = true },
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    ) {
-                        Icon(painterResource(R.drawable.ic_persona), contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text(
-                            text = stringResource(R.string.btn_cuentas_prueba),
-                            modifier = Modifier.padding(start = Dimens.espacioMini)
-                        )
                     }
                 }
             }
@@ -414,7 +365,7 @@ private fun IngresoPreview() {
     PagoFlexTheme {
         IngresoContent(
             uiState = IngresoUiState(),
-            cuentasDePrueba = BaseDatos().usuariosDelRol(Rol.USUARIO_FINAL),
+            sugerencias = BaseDatos().cuentasQueEmpiezanCon("c"),
             onCorreoCambia = {}, onClaveCambia = {},
             onIngresar = {}
         )
@@ -432,7 +383,6 @@ private fun IngresoConErroresPreview() {
                 errorCorreo = "Ingresa un correo válido, por ejemplo nombre@gmail.com",
                 errorClave = "Ingresa tu contraseña"
             ),
-            cuentasDePrueba = BaseDatos().usuariosDelRol(Rol.ADMINISTRADOR),
             onCorreoCambia = {}, onClaveCambia = {},
             onIngresar = {}, modoOscuro = false
         )

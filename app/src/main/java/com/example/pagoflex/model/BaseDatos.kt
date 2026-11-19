@@ -51,6 +51,14 @@ fun BaseDatos.reconocimientoPorId(id: Int): Reconocimiento? = reconocimientos.fi
 
 fun BaseDatos.usuariosDelRol(rol: Rol): List<Usuario> = usuarios.filter { it.rol == rol && it.activo }
 
+fun BaseDatos.cuentasQueEmpiezanCon(texto: String, maximo: Int = 4): List<Usuario> {
+    val buscado = texto.trim()
+    if (buscado.isEmpty()) return emptyList()
+    return usuarios.filter {
+        it.activo && it.correo.startsWith(buscado, ignoreCase = true) && !it.correo.equals(buscado, ignoreCase = true)
+    }.take(maximo)
+}
+
 fun BaseDatos.usuarioPorRut(rut: String): Usuario? {
     val buscado = normalizarRut(rut)
     return usuarios.find { normalizarRut(it.rut) == buscado }

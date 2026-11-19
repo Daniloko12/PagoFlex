@@ -36,6 +36,7 @@ import com.example.pagoflex.model.compromisosDe
 import com.example.pagoflex.model.compromisosFiltrados
 import com.example.pagoflex.model.conceptoSiguiente
 import com.example.pagoflex.model.cuentaParaRecuperar
+import com.example.pagoflex.model.cuentasQueEmpiezanCon
 import com.example.pagoflex.model.cumpleRequisito
 import com.example.pagoflex.model.cumpleVencimiento
 import com.example.pagoflex.model.deudaDe
@@ -439,5 +440,13 @@ class ReglasNegocioTest {
 
         assertEquals(0, FiltrosCompromiso().cantidadActivos)
         assertEquals(2, FiltrosCompromiso(estado = FiltroEstado.PAGADOS, idEmpresa = idEmpresa).cantidadActivos)
+    }
+
+    @Test
+    fun sugerenciasDeCorreo_conLasPrimerasLetras() {
+        assertEquals(listOf("rcontreras@correo.ejemplo"), datos.cuentasQueEmpiezanCon("R").map { it.correo })
+        assertEquals(listOf("crojas@correo.ejemplo"), datos.cuentasQueEmpiezanCon(" cr").map { it.correo })
+        assertTrue(datos.cuentasQueEmpiezanCon("").isEmpty())
+        assertTrue(datos.cuentasQueEmpiezanCon("crojas@correo.ejemplo").isEmpty())
     }
 }

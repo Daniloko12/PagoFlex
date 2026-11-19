@@ -10,7 +10,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.pagoflex"
+        applicationId = "cl.duocuc.pagoflex"
         minSdk = 26
         targetSdk = 37
         versionCode = 1

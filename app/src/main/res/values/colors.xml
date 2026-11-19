@@ -3,5 +3,6 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="primario">#FF2ECC80</color>
+    <color name="fondo_splash">#FF13804F</color>
     <color name="sombra_imagen">#B3000000</color>
 </resources>

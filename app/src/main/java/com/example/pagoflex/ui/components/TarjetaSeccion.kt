@@ -112,11 +112,24 @@ fun TarjetaMensaje(
     texto: String,
     modifier: Modifier = Modifier,
     exito: Boolean = false,
-    @DrawableRes icono: Int = if (exito) R.drawable.ic_check else R.drawable.ic_info
+    error: Boolean = false,
+    @DrawableRes icono: Int = when {
+        error -> R.drawable.ic_alerta
+        exito -> R.drawable.ic_check
+        else -> R.drawable.ic_info
+    }
 ) {
     val colores = MaterialTheme.coloresExtra
-    val colorTexto: Color = if (exito) colores.exito else colores.informacion
-    val colorFondo: Color = if (exito) colores.exitoFondo else colores.informacionFondo
+    val colorTexto: Color = when {
+        error -> MaterialTheme.colorScheme.error
+        exito -> colores.exito
+        else -> colores.informacion
+    }
+    val colorFondo: Color = when {
+        error -> colores.errorFondo
+        exito -> colores.exitoFondo
+        else -> colores.informacionFondo
+    }
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = EstilosTarjeta.forma,
@@ -152,6 +165,7 @@ private fun TarjetaSeccionPreview() {
                 FilaDato("Total a pagar", "$ 318.500", destacado = true)
             }
             TarjetaMensaje(texto = "Pago confirmado. Tu comprobante es CPR-000454.", exito = true)
+            TarjetaMensaje(texto = "Correo o contraseña incorrectos", error = true)
         }
     }
 }

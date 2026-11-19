@@ -185,7 +185,7 @@ fun RecomendarContent(
                 )
             }
 
-            uiState.errorRecomendacion?.let { TarjetaMensaje(texto = it) }
+            uiState.errorRecomendacion?.let { TarjetaMensaje(texto = it, error = true) }
 
             Row(horizontalArrangement = Arrangement.spacedBy(Dimens.espacioMedio)) {
                 BotonSecundario(

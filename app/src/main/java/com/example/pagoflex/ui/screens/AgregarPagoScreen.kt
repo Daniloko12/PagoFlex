@@ -246,7 +246,7 @@ fun AgregarPagoContent(
                         Text(text = "Leyendo la boleta…", style = MaterialTheme.typography.bodyMedium)
                     }
                 }
-                MensajeAnimado(texto = uiState.mensajeBoleta, exito = uiState.boletaConDatos)
+                MensajeAnimado(texto = uiState.mensajeBoleta, exito = uiState.boletaConDatos, error = false)
                 Row(horizontalArrangement = Arrangement.spacedBy(Dimens.espacioChico)) {
                     BotonSecundario(
                         texto = "Tomar foto",
